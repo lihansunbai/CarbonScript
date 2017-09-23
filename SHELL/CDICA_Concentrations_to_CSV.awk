@@ -48,7 +48,7 @@ BEGIN {
 #Get latitude function
 function get_lat(){
 #In WGS_84 the region of latitude is -90 to 90.
-    lat = delta_lat - (maxlat/2)
+    lat = (maxlat/2) - delta_lat 
 
     if (delta_lat >maxlat) delta_lat = 0
 
