@@ -1,5 +1,5 @@
-﻿CREATE TABLE historical_emission.NATIONS_CO2 ( 
-    nation TEXT,
+﻿CREATE TABLE historical_emission.REGION_CO2 ( 
+    region TEXT,
     year INTEGER,
     total DOUBLE PRECISION,
     solids DOUBLE PRECISION,
@@ -7,6 +7,5 @@
     gas DOUBLE PRECISION,
     cement_production DOUBLE PRECISION,
     gas_flaring DOUBLE PRECISION,
-    per_capita DOUBLE PRECISION,
-    bunker_fuel DOUBLE PRECISION
+    per_capita DOUBLE PRECISION
 );

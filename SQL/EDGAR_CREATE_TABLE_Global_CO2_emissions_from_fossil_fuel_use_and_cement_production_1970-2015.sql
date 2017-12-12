@@ -1,4 +1,4 @@
-﻿CREATE TABLE Global_CO2_emissions_from_fossil_fuel_use_and_cement_production_1970_2015 (
+﻿CREATE TABLE EDGAR_Global_FFCO2 (
     country text PRIMARY KEY,
     emission_1970 DOUBLE PRECISION,
     emission_1971 DOUBLE PRECISION,

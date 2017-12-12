@@ -1,4 +1,4 @@
-CREATE TABLE historical_emission.GLOBAL_CO2_1751_2014 (
+CREATE TABLE historical_emission.GLOBAL_CO2 (
     year INTEGER,
     total DOUBLE PRECISION,
     gas DOUBLE PRECISION,
