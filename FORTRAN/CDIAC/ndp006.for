@@ -36,4 +36,3 @@ C WRITE OUT FOOTNOTE.
      1ing prior to 1950.')
           STOP
           END
-
