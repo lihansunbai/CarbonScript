@@ -1,5 +1,6 @@
-﻿CREATE TABLE EDGAR_CO2_per_capita (
-    country text PRIMARY KEY,
+﻿CREATE TABLE historical_emission.EDGAR_CO2_per_capita (
+    ISO_CODE text,
+    ISO_COUNTRY text PRIMARY KEY,
     emission_1970 DOUBLE PRECISION,
     emission_1971 DOUBLE PRECISION,
     emission_1972 DOUBLE PRECISION,

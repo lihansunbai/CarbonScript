@@ -1,5 +1,7 @@
-﻿CREATE TABLE EDGAR_Global_FFCO2 (
-    country text PRIMARY KEY,
+﻿CREATE TABLE historical_emission.EDGAR_Global_FFCO2 (
+    ISO_CODE text,
+    ISO_COUNTRY text,
+    sector text,
     emission_1970 DOUBLE PRECISION,
     emission_1971 DOUBLE PRECISION,
     emission_1972 DOUBLE PRECISION,
@@ -20,7 +22,7 @@
     emission_1987 DOUBLE PRECISION,
     emission_1988 DOUBLE PRECISION,
     emission_1989 DOUBLE PRECISION,
-    emission_1990 double precision,
+    emission_1990 DOUBLE PRECISION,
     emission_1991 DOUBLE PRECISION,
     emission_1992 DOUBLE PRECISION,
     emission_1993 DOUBLE PRECISION,
@@ -45,5 +47,6 @@
     emission_2012 DOUBLE PRECISION,
     emission_2013 DOUBLE PRECISION,
     emission_2014 DOUBLE PRECISION,
-    emission_2015 DOUBLE PRECISION
+    emission_2015 DOUBLE PRECISION,
+    emission_2016 DOUBLE PRECISION
 );
