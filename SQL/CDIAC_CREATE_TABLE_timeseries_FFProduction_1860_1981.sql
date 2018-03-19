@@ -1,4 +1,4 @@
-CREATE TABLE historical_emission.FFProduciton_1860_1981(
+CREATE TABLE historical_emission.CDIAC_FFProduciton_1860_1981(
     year INTEGER,
     solid_fuels DOUBLE PRECISION,
     liquid_fuels DOUBLE PRECISION,

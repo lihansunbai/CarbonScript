@@ -1,4 +1,4 @@
-﻿CREATE TABLE historical_emission.REGION_CO2 ( 
+﻿CREATE TABLE historical_emission.CDIAC_REGION_CO2 ( 
     region TEXT,
     year INTEGER,
     total DOUBLE PRECISION,

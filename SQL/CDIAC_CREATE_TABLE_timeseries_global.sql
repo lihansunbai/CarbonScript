@@ -1,4 +1,4 @@
-CREATE TABLE historical_emission.GLOBAL_CO2 (
+CREATE TABLE historical_emission.CDIAC_GLOBAL_CO2 (
     year INTEGER,
     total DOUBLE PRECISION,
     gas DOUBLE PRECISION,
