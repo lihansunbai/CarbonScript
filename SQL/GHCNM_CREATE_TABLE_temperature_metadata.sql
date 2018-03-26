@@ -1,4 +1,4 @@
-CREATE TABLE temperature.ghcnm_tavg_metadata(
+CREATE TABLE temperature.ghcnm_metadata(
     id BIGINT,
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION,
