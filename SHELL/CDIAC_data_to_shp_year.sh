@@ -6,8 +6,11 @@
 ##  Introduction:
 ##    Dump database data to shapefiles. Main process is using pgsql2shp.
 ##    It will dump data from database VIEWs to seperated shapefiles.
-##    You should specific the file include years you want to dump 
-##    from database.
+##
+##    inputfile:
+##      You should specific the file include years you want to dump 
+##      from database.
+##
 ##    It defined several default option:
 ##      1) host
 ##      2) port
@@ -16,7 +19,7 @@
 ##      5) geom
 ##
 ##  Usage:
-##    ./CDICA_data_to_shp_year.sh -i inputfile [-d database -h host -p port \
+##    ./CDIAC_data_to_shp_year.sh -i inputfile [-d database -h host -p port \
 ##      -u user -P password -g geom]
 ##
 ################################################################################
@@ -73,7 +76,7 @@ fi
 #Process every year
 while read year
 do
-    filename=cdica_year_$year 
+    filename=cdiac_year_$year 
     pgsql2shp -f $filename -h $host -p $port -u $user -P $password \
-        -g $geom $database "SELECT * FROM grid_co2.cdica_year_$year ;"
+        -g $geom $database "SELECT * FROM grid_co2.cdiac_year_$year ;"
 done < $inputfile
