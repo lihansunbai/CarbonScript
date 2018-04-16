@@ -7,6 +7,7 @@
 ##    CDICA 提供的 CO2 格网（格点）数据是单行的浓度数据。根据数据说明文档给出
 ##    的提示，整个数据可以按纬向展开为全球数据。所以逐一解压文件并添加经纬度
 ##    和时间字段。
+##    使用该脚本需要保证awk分类文件与脚本在同一目录下。
 ##    注意：
 ##        展开所有数据可能会消耗大量时间！
 ##        展开所有数据可能会占据大量磁盘空间！
@@ -37,6 +38,6 @@ ls |
 #the process detail be writen in Concentration_to_CSV file.
 while read files
 do
-    awk -f ./CDICA_Concentrations_to_CSV.awk $files
+    awk -f ./CDIAC_Concentrations_to_CSV.awk $files
     rm $files
 done < files.temp.DAT

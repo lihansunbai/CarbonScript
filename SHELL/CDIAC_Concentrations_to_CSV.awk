@@ -28,7 +28,7 @@
 
 #Initiate global variations before program start
 BEGIN { 
-    FS="E";
+#    FS="E";
 
 #set data regions
     maxlat=180;
@@ -77,7 +77,7 @@ function get_lon(){
 $0 ~ /[-\+]?[0-9]?\.[0-9]*E[-\+]?[0-9]*/ {
 
 #Change the Fortran DS13.6E2 fromat float into a normal double float.
-    carbon=$1*(10**$2);
+    carbon=$1;
 
 #Why AWK can't use variation FILENAME in BEGIN proccess?
 #Do you know how many time has been waste in this two lines?
