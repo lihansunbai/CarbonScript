@@ -57,7 +57,7 @@ function get_lat(){
         delta_lat++
         latitude_change_flag = 0
         }
-    return lat
+    return lat - 0.5
     }
 
 #Get longitude function
@@ -70,7 +70,7 @@ function get_lon(){
         latitude_change_flag = 1
         delta_lon = 0
         }
-    return lon
+    return lon + 0.5
     }
 
 #THE MAIN METHOD
