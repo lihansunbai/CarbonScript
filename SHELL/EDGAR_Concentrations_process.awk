@@ -37,7 +37,7 @@ BEGIN {
     if (n == 9){
         if (length(filename[9]) == 5) categories_ipcc = substr(filename[9], 1, 1);
         else{
-        categories_ipcc = substr(filename[9], 1, length(filename[9])-5);
+        categories_ipcc = substr(filename[9], 1, length(filename[9])-4);
         }
         categories_abbr = "E" toupper(categories_ipcc);
     }
