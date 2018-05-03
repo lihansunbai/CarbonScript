@@ -32,13 +32,19 @@ BEGIN {
     substance = filename[2];
     substance_info = filename[3] "_" filename[4] "_" filename[5] "_" filename[6];
     yr = filename[7];
-    temp_cate = "";
+
 # 这里都在处理IPCC描述的种类的不同情况，主要是截取字段的不同情况
+# n == 9的判断情况是因为原始文件名分割后的第9项开始是分类
+# ipcc的分类中有一些分类只有一个整数数字，处理起来略麻烦，这里采用强行只截取一个字符
+# 上面这条感觉怪怪的，感觉之前的逻辑有点复杂，下次再分析过程的时候再修改吧
+# 这里因该可以处理所有情况吧，否则，好像设置保存文件那里就可能出错
+    temp_cate = "";
     if (n == 9){
         if (length(filename[9]) == 5) categories_ipcc = substr(filename[9], 1, 1);
         else{
         categories_ipcc = substr(filename[9], 1, length(filename[9])-4);
         }
+# 所有分类缩写都是以E开头，主要是因为数据库和各种高级语言中数字开头的变量命名都是非法的
         categories_abbr = "E" toupper(categories_ipcc);
     }
     else{
@@ -51,18 +57,18 @@ BEGIN {
 
 
 #set output file name
-    output_pe="points_data.csv"
-    output_wte="world_data.csv"
+    output_pe = categories_abbr ".csv";
+    output_wte = "world_data.csv";
     }
 
 #THE MAIN METHOD
 # process world total emission
 $0 ~ /^(Compound\:)/{
-       categories_edgar = $4;
-       total = substr($8, 1, index($8, "(")-1);
+    categories_edgar = $4;
+    total = substr($8, 1, index($8, "(")-1);
 
 #Output format information
-       printf("%s,%s,%s,%s,%s,%s,%s,%s\n", edgar_ver, substance, substance_info, yr, categories_abbr, categories_edgar, categories_ipcc, total) >> output_wte;
+    printf("%s,%s,%s,%s,%s,%s,%s,%s\n", edgar_ver, substance, substance_info, yr, categories_abbr, categories_edgar, categories_ipcc, total) >> output_wte;
     }
 
 # process points emission
@@ -70,7 +76,6 @@ $0 ~ /[0-9\.-]*\;[0-9\.-]*\;/{
     latitude = $1 - 0.05;
     longitude = $2 + 0.05;
 
-
 #Output format information
-       printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", edgar_ver, substance, substance_info, yr, categories_abbr, categories_edgar, categories_ipcc, latitude, longitude, $3) >> output_pe;
+    printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n", edgar_ver, substance, substance_info, yr, categories_abbr, categories_edgar, categories_ipcc, latitude, longitude, $3) >> output_pe;
     }
