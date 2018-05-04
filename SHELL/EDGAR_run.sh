@@ -90,7 +90,7 @@ db_remove_table(){
 #       PLEASE CREARFULLY change this argument
 # 这个操作会从数据库中抹掉所有table存在的痕迹和与它有关的链接、过程、视图等等
     temp_table=`echo $1 | tr 'A-Z' 'a-z'`
-    printf "DROP TABLE %s CASCADE;" $table_name |
+    printf "DROP TABLE grid_co2.%s CASCADE;" $table_name |
         psql -h $db_host -p $db_port -U $db_user -w -d $db_database
 }
 
