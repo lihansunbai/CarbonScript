@@ -31,7 +31,7 @@ db_port=1921
 db_user=postgres
 db_password=postgres
 db_database=carbonProject
-db_geometry_column=gemo
+db_geometry_column=geom
 
 ###############################################################################
 ###############################################################################
@@ -79,8 +79,9 @@ db_to_shapefile(){
 # Input argument
 #   $table_name: categoriy and year table to be export to shapefile
 
+    temp_table=`echo $1 | tr 'A-Z' 'a-z'`
     pgsql2shp -f $1 -h $db_host -p $db_port -u $db_user -P $db_password \
-        -g $db_geometry_column $db_database grid_co2.$1
+        -g $db_geometry_column $db_database grid_co2.$temp_table
 
 }
 
@@ -130,9 +131,9 @@ done < ./import.temp.DAT
 # MAIN PROCESS END
 
 # delete temp file
-#if [ -f ./import.temp.DAT ]
-#then
-#    rm ./import.temp.DAT
-#fi
+if [ -f ./import.temp.DAT ]
+then
+    rm ./import.temp.DAT
+fi
 
 # MAIN SCRIPT END
