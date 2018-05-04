@@ -29,29 +29,58 @@
 db_host=localhost
 db_port=1921
 db_user=postgres
+db_password=postgres
 db_database=carbonProject
+db_geometry_column=gemo
 
 ###############################################################################
 ###############################################################################
 # FUNCTIONS
 db_create_table(){
-    table_create=`echo 'CREATE TABLE grid_co2.EDGAR_'$table_name'(edgar_ver TEXT,substance TEXT,substance_info TEXT,yr INT,categories_abbr TEXT,categories_edgar TEXT,categories_ipcc TEXT,latitude DOUBLE PRECISION,longitude DOUBLE PRECISION,emi DOUBLE PRECISION);'`
-    psql -h $db_host -p $db_port -U $db_user -w -d $db_database -c $table_create
-   
+# Input argument:
+#    $table_name: table name which will import to
+
+    printf "CREATE TABLE grid_co2.%s(edgar_ver TEXT,substance TEXT,substance_info TEXT,yr INT,categories_abbr TEXT,categories_edgar TEXT,categories_ipcc TEXT,latitude DOUBLE PRECISION,longitude DOUBLE PRECISION,emi DOUBLE PRECISION);" $1 | 
+        psql -h $db_host -p $db_port -U $db_user -w -d $db_database 
 }
 
 db_import_and_copy(){
-    if ! [ -f $1 ]
+# Input arguments: 
+#    $table_name: table name which will import to
+#    $import_file: import data csv file
+
+    db_create_table $1
+# 这里居然不能用printf，可能是copy转义了
+    echo "\\copy grid_co2."$1" FROM "$2" (FORMAT csv, DELIMITER ',');" |
+        psql -h $db_host -p $db_port -U $db_user -w -d $db_database 
+
+# clean import files
+    if [ -f $2 ]
     then
-        echo "ERROR: No import data file!"
-        return 1
+        rm $2
     fi
-    table_name=`echo $1 | \
-                awk '{na=substr($0, match($0, "E[0-9].*_[0-9]*\.csv")); print na;}' | \
-                    cut -d . -f 1` 
-    db_create_table $table_name
-    copy_data = `echo "\\copy EDGAR_"$table_name" FROM "$1" (FORMAT csv, DELIMITER ',');"`
-    psql -h $db_host -p $db_port -U $db_user -w -d db_database -c $copy_data 
+}
+
+db_add_gemo(){
+# Input arguments:
+#    $table_name: table name that will create a geom column
+
+# add geometry column
+    temp_name=`echo $1 | tr 'A-Z' 'a-z'`
+    printf "SELECT AddGeometryColumn ('grid_co2','%s','geom',4326,'POINT',2);" $temp_name |
+        psql -h $db_host -p $db_port -U $db_user -w -d $db_database 
+
+# update geometry column data
+    printf "UPDATE grid_co2.%s SET geom=ST_GeomFromText('POINT('||longitude||' '||latitude||')',4326);" $1 |
+        psql -h $db_host -p $db_port -U $db_user -w -d $db_database
+}
+
+db_to_shapefile(){
+# Input argument
+#   $table_name: categoriy and year table to be export to shapefile
+
+    pgsql2shp -f $1 -h $db_host -p $db_port -u $db_user -P $db_password \
+        -g $db_geometry_column $db_database grid_co2.$1
 
 }
 
@@ -83,7 +112,20 @@ fi
 # MAIN PROCESS BEGAIN
 while read im
 do
-    db_import_and_copy $im
+    if ! [ -f $im ]
+    then
+        echo "ERROR: No import data file!"
+        return 1
+    fi
+
+    table_name=`echo $im | \
+                awk '{na=substr($0, match($0, "E[0-9].*_[0-9]*\.csv")); print "EDGAR_" na;}' | \
+                    cut -d . -f 1` 
+
+    db_import_and_copy $table_name $im
+    db_add_gemo $table_name
+    db_to_shapefile $table_name
+
 done < ./import.temp.DAT
 # MAIN PROCESS END
 
