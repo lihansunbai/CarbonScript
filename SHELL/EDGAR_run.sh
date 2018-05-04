@@ -82,7 +82,16 @@ db_to_shapefile(){
     temp_table=`echo $1 | tr 'A-Z' 'a-z'`
     pgsql2shp -f $1 -h $db_host -p $db_port -u $db_user -P $db_password \
         -g $db_geometry_column $db_database grid_co2.$temp_table
+}
 
+db_remove_table(){
+# Input argument:
+#   $table_name: the table in database will be droped!
+#       PLEASE CREARFULLY change this argument
+# 这个操作会从数据库中抹掉所有table存在的痕迹和与它有关的链接、过程、视图等等
+    temp_table=`echo $1 | tr 'A-Z' 'a-z'`
+    printf "DROP TABLE %s CASCADE;" $table_name |
+        psql -h $db_host -p $db_port -U $db_user -w -d $db_database
 }
 
 ###############################################################################
@@ -126,6 +135,7 @@ do
     db_import_and_copy $table_name $im
     db_add_gemo $table_name
     db_to_shapefile $table_name
+    db_remove_table $table_name
 
 done < ./import.temp.DAT
 # MAIN PROCESS END
