@@ -57,7 +57,7 @@ BEGIN {
 
 
 #set output file name
-    output_pe = categories_abbr ".csv";
+    output_pe = categories_abbr "_" yr ".csv";
     output_wte = "world_data.csv";
     }
 
