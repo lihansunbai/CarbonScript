@@ -79,9 +79,12 @@ $0 ~ /[-\+]?[0-9]?\.[0-9]*E[-\+]?[0-9]*/ {
 #Change the Fortran DS13.6E2 fromat float into a normal double float.
     carbon=$1;
 
-#Why AWK can't use variation FILENAME in BEGIN proccess?
-#Do you know how many time has been waste in this two lines?
-#Extract year information from the input file name.
+#>Why AWK can't use variation FILENAME in BEGIN proccess?
+#>Do you know how many time has been waste in this two lines?
+#>Extract year information from the input file name.
+# HAHAHAHAHAHAHA!!!
+# 其实是有办法的，FILENAME 虽然没有办法在BEGIN过程中直接使用。
+# 但是，可以通过ARGV这个数组获得。具体用法参见这个数组的说明。
     year=substr(FILENAME,9);
 
 #First you should get the longitude. And, then you can get the latitude.
