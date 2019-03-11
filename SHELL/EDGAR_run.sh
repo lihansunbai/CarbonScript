@@ -46,7 +46,7 @@ db_create_table(){
 
 db_import_and_copy(){
 # Input arguments: 
-#    $table_name: table name which will import to
+#    $table_name: table name which will import into
 #    $import_file: import data csv file
 
     db_create_table $1
