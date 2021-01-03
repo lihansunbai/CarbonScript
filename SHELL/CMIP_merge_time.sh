@@ -5,6 +5,8 @@
 ##                   Merge Splited-time Data to Single File
 ##  Introduction:
 ##    This script merge split time data into a single file.
+##    This script requir cdo software!
+##      cdo: climate data operator
 ##
 ##  Usage:
 ##    CMIP_merge_time.sh -d dirction_invole_files_to_merge -o output_file_name
@@ -48,5 +50,6 @@ then
     exit 2
 fi
 
+#call cdo to do the merge works
 cdo mergetime $mergefiles $output
 ### END OF MAIN PROCCESS ###
