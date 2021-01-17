@@ -5,6 +5,8 @@
 ##                   Merge Splited-time Data to Single File
 ##  Introduction:
 ##    This script merge split time data into a single file.
+##    All split time data should be contained in same dirction.
+##    Warnning: the working dirction shoudl only include data that prepare to merge.
 ##    This script requir cdo software!
 ##      cdo: climate data operator
 ##
