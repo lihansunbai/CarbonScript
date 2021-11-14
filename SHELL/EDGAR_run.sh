@@ -129,7 +129,7 @@ do
     fi
 
     table_name=`echo $im | \
-                awk '{na=substr($0, match($0, "E[0-9].*_[0-9]*\.csv")); print "EDGAR_" na;}' | \
+                awk '{na=substr($0, match($0, "[a-zA-z]*_[0-9]*\.csv")); print "EDGAR_" na;}' | \
                     cut -d . -f 1` 
 
     db_import_and_copy $table_name $im
@@ -140,7 +140,7 @@ do
 done < ./import.temp.DAT
 # MAIN PROCESS END
 
-# delete temp file
+## delete temp file
 if [ -f ./import.temp.DAT ]
 then
     rm ./import.temp.DAT
