@@ -14,7 +14,7 @@ arcpy.env.workspace = 'E:\\workplace\\CarbonProject\\geodatabase\\carbon_temp.gd
 arcpy.CheckOutExtension("Spatial")
 
 re_shp = re.compile(r'.nc')
-files_path = 'E:\\workplace\\CarbonProject\\DATA\\temp\\TNR_Other_nc'
+files_path = 'E:\\workplace\\CarbonProject\\DATA\\temp\\v432_CO2_excl_short-cycle_org_C_IND_nc'
 raster_path = 'E:\\workplace\\CarbonProject\\geodatabase\\carbon_temp.gdb'
 files = os.listdir(files_path)
 ncfiles = []
@@ -37,7 +37,7 @@ if not ncfiles:
 for ncfile in ncfiles:
     inNetCDFFile = files_path + '\\' + ncfile
     outRasterLayer = raster_path + '\\' + ncfile[:-3] + '_nc'
-    save_raster = raster_path + '\\E1A3C_' + ncfile[-30:-26]
+    save_raster = raster_path + '\\E1A2_' + ncfile[-24:-20]
     # Execute MakeNetCDFRasterLayer
     arcpy.MakeNetCDFRasterLayer_md(inNetCDFFile, variable, XDimension, YDimension,
                                    outRasterLayer, bandDimmension, dimensionValues,

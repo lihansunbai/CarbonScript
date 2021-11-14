@@ -14,7 +14,7 @@ arcpy.env.workspace = 'E:\\workplace\\CarbonProject\\geodatabase\\carbon_temp.gd
 arcpy.CheckOutExtension("Spatial")
 
 re_shp = re.compile(r'.nc')
-files_path = 'E:\\workplace\\CarbonProject\\DATA\\temp\\TNR_Other_nc'
+files_path = 'E:\\workplace\\CarbonProject\\DATA\\EDGAR_nc'
 raster_path = 'E:\\workplace\\CarbonProject\\geodatabase\\carbon_temp.gdb'
 files = os.listdir(files_path)
 ncfiles = []
@@ -36,17 +36,17 @@ if not ncfiles:
 
 for ncfile in ncfiles:
     inNetCDFFile = files_path + '\\' + ncfile
-    outRasterLayer = raster_path + '\\' + ncfile[:-3] + '_nc'
-    save_raster = raster_path + '\\E1A3C_' + ncfile[-30:-26]
+    outRasterLayer = raster_path + '\\' + ncfile[:-3]
+    raster_temp = raster_path + '\\temp'
     # Execute MakeNetCDFRasterLayer
     arcpy.MakeNetCDFRasterLayer_md(inNetCDFFile, variable, XDimension, YDimension,
                                    outRasterLayer, bandDimmension, dimensionValues,
                                    valueSelectionMethod)
     # Execute make raster
     # make raster without nodata value
-    arcpy.CopyRaster_management(outRasterLayer, save_raster)
+    arcpy.CopyRaster_management(outRasterLayer, raster_temp)
 
     # delete temp file
-    arcpy.Delete_management(outRasterLayer)
+    arcpy.Delete_management(raster_temp)
 
     print 'Finish file: ' + ncfile

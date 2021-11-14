@@ -6,6 +6,12 @@ import arcpy
 from arcpy import env
 from arcpy.sa import *
 
+# ======================================================================
+# ======================================================================
+# MAIN SCRIPT
+# ======================================================================
+# ======================================================================
+
 # 设置计算增长倍数的间隔年
 year_gap = 5
 
@@ -47,6 +53,8 @@ for raster in rasters:
             raster_diff.save(temp_saveDiff_1990)
         except:
             print arcpy.GetMessages()
+        
+        print "Successed excute:%s !" % raster
         continue
 
     # 处理最后一年，该年需要与前一个5或0年进行增长率比较
@@ -68,6 +76,8 @@ for raster in rasters:
             arcpy.RasterToPoint_conversion(temp_saveIncrease, temp_saveIncrease_points)
         except:
             print arcpy.GetMessages()
+
+        print "Successed excute:%s !" % raster
         continue
 
     # 处理非特殊年份
@@ -96,4 +106,5 @@ for raster in rasters:
     except:
         print arcpy.GetMessages()
 
+    print "Successed excute:%s !" % raster
 # Main method ends
