@@ -143,7 +143,7 @@ def weight_raster(year):
     print 'Field calculate finished: %s in wmax' % year
     arcpy.CalculateField_management(temp_point,
                                     'wmaxid',
-                                    'maxid(!wmax!,!E1A1A!,!E1A1B!,!E1A2!,!E1A3B!,!E1A3C!,!E1A4!,!E1B1A!,!E2A!,!E2B!,!E2C1A!,!E2C3!,!E2G!,!E3!)',
+                                    'maxid(weight, ENE, REF_TRF, IND, TNR_Aviation_CDS, TNR_Aviation_CRS, TNR_Aviation_LTO, TNR_Aviation_SPS, TRO_noRES, TNR_Other, TNR_Ship, RCO, PRO, NMM, CHE, IRO, NFE, NEU, PRU_SOL, AGS, SWD_INC, FFF)',
                                     'PYTHON_9.3',
                                     categories_codeblock_maxid)
     print 'Field calculate finished: %s in wmaxid' % year
@@ -207,7 +207,7 @@ def finish_year(year):
 # !!! 注意 !!! 运行此脚本前，请先运行所有子部分排放的提取
 # 这里输入的数据是已经转换为栅格的各个部门排放
 # 设置arcpy工作空间
-arcpy.env.workspace = 'E:\\workplace\\CarbonProject\\geodatabase\\EDGAR.gdb'
+arcpy.env.workspace = 'D:\\workplace\\DATA\\geodatabase\\test_EDGAR_v60_raster.gdb'
 # arcpy.env.workspace实在是太长了，每次输入都老恶心了，重新做一个新的方便使用
 workspace = arcpy.env.workspace
 
@@ -216,244 +216,151 @@ arcpy.CheckOutExtension('Spatial')
 
 # set global perfix of emission types paths
 # categories fo EDGAR V60
-# emi_cate = {'ENE': 'ENE',
-#             'REF_TRF': 'REF_TRF',
-#             'IND': 'IND',
-#             'TNR_Aviation_CDS': 'TNR_Aviation_CDS',
-#             'TNR_Aviation_CRS': 'TNR_Aviation_CRS',
-#             'TNR_Aviation_LTO': 'TNR_Aviation_LTO',
-#             'TNR_Aviation_SPS': 'TNR_Aviation_SPS',
-#             'TRO_noRES': 'TRO_noRES',
-#             'TNR_Other': 'TNR_Other',
-#             'TNR_Ship': 'TNR_Ship',
-#             'RCO': 'RCO',
-#             'PRO': 'PRO',
-#             'NMM': 'NMM',
-#             'CHE': 'CHE',
-#             'IRO': 'IRO',
-#             'NFE': 'NFE',
-#             'NEU': 'NEU',
-#             'PRU_SOL': 'PRU_SOL',
-#             'AGS': 'AGS',
-#             'SWD_INC': 'SWD_INC',
-#             'FFF': 'FFF'}
-
-# categories fo EDGAR V432
-emi_cate = {'E1A1A': 'E1A1A',
-            'E1A1B': 'E1A1B',
-            'E1A2': 'E1A2',
-            'E1A3B': 'E1A3B',
-            'E1A3C': 'E1A3C',
-            'E1A4': 'E1A4',
-            'E1B1A': 'E1B1A',
-            'E2A': 'E2A',
-            'E2B': 'E2B',
-            'E2C1A': 'E2C1A',
-            'E2C3': 'E2C3',
-            'E2G': 'E2G',
-            'E3': 'E3'}
+emi_cate = {'ENE': 'ENE',
+            'REF_TRF': 'REF_TRF',
+            'IND': 'IND',
+            'TNR_Aviation_CDS': 'TNR_Aviation_CDS',
+            'TNR_Aviation_CRS': 'TNR_Aviation_CRS',
+            'TNR_Aviation_LTO': 'TNR_Aviation_LTO',
+            'TNR_Aviation_SPS': 'TNR_Aviation_SPS',
+            'TRO_noRES': 'TRO_noRES',
+            'TNR_Other': 'TNR_Other',
+            'TNR_Ship': 'TNR_Ship',
+            'RCO': 'RCO',
+            'PRO': 'PRO',
+            'NMM': 'NMM',
+            'CHE': 'CHE',
+            'IRO': 'IRO',
+            'NFE': 'NFE',
+            'NEU': 'NEU',
+            'PRU_SOL': 'PRU_SOL',
+            'AGS': 'AGS',
+            'SWD_INC': 'SWD_INC',
+            'FFF': 'FFF'}
 
 # set global colormap of emission categories
 # categories colormap fo EDGAR V60
-# emi_cate_colormap = {'ENE': 1
-#                      'REF_TRF': 2
-#                      'IND': 3
-#                      'TNR_Aviation_CDS': 4
-#                      'TNR_Aviation_CRS': 5
-#                      'TNR_Aviation_LTO': 6
-#                      'TNR_Aviation_SPS': 7
-#                      'TRO_noRES': 8
-#                      'TNR_Other': 9
-#                      'TNR_Ship': 10
-#                      'RCO': 11
-#                      'PRO': 12
-#                      'NMM': 13
-#                      'CHE': 14
-#                      'IRO': 15
-#                      'NFE': 16
-#                      'NEU': 17
-#                      'PRU_SOL': 18
-#                      'AGS': 19
-#                      'SWD_INC': 20
-#                      'FFF': 21}
-
-# categories colormap fo EDGAR V432
-emi_cate_colormap = {'E1A1A': 1,
-                     'E1A1B': 2,
-                     'E1A2': 3,
-                     'E1A3B': 4,
-                     'E1A3C': 5,
-                     'E1A4': 6,
-                     'E1B1A': 7,
-                     'E2A': 8,
-                     'E2B': 9,
-                     'E2C1A': 10,
-                     'E2C3': 11,
-                     'E2G': 12,
-                     'E3': 13}
+emi_cate_colormap = {'ENE': 1,
+                     'REF_TRF': 2,
+                     'IND': 3,
+                     'TNR_Aviation_CDS': 4,
+                     'TNR_Aviation_CRS': 5,
+                     'TNR_Aviation_LTO': 6,
+                     'TNR_Aviation_SPS': 7,
+                     'TRO_noRES': 8,
+                     'TNR_Other': 9,
+                     'TNR_Ship': 10,
+                     'RCO': 11,
+                     'PRO': 12,
+                     'NMM': 13,
+                     'CHE': 14,
+                     'IRO': 15,
+                     'NFE': 16,
+                     'NEU': 17,
+                     'PRU_SOL': 18,
+                     'AGS': 19,
+                     'SWD_INC': 20,
+                     'FFF': 21}
 
 # 下面两个字符串都是用来分类的codeblock，老长了~
 ## For EDGAR V60
-# categories_codeblock_maxid = """def maxid(weight, ENE, REF_TRF, IND, TNR_Aviation_CDS, TNR_Aviation_CRS, TNR_Aviation_LTO, TNR_Aviation_SPS, TRO_noRES, TNR_Other, TNR_Ship, RCO, PRO, NMM, CHE, IRO, NFE, NEU, PRU_SOL, AGS, SWD_INC, FFF):
-#     if weight == ENE:
-#         return 'ENE'
-#     elif weight == REF_TRF:
-#         return 'REF_TRF'
-#     elif weight == IND:
-#         return 'IND'
-#     elif weight == TNR_Aviation_CDS:
-#         return 'TNR_Aviation_CDS'
-#     elif weight == TNR_Aviation_CRS:
-#         return 'TNR_Aviation_CRS'
-#     elif weight == TNR_Aviation_LTO:
-#         return 'TNR_Aviation_LTO'
-#     elif weight == TNR_Aviation_SPS:
-#         return 'TNR_Aviation_SPS'
-#     elif weight == TRO_noRES:
-#         return 'TRO_noRES'
-#     elif weight == TNR_Other:
-#         return 'TNR_Other'
-#     elif weight == TNR_Ship:
-#         return 'TNR_Ship'
-#     elif weight == RCO:
-#         return 'RCO'
-#     elif weight == PRO:
-#         return 'PRO'
-#     elif weight == NMM:
-#         return 'NMM'
-#     elif weight == CHE:
-#         return 'CHE'
-#     elif weight == IRO:
-#         return 'IRO'
-#     elif weight == NFE:
-#         return 'NFE'
-#     elif weight == NEU:
-#         return 'NEU'
-#     elif weight == PRU_SOL:
-#         return 'PRU_SOL'
-#     elif weight == AGS:
-#         return 'AGS'
-#     elif weight == SWD_INC:
-#         return 'SWD_INC'
-#     elif weight == FFF:
-#         return 'FFF'
-#     else:
-#         return ''"""
-
-
-## For EDGAR v432
-categories_codeblock_maxid = """def maxid(weight,E1A1A,E1A1B,E1A2,E1A3B,E1A3C,E1A4,E1B1A,E2A,E2B,E2C1A,E2C3,E2G,E3):
-    if weight == E1A1A:
-        return 'E1A1A'
-    elif weight == E1A1B:
-        return 'E1A1B'
-    elif weight == E1A2:
-        return 'E1A2'
-    elif weight == E1A3B:
-        return 'E1A3B'
-    elif weight == E1A3C:
-        return 'E1A3C'
-    elif weight == E1A4:
-        return 'E1A4'
-    elif weight == E1B1A:
-        return 'E1B1A'
-    elif weight == E2A:
-        return 'E2A'
-    elif weight == E2B:
-        return 'E2B'
-    elif weight == E2C1A:
-        return 'E2C1A'
-    elif weight == E2C3:
-        return 'E2C3'
-    elif weight == E2G:
-        return 'E2G'
-    elif weight == E3:
-        return 'E3'
+categories_codeblock_maxid = """def maxid(weight, ENE, REF_TRF, IND, TNR_Aviation_CDS, TNR_Aviation_CRS, TNR_Aviation_LTO, TNR_Aviation_SPS, TRO_noRES, TNR_Other, TNR_Ship, RCO, PRO, NMM, CHE, IRO, NFE, NEU, PRU_SOL, AGS, SWD_INC, FFF):
+    if weight == ENE:
+        return 'ENE'
+    elif weight == REF_TRF:
+        return 'REF_TRF'
+    elif weight == IND:
+        return 'IND'
+    elif weight == TNR_Aviation_CDS:
+        return 'TNR_Aviation_CDS'
+    elif weight == TNR_Aviation_CRS:
+        return 'TNR_Aviation_CRS'
+    elif weight == TNR_Aviation_LTO:
+        return 'TNR_Aviation_LTO'
+    elif weight == TNR_Aviation_SPS:
+        return 'TNR_Aviation_SPS'
+    elif weight == TRO_noRES:
+        return 'TRO_noRES'
+    elif weight == TNR_Other:
+        return 'TNR_Other'
+    elif weight == TNR_Ship:
+        return 'TNR_Ship'
+    elif weight == RCO:
+        return 'RCO'
+    elif weight == PRO:
+        return 'PRO'
+    elif weight == NMM:
+        return 'NMM'
+    elif weight == CHE:
+        return 'CHE'
+    elif weight == IRO:
+        return 'IRO'
+    elif weight == NFE:
+        return 'NFE'
+    elif weight == NEU:
+        return 'NEU'
+    elif weight == PRU_SOL:
+        return 'PRU_SOL'
+    elif weight == AGS:
+        return 'AGS'
+    elif weight == SWD_INC:
+        return 'SWD_INC'
+    elif weight == FFF:
+        return 'FFF'
     else:
         return ''"""
 
 ## For EDGAR v60
-# categories_codeblock_raster = """def raster(id):
-#     if id == 'ENE':
-#         return emi_cate_colormap[id]
-#     else id = 'REF_TRF'
-#         return emi_cate_colormap[id]
-#     else id = 'IND'
-#         return emi_cate_colormap[id]
-#     else id = 'TNR_Aviation_CDS'
-#         return emi_cate_colormap[id]
-#     else id = 'TNR_Aviation_CRS'
-#         return emi_cate_colormap[id]
-#     else id = 'TNR_Aviation_LTO'
-#         return emi_cate_colormap[id]
-#     else id = 'TNR_Aviation_SPS'
-#         return emi_cate_colormap[id]
-#     else id = 'TRO_noRES'
-#         return emi_cate_colormap[id]
-#     else id = 'TNR_Other'
-#         return emi_cate_colormap[id]
-#     else id = 'TNR_Ship'
-#         return emi_cate_colormap[id]
-#     else id = 'RCO'
-#         return emi_cate_colormap[id]
-#     else id = 'PRO'
-#         return emi_cate_colormap[id]
-#     else id = 'NMM'
-#         return emi_cate_colormap[id]
-#     else id = 'CHE'
-#         return emi_cate_colormap[id]
-#     else id = 'IRO'
-#         return emi_cate_colormap[id]
-#     else id = 'NFE'
-#         return emi_cate_colormap[id]
-#     else id = 'NEU'
-#         return emi_cate_colormap[id]
-#     else id = 'PRU_SOL'
-#         return emi_cate_colormap[id]
-#     else id = 'AGS'
-#         return emi_cate_colormap[id]
-#     else id = 'SWD_INC'
-#         return emi_cate_colormap[id]
-#     else id = 'FFF'
-#         return emi_cate_colormap[id]
-#     else:
-#         return 0"""
-
-## For EDGAR V432
 categories_codeblock_raster = """def raster(id):
-    if id == 'E1A1A':
+    if id == 'ENE':
         return emi_cate_colormap[id]
-    elif id == 'E1A1B':
+    else id = 'REF_TRF'
         return emi_cate_colormap[id]
-    elif id == 'E1A2':
+    else id = 'IND'
         return emi_cate_colormap[id]
-    elif id == 'E1A3B':
+    else id = 'TNR_Aviation_CDS'
         return emi_cate_colormap[id]
-    elif id == 'E1A3C':
+    else id = 'TNR_Aviation_CRS'
         return emi_cate_colormap[id]
-    elif id == 'E1A4':
+    else id = 'TNR_Aviation_LTO'
         return emi_cate_colormap[id]
-    elif id == 'E1B1A':
+    else id = 'TNR_Aviation_SPS'
         return emi_cate_colormap[id]
-    elif id == 'E2A':
+    else id = 'TRO_noRES'
         return emi_cate_colormap[id]
-    elif id == 'E2B':
+    else id = 'TNR_Other'
         return emi_cate_colormap[id]
-    elif id == 'E2C3':
+    else id = 'TNR_Ship'
         return emi_cate_colormap[id]
-    elif id == 'E2C1A':
+    else id = 'RCO'
         return emi_cate_colormap[id]
-    elif id == 'E2G':
+    else id = 'PRO'
         return emi_cate_colormap[id]
-    elif id == 'E3':
+    else id = 'NMM'
+        return emi_cate_colormap[id]
+    else id = 'CHE'
+        return emi_cate_colormap[id]
+    else id = 'IRO'
+        return emi_cate_colormap[id]
+    else id = 'NFE'
+        return emi_cate_colormap[id]
+    else id = 'NEU'
+        return emi_cate_colormap[id]
+    else id = 'PRU_SOL'
+        return emi_cate_colormap[id]
+    else id = 'AGS'
+        return emi_cate_colormap[id]
+    else id = 'SWD_INC'
+        return emi_cate_colormap[id]
+    else id = 'FFF'
         return emi_cate_colormap[id]
     else:
         return 0"""
 
-# 列出所有文件
-raster_path = arcpy.env.workspace
 
-yr = list(range(1970,1981))
+# 设定要处理的时间范围
+yr = list(range(1970,1971))
+
 for y in yr:
     start_year(y)
     # define the variables
@@ -482,10 +389,7 @@ for y in yr:
         temp_cate_sector = []
 
     # For EDGAR V60
-    # calculate_sum = Raster(emi_cate_temp['ENE']) + Raster(emi_cate_temp['REF_TRF']) + Raster(emi_cate_temp['IND']) + Raster(emi_cate_temp['TNR_Aviation_CDS']) + Raster(emi_cate_temp['TNR_Aviation_CRS']) + Raster(emi_cate_temp['TNR_Aviation_LTO']) + Raster(emi_cate_temp['TNR_Aviation_SPS']) + Raster(emi_cate_temp['TRO_noRES']) + Raster(emi_cate_temp['TNR_Other']) + Raster(emi_cate_temp['TNR_Ship']) + Raster(emi_cate_temp['RCO']) + Raster(emi_cate_temp['PRO']) + Raster(emi_cate_temp['NMM']) + Raster(emi_cate_temp['CHE']) + Raster(emi_cate_temp['IRO']) + Raster(emi_cate_temp['NFE']) + Raster(emi_cate_temp['NEU']) + Raster(emi_cate_temp['PRU_SOL']) + Raster(emi_cate_temp['AGS']) + Raster(emi_cate_temp['SWD_INC']) + Raster(emi_cate_temp['FFF'])
-
-    # For EDGAR V432
-    calculate_sum = Raster(emi_cate_temp['E1A1A']) + Raster(emi_cate_temp['E1A1B']) + Raster(emi_cate_temp['E1A3B']) + Raster(emi_cate_temp['E1A3C']) + Raster(emi_cate_temp['E1A4']) + Raster(emi_cate_temp['E1B1A']) + Raster(emi_cate_temp['E2A']) + Raster(emi_cate_temp['E2B']) + Raster(emi_cate_temp['E2C3']) + Raster(emi_cate_temp['E2G']) + Raster(emi_cate_temp['E3']) + Raster(emi_cate_temp['E1A2']) + Raster(emi_cate_temp['E2C1A'])
+    calculate_sum = Raster(emi_cate_temp['ENE']) + Raster(emi_cate_temp['REF_TRF']) + Raster(emi_cate_temp['IND']) + Raster(emi_cate_temp['TNR_Aviation_CDS']) + Raster(emi_cate_temp['TNR_Aviation_CRS']) + Raster(emi_cate_temp['TNR_Aviation_LTO']) + Raster(emi_cate_temp['TNR_Aviation_SPS']) + Raster(emi_cate_temp['TRO_noRES']) + Raster(emi_cate_temp['TNR_Other']) + Raster(emi_cate_temp['TNR_Ship']) + Raster(emi_cate_temp['RCO']) + Raster(emi_cate_temp['PRO']) + Raster(emi_cate_temp['NMM']) + Raster(emi_cate_temp['CHE']) + Raster(emi_cate_temp['IRO']) + Raster(emi_cate_temp['NFE']) + Raster(emi_cate_temp['NEU']) + Raster(emi_cate_temp['PRU_SOL']) + Raster(emi_cate_temp['AGS']) + Raster(emi_cate_temp['SWD_INC']) + Raster(emi_cate_temp['FFF'])
 
     # Save total emission raster
     calculate_sum.save(emi_raster_save_output)
