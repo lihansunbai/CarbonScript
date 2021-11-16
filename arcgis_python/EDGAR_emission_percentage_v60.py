@@ -143,7 +143,7 @@ def weight_raster(year):
     print 'Field calculate finished: %s in wmax' % year
     arcpy.CalculateField_management(temp_point,
                                     'wmaxid',
-                                    'maxid(weight, ENE, REF_TRF, IND, TNR_Aviation_CDS, TNR_Aviation_CRS, TNR_Aviation_LTO, TNR_Aviation_SPS, TRO_noRES, TNR_Other, TNR_Ship, RCO, PRO, NMM, CHE, IRO, NFE, NEU, PRU_SOL, AGS, SWD_INC, FFF)',
+                                    'maxid(weight, ENE, REF_TRF, IND, TNR_Aviation_CDS, TNR_Aviation_CRS, TNR_Aviation_LTO, TRO_noRES, TNR_Other, TNR_Ship, RCO, PRO, NMM, CHE, IRO, NFE, NEU, PRU_SOL, AGS, SWD_INC, FFF)',
                                     'PYTHON_9.3',
                                     categories_codeblock_maxid)
     print 'Field calculate finished: %s in wmaxid' % year
@@ -207,7 +207,7 @@ def finish_year(year):
 # !!! 注意 !!! 运行此脚本前，请先运行所有子部分排放的提取
 # 这里输入的数据是已经转换为栅格的各个部门排放
 # 设置arcpy工作空间
-arcpy.env.workspace = 'D:\\workplace\\DATA\\geodatabase\\test_EDGAR_v60_raster.gdb'
+arcpy.env.workspace = 'D:\\workplace\\DATA\\geodatabase\\EDGAR_v60_raster.gdb'
 # arcpy.env.workspace实在是太长了，每次输入都老恶心了，重新做一个新的方便使用
 workspace = arcpy.env.workspace
 
@@ -222,7 +222,6 @@ emi_cate = {'ENE': 'ENE',
             'TNR_Aviation_CDS': 'TNR_Aviation_CDS',
             'TNR_Aviation_CRS': 'TNR_Aviation_CRS',
             'TNR_Aviation_LTO': 'TNR_Aviation_LTO',
-            'TNR_Aviation_SPS': 'TNR_Aviation_SPS',
             'TRO_noRES': 'TRO_noRES',
             'TNR_Other': 'TNR_Other',
             'TNR_Ship': 'TNR_Ship',
@@ -246,7 +245,6 @@ emi_cate_colormap = {'ENE': 1,
                      'TNR_Aviation_CDS': 4,
                      'TNR_Aviation_CRS': 5,
                      'TNR_Aviation_LTO': 6,
-                     'TNR_Aviation_SPS': 7,
                      'TRO_noRES': 8,
                      'TNR_Other': 9,
                      'TNR_Ship': 10,
@@ -264,7 +262,7 @@ emi_cate_colormap = {'ENE': 1,
 
 # 下面两个字符串都是用来分类的codeblock，老长了~
 ## For EDGAR V60
-categories_codeblock_maxid = """def maxid(weight, ENE, REF_TRF, IND, TNR_Aviation_CDS, TNR_Aviation_CRS, TNR_Aviation_LTO, TNR_Aviation_SPS, TRO_noRES, TNR_Other, TNR_Ship, RCO, PRO, NMM, CHE, IRO, NFE, NEU, PRU_SOL, AGS, SWD_INC, FFF):
+categories_codeblock_maxid = """def maxid(weight, ENE, REF_TRF, IND, TNR_Aviation_CDS, TNR_Aviation_CRS, TNR_Aviation_LTO, TRO_noRES, TNR_Other, TNR_Ship, RCO, PRO, NMM, CHE, IRO, NFE, NEU, PRU_SOL, AGS, SWD_INC, FFF):
     if weight == ENE:
         return 'ENE'
     elif weight == REF_TRF:
@@ -277,8 +275,6 @@ categories_codeblock_maxid = """def maxid(weight, ENE, REF_TRF, IND, TNR_Aviatio
         return 'TNR_Aviation_CRS'
     elif weight == TNR_Aviation_LTO:
         return 'TNR_Aviation_LTO'
-    elif weight == TNR_Aviation_SPS:
-        return 'TNR_Aviation_SPS'
     elif weight == TRO_noRES:
         return 'TRO_noRES'
     elif weight == TNR_Other:
@@ -324,8 +320,6 @@ categories_codeblock_raster = """def raster(id):
         return emi_cate_colormap[id]
     else id = 'TNR_Aviation_LTO'
         return emi_cate_colormap[id]
-    else id = 'TNR_Aviation_SPS'
-        return emi_cate_colormap[id]
     else id = 'TRO_noRES'
         return emi_cate_colormap[id]
     else id = 'TNR_Other'
@@ -359,7 +353,7 @@ categories_codeblock_raster = """def raster(id):
 
 
 # 设定要处理的时间范围
-yr = list(range(1970,1971))
+yr = list(range(1970,1972))
 
 for y in yr:
     start_year(y)
@@ -389,7 +383,7 @@ for y in yr:
         temp_cate_sector = []
 
     # For EDGAR V60
-    calculate_sum = Raster(emi_cate_temp['ENE']) + Raster(emi_cate_temp['REF_TRF']) + Raster(emi_cate_temp['IND']) + Raster(emi_cate_temp['TNR_Aviation_CDS']) + Raster(emi_cate_temp['TNR_Aviation_CRS']) + Raster(emi_cate_temp['TNR_Aviation_LTO']) + Raster(emi_cate_temp['TNR_Aviation_SPS']) + Raster(emi_cate_temp['TRO_noRES']) + Raster(emi_cate_temp['TNR_Other']) + Raster(emi_cate_temp['TNR_Ship']) + Raster(emi_cate_temp['RCO']) + Raster(emi_cate_temp['PRO']) + Raster(emi_cate_temp['NMM']) + Raster(emi_cate_temp['CHE']) + Raster(emi_cate_temp['IRO']) + Raster(emi_cate_temp['NFE']) + Raster(emi_cate_temp['NEU']) + Raster(emi_cate_temp['PRU_SOL']) + Raster(emi_cate_temp['AGS']) + Raster(emi_cate_temp['SWD_INC']) + Raster(emi_cate_temp['FFF'])
+    calculate_sum = Raster(emi_cate_temp['ENE']) + Raster(emi_cate_temp['REF_TRF']) + Raster(emi_cate_temp['IND']) + Raster(emi_cate_temp['TNR_Aviation_CDS']) + Raster(emi_cate_temp['TNR_Aviation_CRS']) + Raster(emi_cate_temp['TNR_Aviation_LTO']) + Raster(emi_cate_temp['TRO_noRES']) + Raster(emi_cate_temp['TNR_Other']) + Raster(emi_cate_temp['TNR_Ship']) + Raster(emi_cate_temp['RCO']) + Raster(emi_cate_temp['PRO']) + Raster(emi_cate_temp['NMM']) + Raster(emi_cate_temp['CHE']) + Raster(emi_cate_temp['IRO']) + Raster(emi_cate_temp['NFE']) + Raster(emi_cate_temp['NEU']) + Raster(emi_cate_temp['PRU_SOL']) + Raster(emi_cate_temp['AGS']) + Raster(emi_cate_temp['SWD_INC']) + Raster(emi_cate_temp['FFF'])
 
     # Save total emission raster
     calculate_sum.save(emi_raster_save_output)
