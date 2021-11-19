@@ -77,6 +77,9 @@ class EDGAR_spatial:
                      'FFF': 20}
 
 
+
+
+
 def weight_calculate(year, emi_type_dic, emi_weight_raster_dic, emi_weight_point_dic):
     for i in emi_type_dic:
         outPoint = '%s_weight_point_%s' % (i, year)
