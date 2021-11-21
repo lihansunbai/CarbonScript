@@ -2,10 +2,12 @@
 
 import os
 import re
+from typing import TypedDict
 import arcpy
 from arcpy import env
 from arcpy.sa import *
 
+__metaclass__ = type
 
 # ======================================================================
 # ======================================================================
@@ -26,56 +28,87 @@ from arcpy.sa import *
 # ======================================================================
 # ======================================================================
 # 计算不同类型排放所占权重
+
+
 class EDGAR_spatial:
-    def __init__():
-        pass
+    def __init__(self):
+        # 默认构造函数的作用只是为需要计算的部门进行初始化和赋值
+        self.EDGAR_sector = self.__default_EDGAR_sector
+        self.EDGAR_sector_colormap = self.__default_EDGAR_sector_colormap
 
     # EDGAR sector dicts
     # 我觉得自己也可以传入一个新的字典，通过自己穿入的字典就可以统计
     #   感兴趣项目的情况，而不是每次都对所有部门排放进行总计算。
-    default_EDGAR_sector = {'ENE': 'ENE',
-            'REF_TRF': 'REF_TRF',
-            'IND': 'IND',
-            'TNR_Aviation_CDS': 'TNR_Aviation_CDS',
-            'TNR_Aviation_CRS': 'TNR_Aviation_CRS',
-            'TNR_Aviation_LTO': 'TNR_Aviation_LTO',
-            'TRO_noRES': 'TRO_noRES',
-            'TNR_Other': 'TNR_Other',
-            'TNR_Ship': 'TNR_Ship',
-            'RCO': 'RCO',
-            'PRO': 'PRO',
-            'NMM': 'NMM',
-            'CHE': 'CHE',
-            'IRO': 'IRO',
-            'NFE': 'NFE',
-            'NEU': 'NEU',
-            'PRU_SOL': 'PRU_SOL',
-            'AGS': 'AGS',
-            'SWD_INC': 'SWD_INC',
-            'FFF': 'FFF'}    
-    
-    default_sector_colormap = {'ENE': 1,
-                     'REF_TRF': 2,
-                     'IND': 3,
-                     'TNR_Aviation_CDS': 4,
-                     'TNR_Aviation_CRS': 5,
-                     'TNR_Aviation_LTO': 6,
-                     'TRO_noRES': 7,
-                     'TNR_Other': 8,
-                     'TNR_Ship': 9,
-                     'RCO': 10,
-                     'PRO': 11,
-                     'NMM': 12,
-                     'CHE': 13,
-                     'IRO': 14,
-                     'NFE': 15,
-                     'NEU': 16,
-                     'PRU_SOL': 17,
-                     'AGS': 18,
-                     'SWD_INC': 19,
-                     'FFF': 20}
-    
-    def weight_calculate(year, emi_type_dic, emi_weight_raster_dic, emi_weight_point_dic):
+    EDGAR_sector = {}
+    EDGAR_sector_colormap = {}
+    __default_EDGAR_sector = {'ENE': 'ENE',
+                            'REF_TRF': 'REF_TRF',
+                            'IND': 'IND',
+                            'TNR_Aviation_CDS': 'TNR_Aviation_CDS',
+                            'TNR_Aviation_CRS': 'TNR_Aviation_CRS',
+                            'TNR_Aviation_LTO': 'TNR_Aviation_LTO',
+                            'TRO_noRES': 'TRO_noRES',
+                            'TNR_Other': 'TNR_Other',
+                            'TNR_Ship': 'TNR_Ship',
+                            'RCO': 'RCO',
+                            'PRO': 'PRO',
+                            'NMM': 'NMM',
+                            'CHE': 'CHE',
+                            'IRO': 'IRO',
+                            'NFE': 'NFE',
+                            'NEU': 'NEU',
+                            'PRU_SOL': 'PRU_SOL',
+                            'AGS': 'AGS',
+                            'SWD_INC': 'SWD_INC',
+                            'FFF': 'FFF'}
+
+    __default_EDGAR_sector_colormap = {'ENE': 1,
+                                     'REF_TRF': 2,
+                                     'IND': 3,
+                                     'TNR_Aviation_CDS': 4,
+                                     'TNR_Aviation_CRS': 5,
+                                     'TNR_Aviation_LTO': 6,
+                                     'TRO_noRES': 7,
+                                     'TNR_Other': 8,
+                                     'TNR_Ship': 9,
+                                     'RCO': 10,
+                                     'PRO': 11,
+                                     'NMM': 12,
+                                     'CHE': 13,
+                                     'IRO': 14,
+                                     'NFE': 15,
+                                     'NEU': 16,
+                                     'PRU_SOL': 17,
+                                     'AGS': 18,
+                                     'SWD_INC': 19,
+                                     'FFF': 20}
+
+    __raster_sum = Raster()
+
+    def set_EDGAR_sector(self, sector):
+        if type(sector) != dict:
+           print 'Error type! EDGAR sectors should be dictionary!'
+           return
+
+        self.EDGAR_sector = sector
+
+    def set_EDGAR_sector_colormap(self, sector_colormap):
+        if type(sector) != dict:
+           print 'Error type! EDGAR sectors colormap should be diectionary!'
+           return
+
+        self.EDGAR_sector_colormap = sector
+
+    def calculate_sum(self):
+        self.__raster_sum = Raster(emi_cate_temp['ENE']) + Raster(emi_cate_temp['REF_TRF']) + Raster(emi_cate_temp['IND']) + Raster(emi_cate_temp['TNR_Aviation_CDS']) + Raster(emi_cate_temp['TNR_Aviation_CRS']) + Raster(emi_cate_temp['TNR_Aviation_LTO']) + Raster(emi_cate_temp['TRO_noRES']) + Raster(emi_cate_temp['TNR_Other']) + Raster(emi_cate_temp['TNR_Ship']) + Raster(emi_cate_temp['RCO']) + Raster(emi_cate_temp['PRO']) + Raster(emi_cate_temp['NMM']) + Raster(emi_cate_temp['CHE']) + Raster(emi_cate_temp['IRO']) + Raster(emi_cate_temp['NFE']) + Raster(emi_cate_temp['NEU']) + Raster(emi_cate_temp['PRU_SOL']) + Raster(emi_cate_temp['AGS']) + Raster(emi_cate_temp['SWD_INC']) + Raster(emi_cate_temp['FFF'])
+
+    def save_sum(self):
+        # 这里的路径需要修改
+        # 可能需要引入很多个保存文件的输出位置
+        self.__raster_sum.save(workspace)
+        print 'Total emission saved!\n'
+
+    def weight_calculate(self, year, emi_type_dic, emi_weight_raster_dic, emi_weight_point_dic):
         for i in emi_type_dic:
             outPoint = '%s_weight_point_%s' % (i, year)
             emi_weight_raster_dic[i] = emi_type_dic[i] / calculate_sum
@@ -90,8 +123,10 @@ class EDGAR_spatial:
                 arcpy.AddField_management(emi_weight_point_dic[i], i, 'DOUBLE')
                 arcpy.CalculateField_management(
                     emi_weight_point_dic[i], i, '!grid_code!', 'PYTHON_9.3')
-               arcpy.DeleteField_management(emi_weight_point_dic[i], 'pointid')
-                arcpy.DeleteField_management(emi_weight_point_dic[i], 'grid_code')
+                arcpy.DeleteField_management(
+                    emi_weight_point_dic[i], 'pointid')
+                arcpy.DeleteField_management(
+                    emi_weight_point_dic[i], 'grid_code')
                 print 'Categories finished: %s' % i
             except:
                 print 'Failed categories to point : %s' % i
@@ -260,4 +295,4 @@ class EDGAR_spatial:
         ==============================""" % year
 
 if __name__ == '__main__':
-    exit
+    pass
