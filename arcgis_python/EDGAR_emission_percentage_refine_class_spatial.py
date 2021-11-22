@@ -27,14 +27,40 @@ __metaclass__ = type
 # SPATIAL OPERATIONS CLASS
 # ======================================================================
 # ======================================================================
-# 计算不同类型排放所占权重
-
-
 class EDGAR_spatial:
+    """使用说明：
+            1. EDGAR_sector 参数接受一个字典，字典的 key 是部门排放的
+                缩写，对应的值同样是部门排放缩写的字符串。
+            2.EDGAR_sector_colormap 参数接受一个字典，字典的 key 是
+                部门排放的缩写，对应的值是整数。整数用于标志栅格数据中的
+                不同排放部门。
+            3. 
+        
+        Manual:
+            1. EDGAR_sector: accept a dictionary that key is the
+                abbreviation of EDGAR specific-sector and key value
+                also the abbreviation of EDGAR specific-sector.
+            2. EDGAR_sector_colormap: accept a dictionary that key
+                is the abbreviation of EDGAR specific-sector and 
+                key value is a integer that will be used for indicated
+                different sector in raster results.
+            3.  """
+
+    ## 构造函数部分
+    ## 注意：这里需要两类构造函数：
+    ##      1.默认构造函数：不需要传入任何参数。所有计算用到的参数均
+    ##        为默认值。
+    ##      2.带有数据位置的构造函数：需要传入一个
     def __init__(self):
         # 默认构造函数的作用只是为需要计算的部门进行初始化和赋值
         self.EDGAR_sector = self.__default_EDGAR_sector
         self.EDGAR_sector_colormap = self.__default_EDGAR_sector_colormap
+    
+    @classmethod
+    def init_workspace(self, workspace):
+        self.__workspace = workspace
+        return EDGAR_spatial(self)
+        
 
     # EDGAR sector dicts
     # 我觉得自己也可以传入一个新的字典，通过自己穿入的字典就可以统计
@@ -84,6 +110,8 @@ class EDGAR_spatial:
                                      'FFF': 20}
 
     __raster_sum = Raster()
+
+    __workspace = ""
 
     def set_EDGAR_sector(self, sector):
         if type(sector) != dict:
