@@ -51,20 +51,21 @@ class EDGAR_spatial:
     ##      1.默认构造函数：不需要传入任何参数。所有计算用到的参数均
     ##        为默认值。
     ##      2.带有数据位置的构造函数：需要传入一个
-    def __init__(self):
-        # 默认构造函数的作用只是为需要计算的部门进行初始化和赋值
+    def __init__(self, workspace):
+        # 初始化构造需要明确arcgis工作空间或者一个确定的数据为
+        # 检查输入是否为空值
+        if workspace == '':
+            print 'Spatial direction or database path error! Please check your input!'
+            return
+
+        # 为工作空间进行赋值
+        self.__workspace = workspace
+
+        # 默认构造函数需要为对部门进行初始化和赋值
         self.EDGAR_sector = self.__default_EDGAR_sector
         self.EDGAR_sector_colormap = self.__default_EDGAR_sector_colormap
-    
-    @classmethod
-    def init_workspace(self, workspace):
-        self.__workspace = workspace
-        return EDGAR_spatial(self)
-        
 
     # EDGAR sector dicts
-    # 我觉得自己也可以传入一个新的字典，通过自己穿入的字典就可以统计
-    #   感兴趣项目的情况，而不是每次都对所有部门排放进行总计算。
     EDGAR_sector = {}
     EDGAR_sector_colormap = {}
     __default_EDGAR_sector = {'ENE': 'ENE',
@@ -113,6 +114,7 @@ class EDGAR_spatial:
 
     __workspace = ""
 
+    # 想要自定义或者修改处理的部门排放需要使用特殊的set函数
     def set_EDGAR_sector(self, sector):
         if type(sector) != dict:
            print 'Error type! EDGAR sectors should be dictionary!'
