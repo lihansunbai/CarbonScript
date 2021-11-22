@@ -9,8 +9,16 @@ class class_a():
 
     @classmethod
     def init_another(self, bb):
-        self.bb = bb
+        self.sbb = bb
         return class_a()
+
+    def set_sbb(self, bb):
+        self.bb = bb
+
+    def get_sbb(self):
+        return self.bb
+    
+    sbb = property(get_sbb, set_sbb)
    
     bb = 110
 
