@@ -2,25 +2,35 @@
 __metaclass__ = type
 
 
-class aaa():
+# Class defination
+class class_a():
     def __init__(self):
         self.aa = 12345
 
     @classmethod
     def init_another(self, bb):
         self.bb = bb
-        return aaa()
+        return class_a()
    
     bb = 110
 
 
 if __name__ == '__main__':
-    cc = aaa()
-    print cc.bb
-    print cc.aa
-    dd = aaa(9)
-    print cc is dd
-    print cc.bb
-    print cc.aa
-    print dd.bb
-    print dd.aa
+
+    # First instance
+    # Using the default constructor
+    cc = class_a()
+    print('First instance:')
+    print(cc.bb)
+    print(cc.aa)
+
+
+    # Second instance
+    # Using 'init_another' constructor
+    dd = class_a.init_another(9)
+    print('Second instance:')
+    print(dd.bb)
+    print(dd.aa)
+    print('After: \nin first instance')
+    print(cc.bb)
+    print(cc.aa)
