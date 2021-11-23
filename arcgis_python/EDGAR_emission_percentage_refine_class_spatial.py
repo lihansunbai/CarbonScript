@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
+from _typeshed import Self
 import os
 import re
-from typing import TypedDict
 import arcpy
 from arcpy import env
 from arcpy.sa import *
+import tqdm
+from tqdm import tqdm
 
 __metaclass__ = type
 
@@ -51,21 +53,53 @@ class EDGAR_spatial:
     ##      1.默认构造函数：不需要传入任何参数。所有计算用到的参数均
     ##        为默认值。
     ##      2.带有数据位置的构造函数：需要传入一个
-    def __init__(self, workspace):
-        # 初始化构造需要明确arcgis工作空间或者一个确定的数据为
-        # 检查输入是否为空值
+    def __init__(self, workspace, sector={}, colormap={}):
+        # arcgis 工作空间初始化
+        ## 必须明确一个arcgis工作空间！
+        ## 初始化构造需要明确arcgis工作空间或者一个确定的数据为
+        ## 检查输入是否为空值
         if workspace == '':
             print 'Spatial direction or database path error! Please check your input!'
             return
 
-        # 为工作空间进行赋值
+        ## 为工作空间进行赋值
+        ### 这里需要为两个参数赋值：第一个参数是系统中arcpy environment workspace 参数，
+        ###  该参数保证了进行arcgis空间运算的“空间分析扩展”检查通过；第二个参数是为了
+        ###  缩短代码中“arcpy.env.workspace”属性的书写长度而设置的代用变量。
         self.__workspace = workspace
+        arcpy.env.workspace = workspace
+        # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
+        arcpy.CheckOutExtension('Spatial')
 
-        # 默认构造函数需要为对部门进行初始化和赋值
-        self.EDGAR_sector = self.__default_EDGAR_sector
-        self.EDGAR_sector_colormap = self.__default_EDGAR_sector_colormap
+        # EDGAR_sector 参数初始化部分
+        ## 检查输入参数类型
+        ## 默认情况下使用默认参数初始化
+        ## 为EDGAR_sector参数赋值
+        if type(sector) != dict:
+            print 'Error! EDGAR_sector only accept a dictionary type input.' 
+            return
+        elif sector == {}:
+            self.EDGAR_sector = self.__default_EDGAR_sector
+        else:
+            self.EDGAR_sector = sector
 
-    # EDGAR sector dicts
+        # EDGAR_sector_colormap 参数初始化部分
+        ## 检查参数输入类型
+        ## 默认情况下使用默认参数初始化
+        ## 为EDGAR_sector_colormap 参数赋值
+        if type(colormap) != dict:
+            print 'Error! EDGAR_sector_colormap only accept a dictionary type input.' 
+            return
+        elif sector == {}:
+            self.EDGAR_sector_colormap = self.__default_EDGAR_sector_colormap
+        else:
+            self.EDGAR_sector = sector
+
+    # Default values:
+    ## Arcgis workspace
+    __workspace = ''
+
+    ## EDGAR sector dicts & colormap dicts
     EDGAR_sector = {}
     EDGAR_sector_colormap = {}
     __default_EDGAR_sector = {'ENE': 'ENE',
@@ -110,9 +144,12 @@ class EDGAR_spatial:
                                      'SWD_INC': 19,
                                      'FFF': 20}
 
-    __raster_sum = Raster()
+    # 特殊变量，用于保存所有部门排放的总和
+    __raster_sum = ''
 
-    __workspace = ""
+    # 保存部门排放的累加结果
+    __raster_overlay = ''
+
 
     # 想要自定义或者修改处理的部门排放需要使用特殊的set函数
     def set_EDGAR_sector(self, sector):
@@ -129,14 +166,32 @@ class EDGAR_spatial:
 
         self.EDGAR_sector_colormap = sector
 
-    def calculate_sum(self):
-        self.__raster_sum = Raster(emi_cate_temp['ENE']) + Raster(emi_cate_temp['REF_TRF']) + Raster(emi_cate_temp['IND']) + Raster(emi_cate_temp['TNR_Aviation_CDS']) + Raster(emi_cate_temp['TNR_Aviation_CRS']) + Raster(emi_cate_temp['TNR_Aviation_LTO']) + Raster(emi_cate_temp['TRO_noRES']) + Raster(emi_cate_temp['TNR_Other']) + Raster(emi_cate_temp['TNR_Ship']) + Raster(emi_cate_temp['RCO']) + Raster(emi_cate_temp['PRO']) + Raster(emi_cate_temp['NMM']) + Raster(emi_cate_temp['CHE']) + Raster(emi_cate_temp['IRO']) + Raster(emi_cate_temp['NFE']) + Raster(emi_cate_temp['NEU']) + Raster(emi_cate_temp['PRU_SOL']) + Raster(emi_cate_temp['AGS']) + Raster(emi_cate_temp['SWD_INC']) + Raster(emi_cate_temp['FFF'])
+    def raster_overlay_add(self, add_sector):
+        # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
+        arcpy.CheckOutExtension('Spatial')
 
-    def save_sum(self):
+        # 栅格叠加的结果保存在__raster_overlay 中
+        self.__raster_overlay = Raster()
+
+        # 临时变量，防止突发崩溃
+        temp_raster = Raster()
+
+        # 叠加栅格
+        ## 这里调用了 tqdm 库进行进度显示
+        for r in tqdm(add_sector):
+            temp_raster = Raster(temp_raster) + Raster(add_sector[r])
+
+    def calculate_sum(self, year):
+        # 计算总量的本质就是把所有部门都加起来。所有的部门信息都保存在默认变量__defaut_EDGAR_sector中
+        self.raster_overlay_add(self.__default_EDGAR_sector)
+        self.__raster_sum = self.__raster_overlay
+        
         # 这里的路径需要修改
         # 可能需要引入很多个保存文件的输出位置
-        self.__raster_sum.save(workspace)
+        temp_out_path = self.__workspace + '%s' % year
+        self.__raster_sum.save(temp_out_path)
         print 'Total emission saved!\n'
+
 
     def weight_calculate(self, year, emi_type_dic, emi_weight_raster_dic, emi_weight_point_dic):
         for i in emi_type_dic:
