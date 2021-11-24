@@ -143,6 +143,13 @@ class EDGAR_spatial:
                                      'SWD_INC': 19,
                                      'FFF': 20}
 
+    # 时间范围
+    __default_start_year = 1970
+    __default_end_year = 2018
+
+    start_year = 0
+    end_year = 0
+
     # 特殊变量，用于保存所有部门排放的总和
     __raster_sum = ''
 
@@ -174,6 +181,14 @@ class EDGAR_spatial:
         print self.EDGAR_sector_colormap
     
     sector_colormap = property(get_EDGAR_sector_colormap, set_EDGAR_sector_colormap)
+
+    def set_year_range(self, start_end = (1970, 2018)):
+        self.start_year, self.end_year = start_end
+
+    def get_year_range(self):
+        print 'Start year: %s\nEnd year: %s' % self.start_year,self.end_year
+
+    year_range = property(get_year_range, set_year_range)
 
 
     def raster_overlay_add(self, add_sector):
@@ -374,14 +389,14 @@ class EDGAR_spatial:
 
         return str_re
 
-    def start_year(year):
+    def print_start_year(year):
         return """==============================
         ==============================
         Processing start of year %s
         ==============================
         ==============================""" % year
 
-    def finish_year(year):
+    def print_finish_year(year):
         return """==============================
         ==============================
         Congratulations!

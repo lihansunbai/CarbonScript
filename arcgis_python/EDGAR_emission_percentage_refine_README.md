@@ -24,6 +24,30 @@ TODO: Usage of files...
 - get_EDGAR_sector_colormap()
 获取EDGAR_sector_colormap的属性和修改EDGAR_sector_colormap的内容。EDGAR_sector_colormap 参数接受一个字典，字典的 key 是部门排放的缩写，对应的值是整数。整数用于标志栅格数据中的不同排放部门。
 
+### year_range 属性函数
+- set_year_range()
+- get_year_range()
+获取year_range的属性和修改year_range()的内容。修改year_range的内容会同时修改start_year和end_year两个参数的值。
+
+## 类属性
+## Class attributes
+### __default_EDGAR_sector
+默认EDGAR部门排放，保存了所有部门排放的种类。
+### __default_EDGAR_sector_colormap
+默认的部门排放的栅格分类值。
+### EDGAR_sector
+存储部门排放，为字典结构。
+### EDGAR_sector_colormap
+存储部门排放的栅格分类值，为字典结构。
+### __default_start_year
+默认计算起始时间，值为1970。
+### __default_end_year
+默认计算结束时间，值为2018。
+### start_year
+计算的起始年份，为整数，最早时间为1970，最晚时间为2018。
+### end_year
+计算的结束年份，为整数，最早时间为1970，最晚时间为2018。
+
 
 ### 参数简介
 1. EDGAR_sector 参数接受一个字典，字典的 key 是部门排放的缩写，对应的值同样是部门排放缩写的字符串。
