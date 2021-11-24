@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from _typeshed import Self
 import os
 import re
 import arcpy
@@ -159,12 +158,23 @@ class EDGAR_spatial:
 
         self.EDGAR_sector = sector
 
+    def get_EDGAR_sector(self):
+        print self.EDGAR_sector
+    
+    sector = property(get_EDGAR_sector, set_EDGAR_sector)
+
     def set_EDGAR_sector_colormap(self, sector_colormap):
         if type(sector) != dict:
            print 'Error type! EDGAR sectors colormap should be diectionary!'
            return
 
         self.EDGAR_sector_colormap = sector
+    
+    def get_EDGAR_sector_colormap(self):
+        print self.EDGAR_sector_colormap
+    
+    sector_colormap = property(get_EDGAR_sector_colormap, set_EDGAR_sector_colormap)
+
 
     def raster_overlay_add(self, add_sector):
         # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展

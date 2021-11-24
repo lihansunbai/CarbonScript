@@ -12,6 +12,19 @@ After the release of EDGAR v50 dataset, generating global emission raster data o
 ## Manual:
 TODO: Usage of files...
 
+## 类函数
+## class functions
+### EDGAR_sector 属性函数
+- set_EDGAR_sector()
+- get_EDGAR_sector()
+获取EDGAR_sector的属性或修改EDGAR_sector的内容。EDGAR_sector 参数接受一个字典，字典的 key 是部门排放的缩写，对应的值同样是部门排放缩写的字符串。
+
+### EDGAR_sector_colormap 属性函数
+- set_EDGAR_sector_colormap()
+- get_EDGAR_sector_colormap()
+获取EDGAR_sector_colormap的属性和修改EDGAR_sector_colormap的内容。EDGAR_sector_colormap 参数接受一个字典，字典的 key 是部门排放的缩写，对应的值是整数。整数用于标志栅格数据中的不同排放部门。
+
+
 ### 参数简介
 1. EDGAR_sector 参数接受一个字典，字典的 key 是部门排放的缩写，对应的值同样是部门排放缩写的字符串。
 2. EDGAR_sector_colormap 参数接受一个字典，字典的 key 是部门排放的缩写，对应的值是整数。整数用于标志栅格数据中的不同排放部门。
