@@ -52,7 +52,7 @@ class EDGAR_spatial:
     ##      1.默认构造函数：不需要传入任何参数。所有计算用到的参数均
     ##        为默认值。
     ##      2.带有数据位置的构造函数：需要传入一个
-    def __init__(self, workspace, sector={}, colormap={}):
+    def __init__(self, workspace, sector={}, colormap={}, st_year=1970, en_year=2018):
         # arcgis 工作空间初始化
         ## 必须明确一个arcgis工作空间！
         ## 初始化构造需要明确arcgis工作空间或者一个确定的数据为
@@ -93,6 +93,16 @@ class EDGAR_spatial:
             self.EDGAR_sector_colormap = self.__default_EDGAR_sector_colormap
         else:
             self.EDGAR_sector = sector
+        
+        # year_range 参数初始化部分
+        ## 这里需要初始化计算的起始和结束
+        if type(st_year) != int | type(en_year) != int:
+            print 'Error! Proccessing starting year and ending year must be int value'
+            return
+        elif st_year < 1970 | en_year > 2018:
+            print 'Error! Proccessing year range out of data support! The year must containt in 1970 to 2018'
+        else:
+            self.start_year, self.end_year = st_year,en_year
 
     # Default values:
     ## Arcgis workspace
