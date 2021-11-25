@@ -227,32 +227,34 @@ class EDGAR_spatial:
         self.__raster_sum.save(temp_out_path)
         print 'Total emission saved!\n'
 
+    def weight_calculate(self, year, sector, output_weight_point):
+        for i in tqdm(sector):
+            # 计算部门排放相对于全体部门总排放的比例
+            output_weight_raster = sector[i] / self.__raster_sum
+            ## 保存栅格权重计算结果
+            temp_output_weight_raster_path = self.__workspace + '\\' + '%s_weight_raster_%s' % (i, year)
+            output_weight_point.save(temp_output_weight_raster_path)
+            print 'Sector emission weight saved: %s\n' % i
 
-    def weight_calculate(self, year, emi_type_dic, emi_weight_raster_dic, emi_weight_point_dic):
-        for i in emi_type_dic:
-            outPoint = '%s_weight_point_%s' % (i, year)
-            emi_weight_raster_dic[i] = emi_type_dic[i] / calculate_sum
+            # 栅格数据转点对象。转为点对象后可以实现计算比例并同时记录对应排放比例的部门名称
+            output_weight_point[i] = self.__workspace + '\\' + '%s_weight_point_%s' % (i, year)
 
             try:
                 # transform to point features
-                emi_weight_point_dic[i] = workspace + '\\' + outPoint
-                arcpy.RasterToPoint_conversion(
-                    emi_weight_raster_dic[i], outPoint, 'VALUE')
+                arcpy.RasterToPoint_conversion(output_weight_raster, output_weight_point, 'VALUE')
 
                 # rename value field
-                arcpy.AddField_management(emi_weight_point_dic[i], i, 'DOUBLE')
-                arcpy.CalculateField_management(
-                    emi_weight_point_dic[i], i, '!grid_code!', 'PYTHON_9.3')
-                arcpy.DeleteField_management(
-                    emi_weight_point_dic[i], 'pointid')
-                arcpy.DeleteField_management(
-                    emi_weight_point_dic[i], 'grid_code')
+                arcpy.AddField_management(output_weight_point[i], i, 'DOUBLE')
+                arcpy.CalculateField_management(output_weight_point[i], i, '!grid_code!', 'PYTHON_9.3')
+                arcpy.DeleteField_management(output_weight_point[i], 'pointid')
+                arcpy.DeleteField_management(output_weight_point[i], 'grid_code')
                 print 'Categories finished: %s' % i
             except:
                 print 'Failed categories to point : %s' % i
                 print arcpy.GetMessages()
 
-       print 'Categories to point finished of %s' % year
+        print 'Categories to point finished of %s' % year
+
 
     # 整合所有权重到同一个点数据集中
     def weight_joint(year, emi_weight_point_dic):
