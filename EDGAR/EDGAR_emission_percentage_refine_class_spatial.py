@@ -29,24 +29,6 @@ __metaclass__ = type
 # ======================================================================
 # ======================================================================
 class EDGAR_spatial:
-    """使用说明：
-            1. EDGAR_sector 参数接受一个字典，字典的 key 是部门排放的
-                缩写，对应的值同样是部门排放缩写的字符串。
-            2.EDGAR_sector_colormap 参数接受一个字典，字典的 key 是
-                部门排放的缩写，对应的值是整数。整数用于标志栅格数据中的
-                不同排放部门。
-            3. 
-        
-        Manual:
-            1. EDGAR_sector: accept a dictionary that key is the
-                abbreviation of EDGAR specific-sector and key value
-                also the abbreviation of EDGAR specific-sector.
-            2. EDGAR_sector_colormap: accept a dictionary that key
-                is the abbreviation of EDGAR specific-sector and 
-                key value is a integer that will be used for indicated
-                different sector in raster results.
-            3.  """
-
     ## 构造函数部分
     ## 注意：这里需要两类构造函数：
     ##      1.默认构造函数：不需要传入任何参数。所有计算用到的参数均
@@ -69,6 +51,7 @@ class EDGAR_spatial:
         arcpy.env.workspace = workspace
         # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
         arcpy.CheckOutExtension('Spatial')
+        arcpy.env.parallelProcessingFactor = "100%"
 
         # EDGAR_sector 参数初始化部分
         ## 检查输入参数类型
@@ -255,68 +238,87 @@ class EDGAR_spatial:
 
         print 'Categories to point finished of %s' % year
 
-
-    # 整合所有权重到同一个点数据集中
-    def weight_joint(year, emi_weight_point_dic):
+    def weight_joint(self, year, weight_point):
         # 理解这个函数中的操作需要将temp_pointer_a, temp_pointer_b视为指针一样的东西
         # 通过不停的改变他们指向的对象，来完成空间链接的操作。
         # C/C++万岁！！！指针天下第一！！！
 
-        # 构造复制整个字典到一个操作字典中
-        temp_emi_weight = emi_weight_point_dic.copy()
-        save_shp = workspace + '\\categories_%s' % year
+        # 复制这个函数操作中需要用到的字典
+        ## 复制传入的参数字典
+        temp_emi_weight = weight_point.copy()
+
+        # 输出路径
+        save_shp = self.workspace + '\\categories_%s' % year
+
+        # 函数内的全局循环计数
         iter_counter = 1
 
         # 构造三个特殊变量来完成操作和循环的大和谐~、
         # 因为SpatialJoin函数需要一个输出表，同时又不能覆盖替换另一个表
         # 所以需要用前两个表生成第一个循环用的表
         # 在程序的结尾用最后（其实可以是任意一个表）来完成年份的输出
-        temp_first = temp_emi_weight.pop('FFF')
-        temp_second = temp_emi_weight.pop('SWD_INC')
-        temp_final = temp_emi_weight.pop('ENE')
+        temp_first = temp_emi_weight.popitem()
+        temp_second = temp_emi_weight.popitem()
+        temp_final = temp_emi_weight.popitem()
 
-        # 连接第一个表
+        # 连接第一个表和第二个表(temp_first and temp_second)
         try:
-            temp_pointer_a = workspace + '\\iter_%s_%s' % (year,iter_counter)
+            print 'Spatial join start:'
+            temp_pointer_a = workspace + '\\iter_%s_%s' % (year, temp_second[1])
             arcpy.SpatialJoin_analysis(temp_first,
-                                    temp_second,
-                                    temp_pointer_a,
-                                    'JOIN_ONE_TO_ONE', 'KEEP_ALL')
+                                       temp_second,
+                                       temp_pointer_a,
+                                       'JOIN_ONE_TO_ONE', 'KEEP_ALL')
+            ## 删除表中的链接结果的字段
+            arcpy.Delete_management(temp_pointer_a, 'Join_Count')
+            arcpy.Delete_management(temp_pointer_a, 'TARGET_FID')
+
+            ## 循环计数增1
             iter_counter += 1
-            print 'Subjoint finished: %s FFF with SWD_INC' % year
+            print 'Spatial join complete: %s %s with %s' % (year, temp_first[1], temp_second[2])
         except:
             print 'Spatia join failed: %s and %s' % (temp_first, temp_second)
             print arcpy.GetMessages()
 
         # loop begain
-        for i in temp_emi_weight:
+        for i in tqdm(temp_emi_weight):
             temp_pointer_b = workspace + '\\iter_%s_%s' % (year,iter_counter)
             try:
                 arcpy.SpatialJoin_analysis(temp_pointer_a,
-                                        temp_emi_weight[i],
-                                        temp_pointer_b,
-                                        'JOIN_ONE_TO_ONE', 'KEEP_ALL')
+                                           temp_emi_weight[i],
+                                           temp_pointer_b,
+                                           'JOIN_ONE_TO_ONE', 'KEEP_ALL')
+
+                ## 交换指针，使b指针成为下一次循环的链接目标
                 temp_pointer_a = temp_pointer_b
+
+                ## 删除表中的链接结果的字段
+                arcpy.Delete_management(temp_pointer_a, 'Join_Count')
+                arcpy.Delete_management(temp_pointer_a, 'TARGET_FID')
+
+                ## 循环计数增1
                 iter_counter += 1
-                print 'Subjoint finished: %s with %s' % (year,i)
+                print 'Spatial join complete: %s with %s' % (year,i)
             except:
                 print 'Spatia join failed: %s' % temp_emi_weight[i]
                 print arcpy.GetMessages()
-            
         # loop ends
 
         # 保存最后的数据
         try:
             arcpy.SpatialJoin_analysis(temp_pointer_a,
-                                    temp_final,
-                                    save_shp,
-                                    'JOIN_ONE_TO_ONE', 'KEEP_ALL')
+                                       temp_final,
+                                       save_shp,
+                                       'JOIN_ONE_TO_ONE', 'KEEP_ALL')
+
+            ## 删除表中的链接结果的字段
+            arcpy.Delete_management(save_shp, 'Join_Count')
+            arcpy.Delete_management(save_shp, 'TARGET_FID')
         except:
             print 'Spatia join failed: %s' % temp_final
             print arcpy.GetMessages()
 
         print 'Finished categories to point features: %s' % save_shp
-
 
     # 导出不同年份最大权重栅格
     def weight_raster(year):
@@ -390,6 +392,11 @@ class EDGAR_spatial:
         except:
             print 'Create main emission raster field: %s' % temp_point
             print arcpy.GetMessages()
+    
+    def delete_duplicate_fields_in_table(self):
+        ## 这里必须要一个函数清理所有链接属性的表中的多余的字段。
+        ## 这个函数可以参考现成的py文件中的过程
+        pass
 
 
     def categories_str_max():
