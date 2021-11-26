@@ -321,10 +321,10 @@ class EDGAR_spatial:
         print 'Finished categories to point features: %s' % save_shp
 
     # 导出不同年份最大权重栅格
-    def weight_raster(year):
-        temp_point = workspace + '\\categories_%s' % year
-        save_raster_categories = workspace + '\\main_emi_%s' % year
-        save_raster_weight = workspace + '\\main_emi_weight_%s' % year
+    def weight_raster(self, year):
+        temp_point = self.workspace + '\\categories_%s' % year
+        save_raster_categories = self.workspace + '\\main_emi_%s' % year
+        save_raster_weight = self.workspace + '\\main_emi_weight_%s' % year
 
         # 向point feature中添加列
         # 1.权重最大值 wmax
@@ -334,21 +334,21 @@ class EDGAR_spatial:
         try:
             # wmax
             arcpy.AddField_management(temp_point,
-                                    'wmax',
-                                    'DOUBLE', '#', '#', '#', '#',
-                                    'NULLABLE', '#', '#')
+                                      'wmax',
+                                      'DOUBLE', '#', '#', '#', '#',
+                                      'NULLABLE', '#', '#')
 
             # wmaxid
             arcpy.AddField_management(temp_point,
-                                    'wmaxid',
-                                    'TEXT', '#', '#', '#', '#',
-                                    'NULLABLE', '#', '#')
+                                      'wmaxid',
+                                      'TEXT', '#', '#', '#', '#',
+                                      'NULLABLE', '#', '#')
 
             # wraster
             arcpy.AddField_management(temp_point,
-                                    'wraster',
-                                    'SHORT', '#', '#', '#', '#',
-                                    'NULLABLE', '#', '#')
+                                      'wraster',
+                                      'SHORT', '#', '#', '#', '#',
+                                      'NULLABLE', '#', '#')
         except:
             print 'Add field to point faild: %s' % temp_point
             print arcpy.GetMessages()
@@ -363,7 +363,7 @@ class EDGAR_spatial:
         print 'Field calculate finished: %s in wmax' % year
         arcpy.CalculateField_management(temp_point,
                                         'wmaxid',
-                                        'maxid(weight, ENE, REF_TRF, IND, TNR_Aviation_CDS, TNR_Aviation_CRS, TNR_Aviation_LTO, TRO_noRES, TNR_Other, TNR_Ship, RCO, PRO, NMM, CHE, IRO, NFE, NEU, PRU_SOL, AGS, SWD_INC, FFF)',
+                                        'maxid(!wmax!)',
                                         'PYTHON_9.3',
                                         categories_codeblock_maxid)
         print 'Field calculate finished: %s in wmaxid' % year
@@ -407,6 +407,13 @@ class EDGAR_spatial:
         str_re = 'max([%s])' % str_re[:-1]
 
         return str_re
+    
+    def categories_max_id_match(self):
+        # 需要做一个arcgis测试数据来验证这个代码块！
+        for i in field:
+            if i == weight:
+                return i
+        pass
 
     def print_start_year(year):
         return """==============================

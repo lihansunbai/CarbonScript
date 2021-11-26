@@ -143,7 +143,7 @@ def weight_raster(year):
     print 'Field calculate finished: %s in wmax' % year
     arcpy.CalculateField_management(temp_point,
                                     'wmaxid',
-                                    'maxid(weight, ENE, REF_TRF, IND, TNR_Aviation_CDS, TNR_Aviation_CRS, TNR_Aviation_LTO, TRO_noRES, TNR_Other, TNR_Ship, RCO, PRO, NMM, CHE, IRO, NFE, NEU, PRU_SOL, AGS, SWD_INC, FFF)',
+                                    'maxid(!wmax!)',
                                     'PYTHON_9.3',
                                     categories_codeblock_maxid)
     print 'Field calculate finished: %s in wmaxid' % year
@@ -262,7 +262,7 @@ emi_cate_colormap = {'ENE': 1,
 
 # 下面两个字符串都是用来分类的codeblock，老长了~
 ## For EDGAR V60
-categories_codeblock_maxid = """def maxid(weight, ENE, REF_TRF, IND, TNR_Aviation_CDS, TNR_Aviation_CRS, TNR_Aviation_LTO, TRO_noRES, TNR_Other, TNR_Ship, RCO, PRO, NMM, CHE, IRO, NFE, NEU, PRU_SOL, AGS, SWD_INC, FFF):
+categories_codeblock_maxid = """def maxid(weight):
     if weight == ENE:
         return 'ENE'
     elif weight == REF_TRF:
