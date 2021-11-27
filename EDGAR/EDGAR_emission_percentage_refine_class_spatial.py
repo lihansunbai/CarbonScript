@@ -355,29 +355,9 @@ class EDGAR_spatial:
             print arcpy.GetMessages()
             return
 
-        # 以下三项工作都需要重写
-        ## 重写思路，用arcpy.da.cursor类进行操作，一次search 一次update 一次映射colormap integer
-
-        # calculatefield这个函数居然会raise exception！
-        # 只能把它拿出来写了
-        # arcpy.CalculateField_management(temp_point,
-        #                                 'wmax',
-        #                                 categories_str_max(),
-        #                                 'PYTHON_9.3')
-        # print 'Field calculate finished: %s in wmax' % year
-        # arcpy.CalculateField_management(temp_point,
-        #                                 'wmaxid',
-        #                                 'maxid(!wmax!)',
-        #                                 'PYTHON_9.3',
-        #                                 categories_codeblock_maxid)
-        # print 'Field calculate finished: %s in wmaxid' % year
-        # arcpy.CalculateField_management(temp_point,
-        #                                 'wraster',
-        #                                 'raster(!wmaxid!)',
-        #                                 'PYTHON_9.3',
-        #                                 categories_codeblock_raster)
-        # print 'Field calculate finished: %s in wraster' % year
-        # print 'Add and calculate fields finished: %s' % temp_point
+        self.sector_max(year, temp_point)
+        print 'Field calculate finished: %s in wraster' % year
+        print 'Add and calculate fields finished: %s' % temp_point
         # 用wraster列转栅格
         try:
             arcpy.PointToRaster_conversion(temp_point,
