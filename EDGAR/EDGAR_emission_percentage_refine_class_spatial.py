@@ -7,6 +7,7 @@ from arcpy import env
 from arcpy.sa import *
 import tqdm
 from tqdm import tqdm
+import math
 
 __metaclass__ = type
 
@@ -354,26 +355,29 @@ class EDGAR_spatial:
             print arcpy.GetMessages()
             return
 
+        # 以下三项工作都需要重写
+        ## 重写思路，用arcpy.da.cursor类进行操作，一次search 一次update 一次映射colormap integer
+
         # calculatefield这个函数居然会raise exception！
         # 只能把它拿出来写了
-        arcpy.CalculateField_management(temp_point,
-                                        'wmax',
-                                        categories_str_max(),
-                                        'PYTHON_9.3')
-        print 'Field calculate finished: %s in wmax' % year
-        arcpy.CalculateField_management(temp_point,
-                                        'wmaxid',
-                                        'maxid(!wmax!)',
-                                        'PYTHON_9.3',
-                                        categories_codeblock_maxid)
-        print 'Field calculate finished: %s in wmaxid' % year
-        arcpy.CalculateField_management(temp_point,
-                                        'wraster',
-                                        'raster(!wmaxid!)',
-                                        'PYTHON_9.3',
-                                        categories_codeblock_raster)
-        print 'Field calculate finished: %s in wraster' % year
-        print 'Add and calculate fields finished: %s' % temp_point
+        # arcpy.CalculateField_management(temp_point,
+        #                                 'wmax',
+        #                                 categories_str_max(),
+        #                                 'PYTHON_9.3')
+        # print 'Field calculate finished: %s in wmax' % year
+        # arcpy.CalculateField_management(temp_point,
+        #                                 'wmaxid',
+        #                                 'maxid(!wmax!)',
+        #                                 'PYTHON_9.3',
+        #                                 categories_codeblock_maxid)
+        # print 'Field calculate finished: %s in wmaxid' % year
+        # arcpy.CalculateField_management(temp_point,
+        #                                 'wraster',
+        #                                 'raster(!wmaxid!)',
+        #                                 'PYTHON_9.3',
+        #                                 categories_codeblock_raster)
+        # print 'Field calculate finished: %s in wraster' % year
+        # print 'Add and calculate fields finished: %s' % temp_point
         # 用wraster列转栅格
         try:
             arcpy.PointToRaster_conversion(temp_point,
@@ -393,27 +397,33 @@ class EDGAR_spatial:
             print 'Create main emission raster field: %s' % temp_point
             print arcpy.GetMessages()
     
-    def delete_duplicate_fields_in_table(self):
-        ## 这里必须要一个函数清理所有链接属性的表中的多余的字段。
-        ## 这个函数可以参考现成的py文件中的过程
-        pass
+    # 用arcpy.da.cursor类进行操作
+    # 在一行中同时实现找到最大值，最大值对应的id，最大值对应的colormap
+    def sector_max(self, sector_points):
+        temp_sector = self.sector.copy()
+        temp_sector_colormap = self.sector_colormap.copy()
+        temp_working_sector = sector_points
+        
+        # 构造需要操作的字段
+        ## 神奇的python赋值解包
+        temp_cursor_fileds = [i for i in temp_sector]
+        ## 输出结果的三个字段：最大值、最大值部门、colormap
+        temp_cursor_fileds.append('wmax')
+        temp_cursor_fileds.append('wmaxid')
+        temp_cursor_fileds.append('wraster')
 
+        # 构造游标，开始逐行操作
+        with arcpy.da.UpdateCursor(temp_working_sector, temp_cursor_fileds) as cursor:
+            for row in cursor:
+                max_weight = max(row[0:-4])
+                max_id =  temp_cursor_fileds(row.index(max_weight))
+                max_colormap = temp_sector_colormap[max_id]
 
-    def categories_str_max():
-        str_re = ''
-        for i in emi_cate:
-            str_re += '!%s!,' % i
+                row[-1] = max_colormap
+                row[-2] = max_id
+                row[-3] = max_weight
 
-        str_re = 'max([%s])' % str_re[:-1]
-
-        return str_re
-    
-    def categories_max_id_match(self):
-        # 需要做一个arcgis测试数据来验证这个代码块！
-        for i in field:
-            if i == weight:
-                return i
-        pass
+                cursor.updateCursor(row)
 
     def print_start_year(year):
         return """==============================
