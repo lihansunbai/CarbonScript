@@ -331,31 +331,40 @@ class EDGAR_spatial:
         # 1.权重最大值 wmax
         # 2.权重最大值名称 wmaxid
         # 3.将权重最大值名称映射为一个整数，方便输出为栅格 wraster
+        # 4.统计一个栅格中共计有多少个部门排放
         # 并计算添加字段的值
+        temp_new_fields = ['wmax','wmaxid','wraster','sector_counts']
         try:
             # wmax
             arcpy.AddField_management(temp_point,
-                                      'wmax',
+                                      temp_new_fields[0],
                                       'DOUBLE', '#', '#', '#', '#',
                                       'NULLABLE', '#', '#')
 
             # wmaxid
             arcpy.AddField_management(temp_point,
-                                      'wmaxid',
+                                      temp_new_fields[1],
                                       'TEXT', '#', '#', '#', '#',
                                       'NULLABLE', '#', '#')
 
             # wraster
             arcpy.AddField_management(temp_point,
-                                      'wraster',
+                                      temp_new_fields[2],
                                       'SHORT', '#', '#', '#', '#',
+                                      'NULLABLE', '#', '#')
+
+            # sector_counts
+            arcpy.AddField_management(temp_point,
+                                      temp_new_fields[3],
+                                      'DOUBLE', '#', '#', '#', '#',
                                       'NULLABLE', '#', '#')
         except:
             print 'Add field to point faild: %s' % temp_point
             print arcpy.GetMessages()
             return
 
-        self.sector_max(year, temp_point)
+        self.sector_max(year, temp_point, temp_new_fields)
+
         print 'Field calculate finished: %s in wraster' % year
         print 'Add and calculate fields finished: %s' % temp_point
         # 用wraster列转栅格
@@ -379,7 +388,7 @@ class EDGAR_spatial:
     
     # 用arcpy.da.cursor类进行操作
     # 在一行中同时实现找到最大值，最大值对应的id，最大值对应的colormap
-    def sector_max(self, sector_points):
+    def sector_max(self, sector_points, calculate_fields):
         temp_sector = self.sector.copy()
         temp_sector_colormap = self.sector_colormap.copy()
         temp_working_sector = sector_points
@@ -387,21 +396,27 @@ class EDGAR_spatial:
         # 构造需要操作的字段
         ## 神奇的python赋值解包
         temp_cursor_fileds = [i for i in temp_sector]
-        ## 输出结果的三个字段：最大值、最大值部门、colormap
-        temp_cursor_fileds.append('wmax')
-        temp_cursor_fileds.append('wmaxid')
-        temp_cursor_fileds.append('wraster')
+
+        # 按照calculate_fields 参数追加需要进行计算的字段
+        ## 输出结果的四个字段：最大值、最大值部门、colormap、部门数量
+        ### 部门字段的数量
+        sector_counts = len(temp_sector)
+        ### 计算字段的数量
+        calculate_fields_counts = len(calculate_fields)
+        temp_cursor_fileds[sector_counts-1:sector_counts+calculate_fields_counts-1] = calculate_fields
 
         # 构造游标，开始逐行操作
         with arcpy.da.UpdateCursor(temp_working_sector, temp_cursor_fileds) as cursor:
             for row in cursor:
-                max_weight = max(row[0:-4])
+                max_weight = max(row[0:-calculate_fields_counts])
                 max_id =  temp_cursor_fileds(row.index(max_weight))
                 max_colormap = temp_sector_colormap[max_id]
+                emitted_sectors = len([i for i in row[0:-calculate_fields_counts] if i != 0])
 
-                row[-1] = max_colormap
-                row[-2] = max_id
-                row[-3] = max_weight
+                row[-1] = emitted_sectors
+                row[-2] = max_colormap
+                row[-3] = max_id
+                row[-4] = max_weight
 
                 cursor.updateCursor(row)
 
