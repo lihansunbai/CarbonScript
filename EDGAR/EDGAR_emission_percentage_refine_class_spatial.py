@@ -230,6 +230,8 @@ class EDGAR_spatial:
                 # rename value field
                 arcpy.AddField_management(output_weight_point[i], i, 'DOUBLE')
                 arcpy.CalculateField_management(output_weight_point[i], i, '!grid_code!', 'PYTHON_9.3')
+
+                # 删除表链接结果结果中生成的统计字段'pointid'和'grid_code'
                 arcpy.DeleteField_management(output_weight_point[i], 'pointid')
                 arcpy.DeleteField_management(output_weight_point[i], 'grid_code')
                 print 'Categories finished: %s' % i
@@ -249,10 +251,10 @@ class EDGAR_spatial:
         temp_emi_weight = weight_point.copy()
 
         # 输出路径
-        save_shp = self.workspace + '\\categories_%s' % year
+        save_shp = self.__workspace + '\\categories_%s' % year
 
-        # 函数内的全局循环计数
-        iter_counter = 1
+        # # 函数内的全局循环计数
+        # iter_counter = 1
 
         # 构造三个特殊变量来完成操作和循环的大和谐~、
         # 因为SpatialJoin函数需要一个输出表，同时又不能覆盖替换另一个表
@@ -263,9 +265,9 @@ class EDGAR_spatial:
         temp_final = temp_emi_weight.popitem()
 
         # 连接第一个表和第二个表(temp_first and temp_second)
+        temp_pointer_a = self.__workspace + '\\iter_%s_%s' % (year, temp_second[1])
         try:
             print 'Spatial join start:'
-            temp_pointer_a = workspace + '\\iter_%s_%s' % (year, temp_second[1])
             arcpy.SpatialJoin_analysis(temp_first,
                                        temp_second,
                                        temp_pointer_a,
@@ -274,8 +276,8 @@ class EDGAR_spatial:
             arcpy.Delete_management(temp_pointer_a, 'Join_Count')
             arcpy.Delete_management(temp_pointer_a, 'TARGET_FID')
 
-            ## 循环计数增1
-            iter_counter += 1
+            # ## 循环计数增1
+            # iter_counter += 1
             print 'Spatial join complete: %s %s with %s' % (year, temp_first[1], temp_second[2])
         except:
             print 'Spatia join failed: %s and %s' % (temp_first, temp_second)
@@ -283,7 +285,7 @@ class EDGAR_spatial:
 
         # loop begain
         for i in tqdm(temp_emi_weight):
-            temp_pointer_b = workspace + '\\iter_%s_%s' % (year,iter_counter)
+            temp_pointer_b = self.__workspace + '\\iter_%s_%s' % (year,i)
             try:
                 arcpy.SpatialJoin_analysis(temp_pointer_a,
                                            temp_emi_weight[i],
@@ -297,8 +299,8 @@ class EDGAR_spatial:
                 arcpy.Delete_management(temp_pointer_a, 'Join_Count')
                 arcpy.Delete_management(temp_pointer_a, 'TARGET_FID')
 
-                ## 循环计数增1
-                iter_counter += 1
+                # ## 循环计数增1
+                # iter_counter += 1
                 print 'Spatial join complete: %s with %s' % (year,i)
             except:
                 print 'Spatia join failed: %s' % temp_emi_weight[i]
@@ -323,9 +325,9 @@ class EDGAR_spatial:
 
     # 导出不同年份最大权重栅格
     def weight_raster(self, year):
-        temp_point = self.workspace + '\\categories_%s' % year
-        save_raster_categories = self.workspace + '\\main_emi_%s' % year
-        save_raster_weight = self.workspace + '\\main_emi_weight_%s' % year
+        temp_point = self.__workspace + '\\categories_%s' % year
+        save_raster_categories = self.__workspace + '\\main_emi_%s' % year
+        save_raster_weight = self.__workspace + '\\main_emi_weight_%s' % year
 
         # 向point feature中添加列
         # 1.权重最大值 wmax
@@ -367,6 +369,7 @@ class EDGAR_spatial:
 
         print 'Field calculate finished: %s in wraster' % year
         print 'Add and calculate fields finished: %s' % temp_point
+
         # 用wraster列转栅格
         try:
             arcpy.PointToRaster_conversion(temp_point,
@@ -403,6 +406,9 @@ class EDGAR_spatial:
         sector_counts = len(temp_sector)
         ### 计算字段的数量
         calculate_fields_counts = len(calculate_fields)
+
+        # 这个赋值的方法要改
+        # 现在的方法超过数组的最大值了。需要想一个python神奇的解包方法来解决。
         temp_cursor_fileds[sector_counts-1:sector_counts+calculate_fields_counts-1] = calculate_fields
 
         # 构造游标，开始逐行操作
