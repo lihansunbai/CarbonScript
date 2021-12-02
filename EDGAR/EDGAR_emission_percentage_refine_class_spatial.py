@@ -407,13 +407,8 @@ class EDGAR_spatial:
         ### 计算字段的数量
         calculate_fields_counts = len(calculate_fields)
 
-        # 这个赋值的方法要改
-        # 现在的方法超过数组的最大值了。需要想一个python神奇的解包方法来解决。
-        temp_cursor_fileds[sector_counts-1:sector_counts+calculate_fields_counts-1] = calculate_fields
-
-        # TODO
-        # 可以继续加一些统计计算进去！！！
-
+        # 添加需要计算的字段到游标提取字段的list中
+        temp_cursor_fileds.extend(calculate_fields)
 
         # 构造游标，开始逐行操作
         with arcpy.da.UpdateCursor(temp_working_sector, temp_cursor_fileds) as cursor:
@@ -431,19 +426,20 @@ class EDGAR_spatial:
                 cursor.updateCursor(row)
 
     def print_start_year(year):
-        return """==============================
-        ==============================
-        Processing start of year %s
-        ==============================
-        ==============================""" % year
+        print '=============================='
+        print '=============================='
+        print 'Processing start of year %s' % year
+        print '=============================='
+        print '=============================='
 
     def print_finish_year(year):
-        return """==============================
-        ==============================
-        Congratulations!
-        Finished processing data of year %s
-        ==============================
-        ==============================""" % year
+        print '=============================='
+        print '=============================='
+        print 'Congratulations!'
+        print 'Finished processing data of year %s' % year
+        print '=============================='
+        print '=============================='
+
 
 if __name__ == '__main__':
     pass
