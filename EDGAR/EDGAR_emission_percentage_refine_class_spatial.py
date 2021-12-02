@@ -411,6 +411,10 @@ class EDGAR_spatial:
         # 现在的方法超过数组的最大值了。需要想一个python神奇的解包方法来解决。
         temp_cursor_fileds[sector_counts-1:sector_counts+calculate_fields_counts-1] = calculate_fields
 
+        # TODO
+        # 可以继续加一些统计计算进去！！！
+
+
         # 构造游标，开始逐行操作
         with arcpy.da.UpdateCursor(temp_working_sector, temp_cursor_fileds) as cursor:
             for row in cursor:
