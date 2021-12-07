@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import os
-import re
 import arcpy
 from arcpy import env
 from arcpy.sa import *
 import tqdm
 from tqdm import tqdm
-import math
 
 __metaclass__ = type
 
@@ -29,6 +27,8 @@ __metaclass__ = type
 # SPATIAL OPERATIONS CLASS
 # ======================================================================
 # ======================================================================
+
+
 class EDGAR_spatial:
     ## 构造函数部分
     ## 注意：这里需要两类构造函数：
@@ -59,7 +59,7 @@ class EDGAR_spatial:
         ## 默认情况下使用默认参数初始化
         ## 为EDGAR_sector参数赋值
         if type(sector) != dict:
-            print 'Error! EDGAR_sector only accept a dictionary type input.' 
+            print 'Error! EDGAR_sector only accept a dictionary type input.'
             return
         elif sector == {}:
             self.EDGAR_sector = self.__default_EDGAR_sector
@@ -71,22 +71,22 @@ class EDGAR_spatial:
         ## 默认情况下使用默认参数初始化
         ## 为EDGAR_sector_colormap 参数赋值
         if type(colormap) != dict:
-            print 'Error! EDGAR_sector_colormap only accept a dictionary type input.' 
+            print 'Error! EDGAR_sector_colormap only accept a dictionary type input.'
             return
         elif sector == {}:
             self.EDGAR_sector_colormap = self.__default_EDGAR_sector_colormap
         else:
             self.EDGAR_sector = sector
-        
+
         # year_range 参数初始化部分
         ## 这里需要初始化计算的起始和结束
-        if type(st_year) != int | type(en_year) != int:
+        if (type(st_year) != int) or (type(en_year) != int):
             print 'Error! Proccessing starting year and ending year must be int value'
             return
-        elif st_year < 1970 | en_year > 2018:
+        elif st_year < 1970 or en_year > 2018:
             print 'Error! Proccessing year range out of data support! The year must containt in 1970 to 2018'
         else:
-            self.start_year, self.end_year = st_year,en_year
+            self.start_year, self.end_year = st_year, en_year
 
     # Default values:
     ## Arcgis workspace
@@ -96,46 +96,46 @@ class EDGAR_spatial:
     EDGAR_sector = {}
     EDGAR_sector_colormap = {}
     __default_EDGAR_sector = {'ENE': 'ENE',
-                            'REF_TRF': 'REF_TRF',
-                            'IND': 'IND',
-                            'TNR_Aviation_CDS': 'TNR_Aviation_CDS',
-                            'TNR_Aviation_CRS': 'TNR_Aviation_CRS',
-                            'TNR_Aviation_LTO': 'TNR_Aviation_LTO',
-                            'TRO_noRES': 'TRO_noRES',
-                            'TNR_Other': 'TNR_Other',
-                            'TNR_Ship': 'TNR_Ship',
-                            'RCO': 'RCO',
-                            'PRO': 'PRO',
-                            'NMM': 'NMM',
-                            'CHE': 'CHE',
-                            'IRO': 'IRO',
-                            'NFE': 'NFE',
-                            'NEU': 'NEU',
-                            'PRU_SOL': 'PRU_SOL',
-                            'AGS': 'AGS',
-                            'SWD_INC': 'SWD_INC',
-                            'FFF': 'FFF'}
+                              'REF_TRF': 'REF_TRF',
+                              'IND': 'IND',
+                              'TNR_Aviation_CDS': 'TNR_Aviation_CDS',
+                              'TNR_Aviation_CRS': 'TNR_Aviation_CRS',
+                              'TNR_Aviation_LTO': 'TNR_Aviation_LTO',
+                              'TRO_noRES': 'TRO_noRES',
+                              'TNR_Other': 'TNR_Other',
+                              'TNR_Ship': 'TNR_Ship',
+                              'RCO': 'RCO',
+                              'PRO': 'PRO',
+                              'NMM': 'NMM',
+                              'CHE': 'CHE',
+                              'IRO': 'IRO',
+                              'NFE': 'NFE',
+                              'NEU': 'NEU',
+                              'PRU_SOL': 'PRU_SOL',
+                              'AGS': 'AGS',
+                              'SWD_INC': 'SWD_INC',
+                              'FFF': 'FFF'}
 
     __default_EDGAR_sector_colormap = {'ENE': 1,
-                                     'REF_TRF': 2,
-                                     'IND': 3,
-                                     'TNR_Aviation_CDS': 4,
-                                     'TNR_Aviation_CRS': 5,
-                                     'TNR_Aviation_LTO': 6,
-                                     'TRO_noRES': 7,
-                                     'TNR_Other': 8,
-                                     'TNR_Ship': 9,
-                                     'RCO': 10,
-                                     'PRO': 11,
-                                     'NMM': 12,
-                                     'CHE': 13,
-                                     'IRO': 14,
-                                     'NFE': 15,
-                                     'NEU': 16,
-                                     'PRU_SOL': 17,
-                                     'AGS': 18,
-                                     'SWD_INC': 19,
-                                     'FFF': 20}
+                                       'REF_TRF': 2,
+                                       'IND': 3,
+                                       'TNR_Aviation_CDS': 4,
+                                       'TNR_Aviation_CRS': 5,
+                                       'TNR_Aviation_LTO': 6,
+                                       'TRO_noRES': 7,
+                                       'TNR_Other': 8,
+                                       'TNR_Ship': 9,
+                                       'RCO': 10,
+                                       'PRO': 11,
+                                       'NMM': 12,
+                                       'CHE': 13,
+                                       'IRO': 14,
+                                       'NFE': 15,
+                                       'NEU': 16,
+                                       'PRU_SOL': 17,
+                                       'AGS': 18,
+                                       'SWD_INC': 19,
+                                       'FFF': 20}
 
     # 时间范围
     __default_start_year = 1970
@@ -150,40 +150,38 @@ class EDGAR_spatial:
     # 保存部门排放的累加结果
     __raster_overlay = ''
 
-
     # 想要自定义或者修改处理的部门排放需要使用特殊的set函数
     def set_EDGAR_sector(self, sector):
         if type(sector) != dict:
-           print 'Error type! EDGAR sectors should be dictionary!'
-           return
+            print 'Error type! EDGAR sectors should be dictionary!'
+            return
 
         self.EDGAR_sector = sector
 
     def get_EDGAR_sector(self):
         print self.EDGAR_sector
-    
+
     sector = property(get_EDGAR_sector, set_EDGAR_sector)
 
     def set_EDGAR_sector_colormap(self, sector_colormap):
-        if type(sector) != dict:
-           print 'Error type! EDGAR sectors colormap should be diectionary!'
-           return
+        if type(sector_colormap) != dict:
+            print 'Error type! EDGAR sectors colormap should be diectionary!'
+            return
 
-        self.EDGAR_sector_colormap = sector
-    
+        self.EDGAR_sector_colormap = sector_colormap
+
     def get_EDGAR_sector_colormap(self):
         print self.EDGAR_sector_colormap
-    
+
     sector_colormap = property(get_EDGAR_sector_colormap, set_EDGAR_sector_colormap)
 
-    def set_year_range(self, start_end = (1970, 2018)):
+    def set_year_range(self, start_end=(1970, 2018)):
         self.start_year, self.end_year = start_end
 
     def get_year_range(self):
-        print 'Start year: %s\nEnd year: %s' % self.start_year,self.end_year
+        print 'Start year: %s\nEnd year: %s' % self.start_year, self.end_year
 
     year_range = property(get_year_range, set_year_range)
-
 
     def raster_overlay_add(self, add_sector):
         # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
@@ -204,7 +202,7 @@ class EDGAR_spatial:
         # 计算总量的本质就是把所有部门都加起来。所有的部门信息都保存在默认变量__defaut_EDGAR_sector中
         self.raster_overlay_add(self.__default_EDGAR_sector)
         self.__raster_sum = self.__raster_overlay
-        
+
         # 这里的路径需要修改
         # 可能需要引入很多个保存文件的输出位置
         temp_out_path = self.__workspace + '%s' % year
@@ -285,7 +283,7 @@ class EDGAR_spatial:
 
         # loop begain
         for i in tqdm(temp_emi_weight):
-            temp_pointer_b = self.__workspace + '\\iter_%s_%s' % (year,i)
+            temp_pointer_b = self.__workspace + '\\iter_%s_%s' % (year, i)
             try:
                 arcpy.SpatialJoin_analysis(temp_pointer_a,
                                            temp_emi_weight[i],
@@ -301,7 +299,7 @@ class EDGAR_spatial:
 
                 # ## 循环计数增1
                 # iter_counter += 1
-                print 'Spatial join complete: %s with %s' % (year,i)
+                print 'Spatial join complete: %s with %s' % (year, i)
             except:
                 print 'Spatia join failed: %s' % temp_emi_weight[i]
                 print arcpy.GetMessages()
@@ -373,29 +371,29 @@ class EDGAR_spatial:
         # 用wraster列转栅格
         try:
             arcpy.PointToRaster_conversion(temp_point,
-                                        'wraster',
-                                        save_raster_categories,
-                                        'MOST_FREQUENT',
-                                        '#',
-                                        '0.1')
+                                           'wraster',
+                                           save_raster_categories,
+                                           'MOST_FREQUENT',
+                                           '#',
+                                           '0.1')
             arcpy.PointToRaster_conversion(temp_point,
-                                        'wmax',
-                                        save_raster_weight,
-                                        'MOST_FREQUENT',
-                                        '#',
-                                        '0.1')
+                                           'wmax',
+                                           save_raster_weight,
+                                           'MOST_FREQUENT',
+                                           '#',
+                                           '0.1')
             print 'Create main emission raster: %s' % temp_point
         except:
             print 'Create main emission raster field: %s' % temp_point
             print arcpy.GetMessages()
-    
+
     # 用arcpy.da.cursor类进行操作
     # 在一行中同时实现找到最大值，最大值对应的id，最大值对应的colormap
     def sector_max(self, sector_points, calculate_fields):
         temp_sector = self.sector.copy()
         temp_sector_colormap = self.sector_colormap.copy()
         temp_working_sector = sector_points
-        
+
         # 构造需要操作的字段
         ## 神奇的python赋值解包
         temp_cursor_fileds = [i for i in temp_sector]
@@ -414,7 +412,7 @@ class EDGAR_spatial:
         with arcpy.da.UpdateCursor(temp_working_sector, temp_cursor_fileds) as cursor:
             for row in cursor:
                 max_weight = max(row[0:-calculate_fields_counts])
-                max_id =  temp_cursor_fileds(row.index(max_weight))
+                max_id = temp_cursor_fileds(row.index(max_weight))
                 max_colormap = temp_sector_colormap[max_id]
                 emitted_sectors = len([i for i in row[0:-calculate_fields_counts] if i != 0])
 
