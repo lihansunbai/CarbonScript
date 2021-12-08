@@ -76,7 +76,7 @@ class EDGAR_spatial:
         elif sector == {}:
             self.EDGAR_sector_colormap = self.__default_EDGAR_sector_colormap
         else:
-            self.EDGAR_sector = sector
+            self.EDGAR_sector_colormap = colormap
 
         # year_range 参数初始化部分
         ## 这里需要初始化计算的起始和结束
@@ -179,16 +179,40 @@ class EDGAR_spatial:
         self.start_year, self.end_year = start_end
 
     def get_year_range(self):
-        print 'Start year: %s\nEnd year: %s' % self.start_year, self.end_year
+        print 'Start year: %s\nEnd year: %s' % (self.start_year, self.end_year)
 
     year_range = property(get_year_range, set_year_range)
+
+    # TODO
+    # 这里缺一个筛选需要进行运算的栅格数据的方法
+    # 原因：一个数据库中的文件命名可能只包含了'ENE_2010'类似字段。或者是混合了其他数据，比如结果生成的数据
+    #       所以，需要使用ListRaster把这需要工作的栅格筛选出来
+    ## 问题：我生成的数据中包含了有背景0值和背景为空值null的两类栅格。这种情况下应该如何筛选？需要添加标识符参数？
+    ##      或者是排除字符参数？
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def raster_overlay_add(self, add_sector):
         # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
         arcpy.CheckOutExtension('Spatial')
 
         # 栅格叠加的结果保存在__raster_overlay 中
-        self.__raster_overlay = Raster()
+        # self.__raster_overlay = Raster()
 
         # 临时变量，防止突发崩溃
         temp_raster = Raster()
@@ -199,8 +223,8 @@ class EDGAR_spatial:
             temp_raster = Raster(temp_raster) + Raster(add_sector[r])
 
     def calculate_sum(self, year):
-        # 计算总量的本质就是把所有部门都加起来。所有的部门信息都保存在默认变量__defaut_EDGAR_sector中
-        self.raster_overlay_add(self.__default_EDGAR_sector)
+        # 计算总量的本质就是把所有部门都加起来。
+        self.raster_overlay_add(self.EDGAR_sector)
         self.__raster_sum = self.__raster_overlay
 
         # 这里的路径需要修改
