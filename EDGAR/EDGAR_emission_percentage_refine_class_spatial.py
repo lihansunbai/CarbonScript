@@ -144,6 +144,9 @@ class EDGAR_spatial:
     start_year = 0
     end_year = 0
 
+    __background_flag = True
+    __background_lable = 'BA'
+
     # 特殊变量，用于保存所有部门排放的总和
     __raster_sum = ''
 
@@ -188,7 +191,38 @@ class EDGAR_spatial:
     # 原因：一个数据库中的文件命名可能只包含了'ENE_2010'类似字段。或者是混合了其他数据，比如结果生成的数据
     #       所以，需要使用ListRaster把这需要工作的栅格筛选出来
     ## 问题：我生成的数据中包含了有背景0值和背景为空值null的两类栅格。这种情况下应该如何筛选？需要添加标识符参数？
-    ##      或者是排除字符参数？
+    ##  或者是排除字符参数？
+
+    # 栅格图像背景值设置和查看属性/函数
+    def set_background_value_flag(self, flag, flag_lable):
+        # 检查flag参数并赋值
+        try:
+            __background_flag = bool(flag)
+        except:
+            print 'Background value flag set failed! Please check the flag argument input.'
+        
+        # 检查flag_lable参数并
+        if type(flag_lable) == str:
+            __background_lable = flag_lable
+        else:
+            print 'Background value flag lable set failed! Please check the flag argument input.'
+
+
+    def get_background_value_flag(self):
+        print 'Background value enabled: %s' % self.__background_flag
+        print 'Background lable: %s' % self.__background_lable
+
+    background_value_flag = property(get_background_value_flag, set_background_value_flag)
+
+    def list_working_rasters(self, background_flag, sector, year):
+        pass
+
+    def generate_working_environment(self):
+        pass
+
+    def check_working_environment(self):
+        pass
+
 
 
 
