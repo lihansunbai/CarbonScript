@@ -144,8 +144,12 @@ class EDGAR_spatial:
     start_year = 0
     end_year = 0
 
+    # 栅格数据背景零值标识和区分标签
     __background_flag = True
     __background_lable = 'BA'
+
+    # 数据库栅格数据筛选过滤标签
+    __raster_wild_card = ''
 
     # 特殊变量，用于保存所有部门排放的总和
     __raster_sum = ''
@@ -197,22 +201,36 @@ class EDGAR_spatial:
     def set_background_value_flag(self, flag, flag_lable):
         # 检查flag参数并赋值
         try:
-            __background_flag = bool(flag)
+            self.__background_flag = bool(flag)
         except:
             print 'Background value flag set failed! Please check the flag argument input.'
-        
+
         # 检查flag_lable参数并
         if type(flag_lable) == str:
-            __background_lable = flag_lable
+            self.__background_lable = flag_lable
         else:
             print 'Background value flag lable set failed! Please check the flag argument input.'
-
 
     def get_background_value_flag(self):
         print 'Background value enabled: %s' % self.__background_flag
         print 'Background lable: %s' % self.__background_lable
 
     background_value_flag = property(get_background_value_flag, set_background_value_flag)
+
+    # 类中提供了两个过滤标签的构造方法
+    # 1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
+    #    字符串为‘部门_年份’。
+    # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合Arcpy 中wild_card定义的标准进行设定。
+    def build_raster_fliter(self, background_lable, sector, year):
+        self.__raster_wild_card = '%s*%s_%s' % (background_lable, sector, year)
+
+    def build_raster_fliter(self, custom_lable):
+        self.__raster_wild_card = custom_lable
+    
+    def get_raster_fliter(self):
+        print "Raster fliter 'wild_card' string is: %s" % self.__raster_wild_card
+    
+    raster_fliter = property(get_raster_fliter, build_raster_fliter)
 
     def list_working_rasters(self, background_flag, sector, year):
         pass
