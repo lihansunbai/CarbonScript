@@ -2,6 +2,7 @@
 
 import os
 import arcpy
+import copy
 from arcpy import env
 from arcpy.sa import *
 import tqdm
@@ -19,6 +20,7 @@ __metaclass__ = type
 #       b）是否需要传入排放种类的字典
 #       c) 是否需要在这里引入tqdm组建来展示处理进度？或者是在外层控制调用脚本显示
 #           处理进？
+#   3. 所有涉及数据的操作都需要采用绝对路径，防止arcpy出现识别数据错误。
 # ======================================================================
 # ======================================================================
 
@@ -62,9 +64,9 @@ class EDGAR_spatial:
             print 'Error! EDGAR_sector only accept a dictionary type input.'
             return
         elif sector == {}:
-            self.EDGAR_sector = self.__default_EDGAR_sector
+            self.EDGAR_sector = copy.deepcopy(self.__default_EDGAR_sector)
         else:
-            self.EDGAR_sector = sector
+            self.EDGAR_sector = copy.deepcopy(sector)
 
         # EDGAR_sector_colormap 参数初始化部分
         ## 检查参数输入类型
@@ -74,9 +76,9 @@ class EDGAR_spatial:
             print 'Error! EDGAR_sector_colormap only accept a dictionary type input.'
             return
         elif sector == {}:
-            self.EDGAR_sector_colormap = self.__default_EDGAR_sector_colormap
+            self.EDGAR_sector_colormap = copy.deepcopy(self.__default_EDGAR_sector_colormap)
         else:
-            self.EDGAR_sector_colormap = colormap
+            self.EDGAR_sector_colormap = copy.deepcopy(colormap)
 
         # year_range 参数初始化部分
         ## 这里需要初始化计算的起始和结束
@@ -439,6 +441,7 @@ class EDGAR_spatial:
             print arcpy.GetMessages()
             return
 
+        # 这里的year参数可能需要删除aa
         self.sector_max(year, temp_point, temp_new_fields)
 
         print 'Field calculate finished: %s in wraster' % year
@@ -466,8 +469,9 @@ class EDGAR_spatial:
     # 用arcpy.da.cursor类进行操作
     # 在一行中同时实现找到最大值，最大值对应的id，最大值对应的colormap
     def sector_max(self, sector_points, calculate_fields):
-        temp_sector = self.sector.copy()
-        temp_sector_colormap = self.sector_colormap.copy()
+        temp_sector = copy.deepcopy(self.EDGAR_sector)
+        temp_sector_colormap = copy.deepcopy(self.EDGAR_sector_colormap)
+        ## temp_working_sector = self.__workspace + '\\%s' % sector_points
         temp_working_sector = sector_points
 
         # 构造需要操作的字段
@@ -486,9 +490,9 @@ class EDGAR_spatial:
 
         # 构造游标，开始逐行操作
         with arcpy.da.UpdateCursor(temp_working_sector, temp_cursor_fileds) as cursor:
-            for row in cursor:
+            for row in tqdm(cursor):
                 max_weight = max(row[0:-calculate_fields_counts])
-                max_id = temp_cursor_fileds(row.index(max_weight))
+                max_id = temp_cursor_fileds[row.index(max_weight)]
                 max_colormap = temp_sector_colormap[max_id]
                 emitted_sectors = len([i for i in row[0:-calculate_fields_counts] if i != 0])
 
@@ -497,7 +501,7 @@ class EDGAR_spatial:
                 row[-3] = max_id
                 row[-4] = max_weight
 
-                cursor.updateCursor(row)
+                cursor.updateRow(row)
 
     def print_start_year(year):
         print '=============================='
@@ -515,5 +519,10 @@ class EDGAR_spatial:
         print '=============================='
 
 
+
 if __name__ == '__main__':
+
+    aaa = EDGAR_spatial('D:\\workplace\\DATA\\geodatabase\\test\\EDGAR_test.gdb',st_year=2015,en_year=2015)
+    calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
+    aaa.sector_max('categories_2015',calculate_fields)
     pass
