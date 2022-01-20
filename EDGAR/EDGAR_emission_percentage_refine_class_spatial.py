@@ -21,6 +21,8 @@ __metaclass__ = type
 #       c) 是否需要在这里引入tqdm组建来展示处理进度？或者是在外层控制调用脚本显示
 #           处理进？
 #   3. 所有涉及数据的操作都需要采用绝对路径，防止arcpy出现识别数据错误。
+#   4. 多年份处理函数
+#   5. 计算字段的构造方法
 # ======================================================================
 # ======================================================================
 
@@ -503,6 +505,15 @@ class EDGAR_spatial:
 
                 cursor.updateRow(row)
 
+    def proccess_year(self,start_year,end_year):
+        for year in [start_year:end_year]:
+            self.sector_max()
+        pass
+
+    def proccess_all(self):
+        pass
+
+
     def print_start_year(year):
         print '=============================='
         print '=============================='
@@ -520,8 +531,13 @@ class EDGAR_spatial:
 
 
 
+# ======================================================================
+# ======================================================================
+# TEST SCRIPT
+# ======================================================================
+# ======================================================================
 if __name__ == '__main__':
-
+    ## test contents
     aaa = EDGAR_spatial('D:\\workplace\\DATA\\geodatabase\\test\\EDGAR_test.gdb',st_year=2015,en_year=2015)
     calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
     aaa.sector_max('categories_2015',calculate_fields)
