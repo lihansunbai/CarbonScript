@@ -518,6 +518,29 @@ class EDGAR_spatial:
     def proccess_all(self):
         pass
 
+    def prepare_rasters(self):
+        pass
+
+    __default_raster_filter_str = 'EDGAR_'
+    raster_filter_str = __default_raster_filter_str
+
+    def set_raster_filter(self, filter_str):
+        if type(filter_str) != str:
+            print "arcpy.ListRasters() need a string for 'wild_card'."
+            return
+        
+        self.raster_filter_str = filter_str
+
+    def get_raster_filter(self):
+        print self.raster_filter_str
+
+    raster_filter = property(get_raster_filter,set_raster_filter)
+
+    def prepare_raster(self):
+        pass
+
+    def default_listrasters(self, start_year, end_year):
+        pass
 
     def print_start_year(year):
         print '=============================='
