@@ -12,6 +12,16 @@ After the release of EDGAR v50 dataset, generating global emission raster data o
 ## Manual:
 TODO: Usage of files...
 
+## 版本变化
+- 2022-8-26：v0.2
+    - 检查代码完整性
+    - 完成部分功能
+
+## change log
+- 2022-8-26：v0.2
+    - Codes review
+    - Finished some functions
+
 ## 类函数
 ## class functions
 ### EDGAR_sector 属性函数
