@@ -205,6 +205,14 @@ class EDGAR_spatial:
     #       所以，需要使用ListRaster把这需要工作的栅格筛选出来
     ## 问题：我生成的数据中包含了有背景0值和背景为空值null的两类栅格。这种情况下应该如何筛选？需要添加标识符参数？
     ##  或者是排除字符参数？
+    ## 分析：本人的命名方式下，一个完整的数据路径为“BA_EDGAR_ENE_2010”, 其中包含以下几个部分：
+    ##      1. BA：是否包含背景数据标签
+    ##      2. EDGAR: 数据来源
+    ##      3. ENE：部门
+    ##      4. 2010：年份
+    ##      现在的测试中，可以用wildcar="BA*ENE*"，这种粗糙的方式进行筛选。
+    ##      下一步，继续测试其他可用wildcard。
+    # 这个函数是不是写在list_working_raster里面？
 
     # 栅格图像背景值设置和查看属性/函数
     def set_background_value_flag(self, flag, flag_lable):
@@ -229,7 +237,7 @@ class EDGAR_spatial:
     # 类中提供了两个过滤标签的构造方法
     # 1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
     #    字符串为‘部门_年份’。
-    # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合Arcpy 中wild_card定义的标准进行设定。
+    # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
     def build_raster_fliter(self, background_lable, sector, year):
         self.__raster_wild_card = '%s*%s_%s' % (background_lable, sector, year)
 
