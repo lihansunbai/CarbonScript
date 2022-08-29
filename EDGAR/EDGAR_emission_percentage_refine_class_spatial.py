@@ -511,8 +511,8 @@ class EDGAR_spatial:
                 cursor.updateRow(row)
 
     def proccess_year(self,start_year,end_year):
-        for year in [start_year:end_year]:
-            self.sector_max()
+        # for year in [start_year:end_year]:
+        #     self.sector_max()
         pass
 
     def proccess_all(self):
