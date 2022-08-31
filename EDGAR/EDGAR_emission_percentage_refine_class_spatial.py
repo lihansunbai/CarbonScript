@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import turtle
 import arcpy
 import copy
 from arcpy import env
@@ -38,11 +39,15 @@ __metaclass__ = type
 
 
 class EDGAR_spatial:
+    ############################################################################
+    ############################################################################
     ## 构造函数部分
     ## 注意：这里需要两类构造函数：
     ##      1.默认构造函数：不需要传入任何参数。所有计算用到的参数均
     ##        为默认值。
     ##      2.带有数据位置的构造函数：需要传入一个
+    ############################################################################
+    ############################################################################
     def __init__(self, workspace, sector={}, colormap={}, st_year=1970, en_year=2018):
         # arcgis 工作空间初始化
         ## 必须明确一个arcgis工作空间！
@@ -95,8 +100,14 @@ class EDGAR_spatial:
             print 'Error! Proccessing year range out of data support! The year must containt in 1970 to 2018'
         else:
             self.start_year, self.end_year = st_year, en_year
+    
+    ############################################################################
+    ############################################################################
+    ## 默认参数
+    ## Default values
+    ############################################################################
+    ############################################################################
 
-    # Default values:
     ## Arcgis workspace
     __workspace = ''
 
@@ -158,7 +169,10 @@ class EDGAR_spatial:
     __background_lable = 'BA'
 
     # 数据库栅格数据筛选过滤标签
+    # 默认过滤标签
     __raster_wild_card = ''
+    # 过滤标签
+    raster_wild_card = ''
 
     # 特殊变量，用于保存所有部门排放的总和
     __raster_sum = ''
@@ -166,6 +180,11 @@ class EDGAR_spatial:
     # 保存部门排放的累加结果
     __raster_overlay = ''
 
+    ############################################################################
+    ############################################################################
+    ## 参数设定部分
+    ############################################################################
+    ############################################################################
     # 想要自定义或者修改处理的部门排放需要使用特殊的set函数
     def set_EDGAR_sector(self, sector):
         if type(sector) != dict:
@@ -199,21 +218,6 @@ class EDGAR_spatial:
 
     year_range = property(get_year_range, set_year_range)
 
-    # TODO
-    # 这里缺一个筛选需要进行运算的栅格数据的方法
-    # 原因：一个数据库中的文件命名可能只包含了'ENE_2010'类似字段。或者是混合了其他数据，比如结果生成的数据
-    #       所以，需要使用ListRaster把这需要工作的栅格筛选出来
-    ## 问题：我生成的数据中包含了有背景0值和背景为空值null的两类栅格。这种情况下应该如何筛选？需要添加标识符参数？
-    ##  或者是排除字符参数？
-    ## 分析：本人的命名方式下，一个完整的数据路径为“BA_EDGAR_ENE_2010”, 其中包含以下几个部分：
-    ##      1. BA：是否包含背景数据标签
-    ##      2. EDGAR: 数据来源
-    ##      3. ENE：部门
-    ##      4. 2010：年份
-    ##      现在的测试中，可以用wildcar="BA*ENE*"，这种粗糙的方式进行筛选。
-    ##      下一步，继续测试其他可用wildcard。
-    # 这个函数是不是写在list_working_raster里面？
-
     # 栅格图像背景值设置和查看属性/函数
     def set_background_value_flag(self, flag, flag_lable):
         # 检查flag参数并赋值
@@ -234,6 +238,19 @@ class EDGAR_spatial:
 
     background_value_flag = property(get_background_value_flag, set_background_value_flag)
 
+    # 这里缺一个筛选需要进行运算的栅格数据的方法
+    # 原因：一个数据库中的文件命名可能只包含了'ENE_2010'类似字段。或者是混合了其他数据，比如结果生成的数据
+    #       所以，需要使用ListRaster把这需要工作的栅格筛选出来
+    ## 问题：我生成的数据中包含了有背景0值和背景为空值null的两类栅格。这种情况下应该如何筛选？需要添加标识符参数？
+    ##  或者是排除字符参数？
+    ## 分析：本人的命名方式下，一个完整的数据路径为“BA_EDGAR_ENE_2010”, 其中包含以下几个部分：
+    ##      1. BA：是否包含背景数据标签
+    ##      2. EDGAR: 数据来源
+    ##      3. ENE：部门
+    ##      4. 2010：年份
+    ##      现在的测试中，可以用wildcar="BA*ENE*"，这种粗糙的方式进行筛选。
+    ##      下一步，继续测试其他可用wildcard。
+
     # 类中提供了两个过滤标签的构造方法
     # 1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
     #    字符串为‘部门_年份’。
@@ -249,8 +266,9 @@ class EDGAR_spatial:
     
     raster_fliter = property(get_raster_fliter, build_raster_fliter)
 
-    def list_working_rasters(self, background_flag, sector, year):
-        pass
+    def list_working_rasters(self, background_flag):
+        if background_flag == '':
+            print 'WARNING: '
 
     def generate_working_environment(self):
         pass
@@ -258,24 +276,11 @@ class EDGAR_spatial:
     def check_working_environment(self):
         pass
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    ############################################################################
+    ############################################################################
+    ## 实际数据计算相关函数/方法
+    ############################################################################
+    ############################################################################
     def raster_overlay_add(self, add_sector):
         # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
         arcpy.CheckOutExtension('Spatial')
