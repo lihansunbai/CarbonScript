@@ -170,9 +170,12 @@ class EDGAR_spatial:
 
     # 数据库栅格数据筛选过滤标签
     # 默认过滤标签
-    __raster_wild_card = ''
+    __default_raster_filter_str = 'EDGAR_ENE_2010'
     # 过滤标签
-    raster_wild_card = ''
+    raster_filter_str = __default_raster_filter_str
+
+    # 需要操作的栅格
+    working_rasters = ''
 
     # 特殊变量，用于保存所有部门排放的总和
     __raster_sum = ''
@@ -255,32 +258,56 @@ class EDGAR_spatial:
     # 1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
     #    字符串为‘部门_年份’。
     # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
-    def build_raster_fliter(self, background_lable, sector, year):
-        self.__raster_wild_card = '%s*%s_%s' % (background_lable, sector, year)
+    def build_raster_filter(self, background_lable, sector, year):
+        self.raster_filter_str = '%s*%s_%s' % (background_lable, sector, year)
 
-    def build_raster_fliter(self, custom_lable):
-        self.__raster_wild_card = custom_lable
+    def build_raster_filter(self, custom_lable):
+        if type(custom_lable) != str:
+            print "arcpy.ListRasters() need a string for 'wild_card'."
+            return
+        self.raster_filter_str = custom_lable
     
-    def get_raster_fliter(self):
-        print "Raster fliter 'wild_card' string is: %s" % self.__raster_wild_card
+    def get_raster_filter(self):
+        print "Raster filter 'wild_card' string is: %s" % self.raster_filter_str
     
-    raster_fliter = property(get_raster_fliter, build_raster_fliter)
+    raster_fliter = property(get_raster_filter, build_raster_filter)
 
-    def list_working_rasters(self, background_flag):
-        if background_flag == '':
-            print 'WARNING: '
+    ## TODO
+    ## 这个函数需要测试是否支持将wildcard设定为字符串数组。
+    def list_working_rasters(self, raster_fliter):
+        # 显示筛选列表警告:
+        # 如果为空值则警告可能会对所有栅格进行操作：
+        if raster_fliter == '':
+            print 'WARNING: No fliter! All rasters will be list!'
 
-    def generate_working_environment(self):
-        pass
+        list_raster_wild_card = raster_fliter
+        
+        self.working_rasters = arcpy.ListRasters(list_raster_wild_card)
 
-    def check_working_environment(self):
-        pass
 
     ############################################################################
     ############################################################################
     ## 实际数据计算相关函数/方法
     ############################################################################
     ############################################################################
+
+    # 生成arcgis需要的工作环境
+    def generate_working_environment(self):
+        pass
+
+    # 检查arcgis工作环境是否完整
+    def check_working_environment(self):
+        pass
+
+    # 生成需要计算的栅格列表
+    def prepare_raster(self):
+        self.list_working_rasters(self.raster_filter_str)
+        
+
+    ## 这个函数的是否有必要保留？若保留则是作为处理所有数据的快速方法。
+    ## 不保留则是由于需要构造一个默认的wildcard参数，增加了很多麻烦。
+    def default_listrasters(self, start_year, end_year):
+        pass
     def raster_overlay_add(self, add_sector):
         # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
         arcpy.CheckOutExtension('Spatial')
@@ -531,29 +558,7 @@ class EDGAR_spatial:
     def proccess_all(self):
         pass
 
-    def prepare_rasters(self):
-        pass
-
-    __default_raster_filter_str = 'EDGAR_'
-    raster_filter_str = __default_raster_filter_str
-
-    def set_raster_filter(self, filter_str):
-        if type(filter_str) != str:
-            print "arcpy.ListRasters() need a string for 'wild_card'."
-            return
-        
-        self.raster_filter_str = filter_str
-
-    def get_raster_filter(self):
-        print self.raster_filter_str
-
-    raster_filter = property(get_raster_filter,set_raster_filter)
-
-    def prepare_raster(self):
-        pass
-
-    def default_listrasters(self, start_year, end_year):
-        pass
+    
 
     def print_start_year(year):
         print '=============================='
