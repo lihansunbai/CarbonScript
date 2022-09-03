@@ -266,11 +266,18 @@ class EDGAR_spatial:
     #    字符串为‘部门_年份’。
     # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
     def build_raster_filter(self, background_label, sector, start_year, end_year):
-        for i in [start_year,end_year]:
+        # 检查年份设定是否为整数。（其他参数可以暂时忽略，因为默认格式下基本不会改变）
+        if start_year != int or end_year != int:
+            print 'Error: Year setting error!.'
+            return
+
+        # 逐年生成筛选条件语句，并保存到raster_filter_str中
+        for i in range(start_year,end_year+1):
             temp_raster_filter_str = '%s*%s_%s' % (background_label, sector, i)
             self.raster_filter_str.append(temp_raster_filter_str)
 
     def build_raster_filter(self, custom_label):
+        # 对于自定义筛选条件，只需要检查是否为字符串
         if type(custom_label) != str:
             print "arcpy.ListRasters() need a string for 'wild_card'."
             return
@@ -291,6 +298,7 @@ class EDGAR_spatial:
     def set_raster_filter(self, filter_label):
         # 判断是否为默认标签，是则调用默认的构造
         if filter_label['default'] == True:
+            # 这里使用python的**kwags特性，**操作符解包字典并提取字典的值。
             self.build_raster_filter(**filter_label['label'])
         # 判断是否为默认标签，否则直接赋值为标签数据
         elif filter_label['default'] == False:
@@ -307,14 +315,37 @@ class EDGAR_spatial:
     ## TODO
     ## 这个函数需要测试是否支持将wildcard设定为字符串数组。
     def list_working_rasters(self, raster_fliter):
-        # 显示筛选列表警告:
-        # 如果为空值则警告可能会对所有栅格进行操作：
-        if raster_fliter == '':
-            print 'WARNING: No fliter! All rasters will be list!'
+        list_raster_wild_card = []
 
-        list_raster_wild_card = raster_fliter
+        # 涉及arcpy操作，且所有数据都基于这步筛选，
+        # 所以需要进行大量的数据检查。
+        temp_type_check = type(raster_fliter)
         
-        self.working_rasters = arcpy.ListRasters(list_raster_wild_card)
+        # 传入列表情况
+        if temp_type_check == list:
+            # 如果list为空则直接显示筛选列表错误
+            if raster_fliter == []:
+                print 'Error: No fliter! Please check input raster filter!"
+                return
+            # 直接复制传入参数            
+            list_raster_wild_card = raster_fliter
+        # 传入单一字符串情况
+        elif temp_type_check == str:
+            # 显示筛选列表警告:
+            # 如果为空值则警告可能会对所有栅格进行操作：
+            if raster_fliter == '':
+                print 'WARNING: No fliter! All rasters will be list!'
+                break
+            # 将字符串添加到wildcard中
+            list_raster_wild_card.append(raster_fliter)
+        # 其他情况直接退出
+        else:
+            print 'Error: No fliter! Please check input raster filter!"
+            return
+        
+        # 著年份生成需要处理的数据列表
+        for i in list_raster_wild_card:
+            self.working_rasters.append(arcpy.ListRasters(list_raster_wild_card)
 
 
     ############################################################################
