@@ -112,8 +112,6 @@ class EDGAR_spatial:
     __workspace = ''
 
     ## EDGAR sector dicts & colormap dicts
-    EDGAR_sector = {}
-    EDGAR_sector_colormap = {}
     __default_EDGAR_sector = {'ENE': 'ENE',
                               'REF_TRF': 'REF_TRF',
                               'IND': 'IND',
@@ -134,7 +132,7 @@ class EDGAR_spatial:
                               'AGS': 'AGS',
                               'SWD_INC': 'SWD_INC',
                               'FFF': 'FFF'}
-
+    EDGAR_sector = {}
     __default_EDGAR_sector_colormap = {'ENE': 1,
                                        'REF_TRF': 2,
                                        'IND': 3,
@@ -155,6 +153,7 @@ class EDGAR_spatial:
                                        'AGS': 18,
                                        'SWD_INC': 19,
                                        'FFF': 20}
+    EDGAR_sector_colormap = {}
 
     # 默认时间范围
     __default_start_year = 1970
@@ -166,12 +165,20 @@ class EDGAR_spatial:
 
     # 栅格数据背景零值标识和区分标签
     __background_flag = True
-    __background_lable = 'BA'
+    __background_label = 'BA'
+
+    # 默认过滤标签
+    __default_filter_label = {'default': True, 'label': {'background_label': __background_label,
+                                                         'sector': '', 
+                                                         'start_year': __default_start_year, 
+                                                         'end_year': __default_end_year}}
+    # 过滤标签
+    filter_label = __default_filter_label
 
     # 数据库栅格数据筛选过滤标签
-    # 默认过滤标签
-    __default_raster_filter_str = 'EDGAR_ENE_2010'
-    # 过滤标签
+    # 默认数据库过滤标签
+    __default_raster_filter_str = []
+    # 数据库过滤标签
     raster_filter_str = __default_raster_filter_str
 
     # 需要操作的栅格
@@ -222,22 +229,22 @@ class EDGAR_spatial:
     year_range = property(get_year_range, set_year_range)
 
     # 栅格图像背景值设置和查看属性/函数
-    def set_background_value_flag(self, flag, flag_lable):
+    def set_background_value_flag(self, flag, flag_label):
         # 检查flag参数并赋值
         try:
             self.__background_flag = bool(flag)
         except:
             print 'Background value flag set failed! Please check the flag argument input.'
 
-        # 检查flag_lable参数并
-        if type(flag_lable) == str:
-            self.__background_lable = flag_lable
+        # 检查flag_label参数并
+        if type(flag_label) == str:
+            self.__background_label = flag_label
         else:
-            print 'Background value flag lable set failed! Please check the flag argument input.'
+            print 'Background value flag label set failed! Please check the flag argument input.'
 
     def get_background_value_flag(self):
         print 'Background value enabled: %s' % self.__background_flag
-        print 'Background lable: %s' % self.__background_lable
+        print 'Background label: %s' % self.__background_label
 
     background_value_flag = property(get_background_value_flag, set_background_value_flag)
 
@@ -258,19 +265,44 @@ class EDGAR_spatial:
     # 1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
     #    字符串为‘部门_年份’。
     # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
-    def build_raster_filter(self, background_lable, sector, year):
-        self.raster_filter_str = '%s*%s_%s' % (background_lable, sector, year)
+    def build_raster_filter(self, background_label, sector, start_year, end_year):
+        for i in [start_year,end_year]:
+            temp_raster_filter_str = '%s*%s_%s' % (background_label, sector, i)
+            self.raster_filter_str.append(temp_raster_filter_str)
 
-    def build_raster_filter(self, custom_lable):
-        if type(custom_lable) != str:
+    def build_raster_filter(self, custom_label):
+        if type(custom_label) != str:
             print "arcpy.ListRasters() need a string for 'wild_card'."
             return
-        self.raster_filter_str = custom_lable
+        self.raster_filter_str = custom_label
+    
+    ## 注意：这里需要为set函数传入一个filter_label字典
+    ##      filter_label字典组的构造如下：
+    ##      'default':接受一个符合布尔型数据的值，其中True表示使用
+    ##              默认方式构造筛选条件；
+    ##      'label':该参数中应该保存需要的筛选条件语句。
+    ##              注意！！！：
+    ##              如果使用默认方式构造筛选条件，则label参数
+    ##              应该包含由以下标签构成的字典：
+    ##              'background_label'：数据是否为包括空值数据；
+    ##              'sector'：部门标签
+    ##              'start_year'：起始年份
+    ##              'end_year'：结束年份
+    def set_raster_filter(self, filter_label):
+        # 判断是否为默认标签，是则调用默认的构造
+        if filter_label['default'] == True:
+            self.build_raster_filter(**filter_label['label'])
+        # 判断是否为默认标签，否则直接赋值为标签数据
+        elif filter_label['default'] == False:
+            self.build_raster_filter(filter_label['label'])
+        else:
+            print 'Error: raster filter arguments error.'
+
     
     def get_raster_filter(self):
         print "Raster filter 'wild_card' string is: %s" % self.raster_filter_str
     
-    raster_fliter = property(get_raster_filter, build_raster_filter)
+    raster_fliter = property(get_raster_filter, set_raster_filter)
 
     ## TODO
     ## 这个函数需要测试是否支持将wildcard设定为字符串数组。
