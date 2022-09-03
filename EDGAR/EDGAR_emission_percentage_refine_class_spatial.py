@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import turtle
 import arcpy
 import copy
 from arcpy import env
@@ -24,10 +23,7 @@ __metaclass__ = type
 #   3. 所有涉及数据的操作都需要采用绝对路径，防止arcpy出现识别数据错误。
 #   4. 多年份处理函数
 #   5. 计算字段的构造方法
-#   6. 利用'wild_card'参数筛选需要计算的栅格
-#       a) 写一个自己的列表方法，可以采取正则的方式。
-#       b) 要求其他使用者提供需要计算的栅格列表。方式自选。
-#       c) 检查列表的合规性，包括时间完整性和部门完整性。
+#   6. 正式开始写数据运算部分内容
 # ======================================================================
 # ======================================================================
 
@@ -248,19 +244,6 @@ class EDGAR_spatial:
 
     background_value_flag = property(get_background_value_flag, set_background_value_flag)
 
-    # 这里缺一个筛选需要进行运算的栅格数据的方法
-    # 原因：一个数据库中的文件命名可能只包含了'ENE_2010'类似字段。或者是混合了其他数据，比如结果生成的数据
-    #       所以，需要使用ListRaster把这需要工作的栅格筛选出来
-    ## 问题：我生成的数据中包含了有背景0值和背景为空值null的两类栅格。这种情况下应该如何筛选？需要添加标识符参数？
-    ##  或者是排除字符参数？
-    ## 分析：本人的命名方式下，一个完整的数据路径为“BA_EDGAR_ENE_2010”, 其中包含以下几个部分：
-    ##      1. BA：是否包含背景数据标签
-    ##      2. EDGAR: 数据来源
-    ##      3. ENE：部门
-    ##      4. 2010：年份
-    ##      现在的测试中，可以用wildcar="BA*ENE*"，这种粗糙的方式进行筛选。
-    ##      下一步，继续测试其他可用wildcard。
-
     # 类中提供了两个过滤标签的构造方法
     # 1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
     #    字符串为‘部门_年份’。
@@ -305,15 +288,13 @@ class EDGAR_spatial:
             self.build_raster_filter(filter_label['label'])
         else:
             print 'Error: raster filter arguments error.'
-
     
     def get_raster_filter(self):
         print "Raster filter 'wild_card' string is: %s" % self.raster_filter_str
     
     raster_fliter = property(get_raster_filter, set_raster_filter)
 
-    ## TODO
-    ## 这个函数需要测试是否支持将wildcard设定为字符串数组。
+    # 生成需要处理数据列表
     def list_working_rasters(self, raster_fliter):
         list_raster_wild_card = []
 
@@ -345,7 +326,7 @@ class EDGAR_spatial:
         
         # 著年份生成需要处理的数据列表
         for i in list_raster_wild_card:
-            self.working_rasters.append(arcpy.ListRasters(list_raster_wild_card)
+            self.working_rasters.append(arcpy.ListRasters(list_raster_wild_card))
 
 
     ############################################################################
@@ -360,17 +341,14 @@ class EDGAR_spatial:
 
     # 检查arcgis工作环境是否完整
     def check_working_environment(self):
-        pass
+        # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
+        arcpy.CheckOutExtension('Spatial')
 
     # 生成需要计算的栅格列表
     def prepare_raster(self):
-        self.list_working_rasters(self.raster_filter_str)
-        
+        self.list_working_rasters(self.filter_label)
 
-    ## 这个函数的是否有必要保留？若保留则是作为处理所有数据的快速方法。
-    ## 不保留则是由于需要构造一个默认的wildcard参数，增加了很多麻烦。
-    def default_listrasters(self, start_year, end_year):
-        pass
+    # 栅格叠加
     def raster_overlay_add(self, add_sector):
         # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
         arcpy.CheckOutExtension('Spatial')
@@ -379,7 +357,8 @@ class EDGAR_spatial:
         # self.__raster_overlay = Raster()
 
         # 临时变量，防止突发崩溃
-        temp_raster = Raster()
+        ## 这里需要一个空白的背景栅格
+        temp_raster = arcpy.Raster()
 
         # 叠加栅格
         ## 这里调用了 tqdm 库进行进度显示
@@ -649,5 +628,6 @@ if __name__ == '__main__':
     ## test contents
     aaa = EDGAR_spatial('D:\\workplace\\DATA\\geodatabase\\test\\EDGAR_test.gdb',st_year=2015,en_year=2015)
     calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
+    aaa.prepare_raster()
     aaa.sector_max('categories_2015',calculate_fields)
     pass
