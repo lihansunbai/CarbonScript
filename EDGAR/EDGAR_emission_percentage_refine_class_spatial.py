@@ -172,7 +172,7 @@ class EDGAR_spatial:
 
     # 默认过滤标签
     __default_filter_label = {'default': True, 'label': {'background_label': __background_label,
-                                                         'sector': '', 
+                                                         'sector': [], 
                                                          'start_year': __default_start_year, 
                                                          'end_year': __default_end_year}}
     # 过滤标签
