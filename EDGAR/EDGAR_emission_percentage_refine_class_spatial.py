@@ -316,12 +316,11 @@ class EDGAR_spatial:
             # 如果为空值则警告可能会对所有栅格进行操作：
             if raster_fliter == '':
                 print 'WARNING: No fliter! All rasters will be list!'
-                break
             # 将字符串添加到wildcard中
             list_raster_wild_card.append(raster_fliter)
         # 其他情况直接退出
         else:
-            print 'Error: No fliter! Please check input raster filter!"
+            print 'Error: No fliter! Please check input raster filter!'
             return
         
         # 著年份生成需要处理的数据列表
