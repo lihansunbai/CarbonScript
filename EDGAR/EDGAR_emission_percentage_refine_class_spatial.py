@@ -641,8 +641,8 @@ class EDGAR_spatial:
 # ======================================================================
 if __name__ == '__main__':
     ## test contents
-    aaa = EDGAR_spatial('D:\\workplace\\DATA\\geodatabase\\test\\EDGAR_test.gdb',st_year=2015,en_year=2015)
+    # aaa = EDGAR_spatial('E:\\Documents\\CarbonProject\\geodatabase\\EDGAR.gdb',st_year=2015,en_year=2015)
     calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
     aaa.prepare_raster()
-    aaa.sector_max('categories_2015',calculate_fields)
+    # aaa.sector_max('categories_2015',calculate_fields)
     pass
