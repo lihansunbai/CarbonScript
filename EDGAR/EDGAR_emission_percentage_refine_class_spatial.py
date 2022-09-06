@@ -98,13 +98,11 @@ class EDGAR_spatial:
             self.start_year, self.end_year = st_year, en_year
 
         # raster_filter 参数初始化部分
-        ## 这里要将初始化传入的部门参数“sector”和起始、终止时间传入
+        ## 这里要将初始化传入的部门参数字典“sector”进行列表化并赋值
+        ## 和起始、终止时间传入
         self.filter_label['label']['start_year'] = st_year
         self.filter_label['label']['end_year'] = en_year
-        temp_filter_label_sector = []
-        for sector_key in sector:
-            temp_filter_label_sector.append(sector_key)
-        self.filter_label['label']['sector'] = temp_filter_label_sector
+        self.filter_label['label']['sector'] = list(sector.values())
     
     ############################################################################
     ############################################################################
