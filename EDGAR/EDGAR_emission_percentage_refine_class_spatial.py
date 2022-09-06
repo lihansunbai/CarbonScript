@@ -642,7 +642,11 @@ class EDGAR_spatial:
 if __name__ == '__main__':
     ## test contents
     # aaa = EDGAR_spatial('E:\\Documents\\CarbonProject\\geodatabase\\EDGAR.gdb',st_year=2015,en_year=2015)
-    calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
-    aaa.prepare_raster()
+    # calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
+    # aaa.prepare_raster()
     # aaa.sector_max('categories_2015',calculate_fields)
-    pass
+    
+    test_es = {'ENE':'ENE','IND':'IND','REF_TRF':'REF_TRF','TNR_Aviation_CDS':'TNR_Aviation_CDS'}
+
+    test_esc={'ENE':1,'IND':2,'REF_TRF':3,'TNR_Aviation_CDS':4}
+    aaa = EDGAR_spatial('D:\\workplace\\DATA\\geodatabase\\test\\EDGAR_test.gdb',sector=test_es,colormap=test_esc,st_year=2010,en_year=2014)
