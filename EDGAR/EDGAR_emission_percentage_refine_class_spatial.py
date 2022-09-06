@@ -255,7 +255,7 @@ class EDGAR_spatial:
     # 1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
     #    字符串为‘部门_年份’。
     # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
-    def build_raster_filter(self, background_label, sector, start_year, end_year):
+    def build_raster_filter_default(self, background_label, sector, start_year, end_year):
         # 检查年份设定是否为整数。（其他参数可以暂时忽略，因为默认格式下基本不会改变）
         if start_year != int or end_year != int:
             print 'Error: Year setting error!.'
@@ -274,7 +274,7 @@ class EDGAR_spatial:
                 background_label, temp_sector_year_tupe_list[i][0], temp_sector_year_tupe_list[i][1])
             self.raster_filter_wildcard.append(temp_raster_filter_wildcard),
 
-    def build_raster_filter(self, custom_label):
+    def build_raster_filter_custom(self, custom_label):
         # 对于自定义筛选条件，只需要检查是否为字符串
         if type(custom_label) != str:
             print "arcpy.ListRasters() need a string for 'wild_card'."
@@ -297,10 +297,10 @@ class EDGAR_spatial:
         # 判断是否为默认标签，是则调用默认的构造
         if filter_label['default'] == True:
             # 这里使用python的**kwags特性，**操作符解包字典并提取字典的值。
-            self.build_raster_filter(**filter_label['label'])
+            self.build_raster_filter_default(**filter_label['label'])
         # 判断是否为默认标签，否则直接赋值为标签数据
         elif filter_label['default'] == False:
-            self.build_raster_filter(filter_label['label'])
+            self.build_raster_filter_costum(filter_label['label'])
         else:
             print 'Error: raster filter arguments error.'
     
