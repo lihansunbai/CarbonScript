@@ -306,7 +306,7 @@ class EDGAR_spatial:
         if temp_type_check == list:
             # 如果list为空则直接显示筛选列表错误
             if raster_fliter == []:
-                print 'Error: No fliter! Please check input raster filter!"
+                print 'Error: No fliter! Please check input raster filter!'
                 return
             # 直接复制传入参数            
             list_raster_wild_card = raster_fliter
