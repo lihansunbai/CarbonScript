@@ -360,7 +360,7 @@ class EDGAR_spatial:
 
     # 生成需要计算的栅格列表
     def prepare_raster(self):
-        self.raster_filter(self.filter_label)
+        self.raster_filter = self.filter_label
         self.list_working_rasters(self.raster_filter_wildcard)
 
     # 栅格叠加
