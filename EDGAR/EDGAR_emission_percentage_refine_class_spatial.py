@@ -96,6 +96,12 @@ class EDGAR_spatial:
             print 'Error! Proccessing year range out of data support! The year must containt in 1970 to 2018'
         else:
             self.start_year, self.end_year = st_year, en_year
+
+        # raster_filter 参数初始化部分
+        ## 这里要将初始化传入的部门参数“sector”和起始、终止时间传入
+        self.filter_label['label']['sector'] = sector
+        self.filter_label['label']['start_year'] = st_year
+        self.filter_label['label']['end_year'] = en_year
     
     ############################################################################
     ############################################################################
