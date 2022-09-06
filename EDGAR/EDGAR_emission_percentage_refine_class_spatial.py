@@ -99,9 +99,12 @@ class EDGAR_spatial:
 
         # raster_filter 参数初始化部分
         ## 这里要将初始化传入的部门参数“sector”和起始、终止时间传入
-        self.filter_label['label']['sector'] = sector
         self.filter_label['label']['start_year'] = st_year
         self.filter_label['label']['end_year'] = en_year
+        temp_filter_label_sector = []
+        for sector_key in sector:
+            temp_filter_label_sector.append(sector_key)
+        self.filter_label['label']['sector'] = temp_filter_label_sector
     
     ############################################################################
     ############################################################################
@@ -179,9 +182,9 @@ class EDGAR_spatial:
 
     # 数据库栅格数据筛选过滤标签
     # 默认数据库过滤标签
-    __default_raster_filter_str = []
+    __default_raster_filter_wildcard = []
     # 数据库过滤标签
-    raster_filter_str = __default_raster_filter_str
+    raster_filter_wildcard = __default_raster_filter_wildcard
 
     # 需要操作的栅格
     working_rasters = ''
@@ -260,17 +263,17 @@ class EDGAR_spatial:
             print 'Error: Year setting error!.'
             return
 
-        # 逐年生成筛选条件语句，并保存到raster_filter_str中
+        # 逐年生成筛选条件语句，并保存到raster_filter_wildcard中
         for i in range(start_year,end_year+1):
-            temp_raster_filter_str = '%s*%s_%s' % (background_label, sector, i)
-            self.raster_filter_str.append(temp_raster_filter_str)
+            temp_raster_filter_wildcard = '%s*%s_%s' % (background_label, sector, i)
+            self.raster_filter_wildcard.append(temp_raster_filter_wildcard)
 
     def build_raster_filter(self, custom_label):
         # 对于自定义筛选条件，只需要检查是否为字符串
         if type(custom_label) != str:
             print "arcpy.ListRasters() need a string for 'wild_card'."
             return
-        self.raster_filter_str = custom_label
+        self.raster_filter_wildcard = custom_label
     
     ## 注意：这里需要为set函数传入一个filter_label字典
     ##      filter_label字典组的构造如下：
@@ -281,7 +284,7 @@ class EDGAR_spatial:
     ##              如果使用默认方式构造筛选条件，则label参数
     ##              应该包含由以下标签构成的字典：
     ##              'background_label'：数据是否为包括空值数据；
-    ##              'sector'：部门标签
+    ##              'sector'：部门标签列表list
     ##              'start_year'：起始年份
     ##              'end_year'：结束年份
     def set_raster_filter(self, filter_label):
@@ -296,34 +299,34 @@ class EDGAR_spatial:
             print 'Error: raster filter arguments error.'
     
     def get_raster_filter(self):
-        print "Raster filter 'wild_card' string is: %s" % self.raster_filter_str
+        return self.raster_filter_wildcard
     
-    raster_fliter = property(get_raster_filter, set_raster_filter)
+    raster_filter = property(get_raster_filter, set_raster_filter)
 
     # 生成需要处理数据列表
-    def list_working_rasters(self, raster_fliter):
+    def list_working_rasters(self, raster_filter):
         list_raster_wild_card = []
 
         # 涉及arcpy操作，且所有数据都基于这步筛选，
         # 所以需要进行大量的数据检查。
-        temp_type_check = type(raster_fliter)
+        temp_type_check = type(raster_filter)
         
         # 传入列表情况
         if temp_type_check == list:
             # 如果list为空则直接显示筛选列表错误
-            if raster_fliter == []:
+            if raster_filter == []:
                 print 'Error: No fliter! Please check input raster filter!'
                 return
             # 直接复制传入参数            
-            list_raster_wild_card = raster_fliter
+            list_raster_wild_card = raster_filter
         # 传入单一字符串情况
         elif temp_type_check == str:
             # 显示筛选列表警告:
             # 如果为空值则警告可能会对所有栅格进行操作：
-            if raster_fliter == '':
+            if raster_filter == '':
                 print 'WARNING: No fliter! All rasters will be list!'
             # 将字符串添加到wildcard中
-            list_raster_wild_card.append(raster_fliter)
+            list_raster_wild_card.append(raster_filter)
         # 其他情况直接退出
         else:
             print 'Error: No fliter! Please check input raster filter!'
