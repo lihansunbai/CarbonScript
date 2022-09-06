@@ -257,7 +257,7 @@ class EDGAR_spatial:
     # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
     def build_raster_filter_default(self, background_label, sector, start_year, end_year):
         # 检查年份设定是否为整数。（其他参数可以暂时忽略，因为默认格式下基本不会改变）
-        if (start_year != int) or (end_year != int):
+        if (type(start_year) != int) or (type(end_year) != int):
             print 'Error: Year setting error!'
             return
         
