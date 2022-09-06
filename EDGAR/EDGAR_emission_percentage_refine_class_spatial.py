@@ -260,11 +260,19 @@ class EDGAR_spatial:
         if start_year != int or end_year != int:
             print 'Error: Year setting error!.'
             return
+        
+        temp_time_range = range(end_year,start_year+1)
+        ## 这里使用了zip()函数将部分和年份一一配对。
+        ## zip()方法的思路是将两个列表统一到等长度，然后意义对应生成元组
+        ## 注意！！！
+        ##  这里生成的是元组，该元组中包含[0]号元素为部门，[1]号元素为年份
+        temp_sector_year_tupe_list = zip(sector*len(temp_time_range),temp_time_range*len(sector))
 
-        # 逐年生成筛选条件语句，并保存到raster_filter_wildcard中
-        for i in range(start_year,end_year+1):
-            temp_raster_filter_wildcard = '%s*%s_%s' % (background_label, sector, i)
-            self.raster_filter_wildcard.append(temp_raster_filter_wildcard)
+        # 逐年逐部门生成筛选条件语句，并保存到raster_filter_wildcard中
+        for i in temp_sector_year_tupe_list:
+            temp_raster_filter_wildcard = '%s*%s_%s' % (
+                background_label, temp_sector_year_tupe_list[i][0], temp_sector_year_tupe_list[i][1])
+            self.raster_filter_wildcard.append(temp_raster_filter_wildcard),
 
     def build_raster_filter(self, custom_label):
         # 对于自定义筛选条件，只需要检查是否为字符串
@@ -302,37 +310,37 @@ class EDGAR_spatial:
     raster_filter = property(get_raster_filter, set_raster_filter)
 
     # 生成需要处理数据列表
-    def list_working_rasters(self, raster_filter):
-        list_raster_wild_card = []
+    def list_working_rasters(self, raster_filter_wildcard):
+        list_raster_wildcard = []
 
         # 涉及arcpy操作，且所有数据都基于这步筛选，
         # 所以需要进行大量的数据检查。
-        temp_type_check = type(raster_filter)
+        temp_type_check = type(raster_filter_wildcard)
         
         # 传入列表情况
         if temp_type_check == list:
             # 如果list为空则直接显示筛选列表错误
-            if raster_filter == []:
+            if raster_filter_wildcard == []:
                 print 'Error: No fliter! Please check input raster filter!'
                 return
             # 直接复制传入参数            
-            list_raster_wild_card = raster_filter
+            list_raster_wildcard = raster_filter_wildcard
         # 传入单一字符串情况
         elif temp_type_check == str:
             # 显示筛选列表警告:
             # 如果为空值则警告可能会对所有栅格进行操作：
-            if raster_filter == '':
+            if raster_filter_wildcard == '':
                 print 'WARNING: No fliter! All rasters will be list!'
             # 将字符串添加到wildcard中
-            list_raster_wild_card.append(raster_filter)
+            list_raster_wildcard.append(raster_filter_wildcard)
         # 其他情况直接退出
         else:
             print 'Error: No fliter! Please check input raster filter!'
             return
         
-        # 著年份生成需要处理的数据列表
-        for i in list_raster_wild_card:
-            self.working_rasters.append(arcpy.ListRasters(list_raster_wild_card))
+        # 逐年份生成需要处理的数据列表
+        for i in list_raster_wildcard:
+            self.working_rasters.append(arcpy.ListRasters(list_raster_wildcard))
 
 
     ############################################################################
@@ -352,7 +360,8 @@ class EDGAR_spatial:
 
     # 生成需要计算的栅格列表
     def prepare_raster(self):
-        self.list_working_rasters(self.filter_label)
+        self.raster_filter(self.filter_label)
+        self.list_working_rasters(self.raster_filter_wildcard)
 
     # 栅格叠加
     def raster_overlay_add(self, add_sector):
