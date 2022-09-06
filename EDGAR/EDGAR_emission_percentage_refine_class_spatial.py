@@ -23,10 +23,7 @@ __metaclass__ = type
 #   3. 所有涉及数据的操作都需要采用绝对路径，防止arcpy出现识别数据错误。
 #   4. 多年份处理函数
 #   5. 计算字段的构造方法
-#   6. 利用'wild_card'参数筛选需要计算的栅格
-#       a) 写一个自己的列表方法，可以采取正则的方式。
-#       b) 要求其他使用者提供需要计算的栅格列表。方式自选。
-#       c) 检查列表的合规性，包括时间完整性和部门完整性。
+#   6. 正式开始写数据运算部分内容
 # ======================================================================
 # ======================================================================
 
@@ -38,11 +35,15 @@ __metaclass__ = type
 
 
 class EDGAR_spatial:
+    ############################################################################
+    ############################################################################
     ## 构造函数部分
     ## 注意：这里需要两类构造函数：
     ##      1.默认构造函数：不需要传入任何参数。所有计算用到的参数均
     ##        为默认值。
     ##      2.带有数据位置的构造函数：需要传入一个
+    ############################################################################
+    ############################################################################
     def __init__(self, workspace, sector={}, colormap={}, st_year=1970, en_year=2018):
         # arcgis 工作空间初始化
         ## 必须明确一个arcgis工作空间！
@@ -95,14 +96,18 @@ class EDGAR_spatial:
             print 'Error! Proccessing year range out of data support! The year must containt in 1970 to 2018'
         else:
             self.start_year, self.end_year = st_year, en_year
+    
+    ############################################################################
+    ############################################################################
+    ## 默认参数
+    ## Default values
+    ############################################################################
+    ############################################################################
 
-    # Default values:
     ## Arcgis workspace
     __workspace = ''
 
     ## EDGAR sector dicts & colormap dicts
-    EDGAR_sector = {}
-    EDGAR_sector_colormap = {}
     __default_EDGAR_sector = {'ENE': 'ENE',
                               'REF_TRF': 'REF_TRF',
                               'IND': 'IND',
@@ -123,7 +128,7 @@ class EDGAR_spatial:
                               'AGS': 'AGS',
                               'SWD_INC': 'SWD_INC',
                               'FFF': 'FFF'}
-
+    EDGAR_sector = {}
     __default_EDGAR_sector_colormap = {'ENE': 1,
                                        'REF_TRF': 2,
                                        'IND': 3,
@@ -144,6 +149,7 @@ class EDGAR_spatial:
                                        'AGS': 18,
                                        'SWD_INC': 19,
                                        'FFF': 20}
+    EDGAR_sector_colormap = {}
 
     # 默认时间范围
     __default_start_year = 1970
@@ -155,10 +161,24 @@ class EDGAR_spatial:
 
     # 栅格数据背景零值标识和区分标签
     __background_flag = True
-    __background_lable = 'BA'
+    __background_label = 'BA'
+
+    # 默认过滤标签
+    __default_filter_label = {'default': True, 'label': {'background_label': __background_label,
+                                                         'sector': '', 
+                                                         'start_year': __default_start_year, 
+                                                         'end_year': __default_end_year}}
+    # 过滤标签
+    filter_label = __default_filter_label
 
     # 数据库栅格数据筛选过滤标签
-    __raster_wild_card = ''
+    # 默认数据库过滤标签
+    __default_raster_filter_str = []
+    # 数据库过滤标签
+    raster_filter_str = __default_raster_filter_str
+
+    # 需要操作的栅格
+    working_rasters = ''
 
     # 特殊变量，用于保存所有部门排放的总和
     __raster_sum = ''
@@ -166,6 +186,11 @@ class EDGAR_spatial:
     # 保存部门排放的累加结果
     __raster_overlay = ''
 
+    ############################################################################
+    ############################################################################
+    ## 参数设定部分
+    ############################################################################
+    ############################################################################
     # 想要自定义或者修改处理的部门排放需要使用特殊的set函数
     def set_EDGAR_sector(self, sector):
         if type(sector) != dict:
@@ -199,75 +224,131 @@ class EDGAR_spatial:
 
     year_range = property(get_year_range, set_year_range)
 
-    # TODO
-    # 这里缺一个筛选需要进行运算的栅格数据的方法
-    # 原因：一个数据库中的文件命名可能只包含了'ENE_2010'类似字段。或者是混合了其他数据，比如结果生成的数据
-    #       所以，需要使用ListRaster把这需要工作的栅格筛选出来
-    ## 问题：我生成的数据中包含了有背景0值和背景为空值null的两类栅格。这种情况下应该如何筛选？需要添加标识符参数？
-    ##  或者是排除字符参数？
-
     # 栅格图像背景值设置和查看属性/函数
-    def set_background_value_flag(self, flag, flag_lable):
+    def set_background_value_flag(self, flag, flag_label):
         # 检查flag参数并赋值
         try:
             self.__background_flag = bool(flag)
         except:
             print 'Background value flag set failed! Please check the flag argument input.'
 
-        # 检查flag_lable参数并
-        if type(flag_lable) == str:
-            self.__background_lable = flag_lable
+        # 检查flag_label参数并
+        if type(flag_label) == str:
+            self.__background_label = flag_label
         else:
-            print 'Background value flag lable set failed! Please check the flag argument input.'
+            print 'Background value flag label set failed! Please check the flag argument input.'
 
     def get_background_value_flag(self):
         print 'Background value enabled: %s' % self.__background_flag
-        print 'Background lable: %s' % self.__background_lable
+        print 'Background label: %s' % self.__background_label
 
     background_value_flag = property(get_background_value_flag, set_background_value_flag)
 
     # 类中提供了两个过滤标签的构造方法
     # 1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
     #    字符串为‘部门_年份’。
-    # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合Arcpy 中wild_card定义的标准进行设定。
-    def build_raster_fliter(self, background_lable, sector, year):
-        self.__raster_wild_card = '%s*%s_%s' % (background_lable, sector, year)
+    # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
+    def build_raster_filter(self, background_label, sector, start_year, end_year):
+        # 检查年份设定是否为整数。（其他参数可以暂时忽略，因为默认格式下基本不会改变）
+        if start_year != int or end_year != int:
+            print 'Error: Year setting error!.'
+            return
 
-    def build_raster_fliter(self, custom_lable):
-        self.__raster_wild_card = custom_lable
+        # 逐年生成筛选条件语句，并保存到raster_filter_str中
+        for i in range(start_year,end_year+1):
+            temp_raster_filter_str = '%s*%s_%s' % (background_label, sector, i)
+            self.raster_filter_str.append(temp_raster_filter_str)
+
+    def build_raster_filter(self, custom_label):
+        # 对于自定义筛选条件，只需要检查是否为字符串
+        if type(custom_label) != str:
+            print "arcpy.ListRasters() need a string for 'wild_card'."
+            return
+        self.raster_filter_str = custom_label
     
-    def get_raster_fliter(self):
-        print "Raster fliter 'wild_card' string is: %s" % self.__raster_wild_card
+    ## 注意：这里需要为set函数传入一个filter_label字典
+    ##      filter_label字典组的构造如下：
+    ##      'default':接受一个符合布尔型数据的值，其中True表示使用
+    ##              默认方式构造筛选条件；
+    ##      'label':该参数中应该保存需要的筛选条件语句。
+    ##              注意！！！：
+    ##              如果使用默认方式构造筛选条件，则label参数
+    ##              应该包含由以下标签构成的字典：
+    ##              'background_label'：数据是否为包括空值数据；
+    ##              'sector'：部门标签
+    ##              'start_year'：起始年份
+    ##              'end_year'：结束年份
+    def set_raster_filter(self, filter_label):
+        # 判断是否为默认标签，是则调用默认的构造
+        if filter_label['default'] == True:
+            # 这里使用python的**kwags特性，**操作符解包字典并提取字典的值。
+            self.build_raster_filter(**filter_label['label'])
+        # 判断是否为默认标签，否则直接赋值为标签数据
+        elif filter_label['default'] == False:
+            self.build_raster_filter(filter_label['label'])
+        else:
+            print 'Error: raster filter arguments error.'
     
-    raster_fliter = property(get_raster_fliter, build_raster_fliter)
+    def get_raster_filter(self):
+        print "Raster filter 'wild_card' string is: %s" % self.raster_filter_str
+    
+    raster_fliter = property(get_raster_filter, set_raster_filter)
 
-    def list_working_rasters(self, background_flag, sector, year):
-        pass
+    # 生成需要处理数据列表
+    def list_working_rasters(self, raster_fliter):
+        list_raster_wild_card = []
 
+        # 涉及arcpy操作，且所有数据都基于这步筛选，
+        # 所以需要进行大量的数据检查。
+        temp_type_check = type(raster_fliter)
+        
+        # 传入列表情况
+        if temp_type_check == list:
+            # 如果list为空则直接显示筛选列表错误
+            if raster_fliter == []:
+                print 'Error: No fliter! Please check input raster filter!"
+                return
+            # 直接复制传入参数            
+            list_raster_wild_card = raster_fliter
+        # 传入单一字符串情况
+        elif temp_type_check == str:
+            # 显示筛选列表警告:
+            # 如果为空值则警告可能会对所有栅格进行操作：
+            if raster_fliter == '':
+                print 'WARNING: No fliter! All rasters will be list!'
+                break
+            # 将字符串添加到wildcard中
+            list_raster_wild_card.append(raster_fliter)
+        # 其他情况直接退出
+        else:
+            print 'Error: No fliter! Please check input raster filter!"
+            return
+        
+        # 著年份生成需要处理的数据列表
+        for i in list_raster_wild_card:
+            self.working_rasters.append(arcpy.ListRasters(list_raster_wild_card))
+
+
+    ############################################################################
+    ############################################################################
+    ## 实际数据计算相关函数/方法
+    ############################################################################
+    ############################################################################
+
+    # 生成arcgis需要的工作环境
     def generate_working_environment(self):
         pass
 
+    # 检查arcgis工作环境是否完整
     def check_working_environment(self):
-        pass
+        # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
+        arcpy.CheckOutExtension('Spatial')
 
+    # 生成需要计算的栅格列表
+    def prepare_raster(self):
+        self.list_working_rasters(self.filter_label)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # 栅格叠加
     def raster_overlay_add(self, add_sector):
         # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
         arcpy.CheckOutExtension('Spatial')
@@ -276,7 +357,8 @@ class EDGAR_spatial:
         # self.__raster_overlay = Raster()
 
         # 临时变量，防止突发崩溃
-        temp_raster = Raster()
+        ## 这里需要一个空白的背景栅格
+        temp_raster = arcpy.Raster()
 
         # 叠加栅格
         ## 这里调用了 tqdm 库进行进度显示
@@ -518,29 +600,7 @@ class EDGAR_spatial:
     def proccess_all(self):
         pass
 
-    def prepare_rasters(self):
-        pass
-
-    __default_raster_filter_str = 'EDGAR_'
-    raster_filter_str = __default_raster_filter_str
-
-    def set_raster_filter(self, filter_str):
-        if type(filter_str) != str:
-            print "arcpy.ListRasters() need a string for 'wild_card'."
-            return
-        
-        self.raster_filter_str = filter_str
-
-    def get_raster_filter(self):
-        print self.raster_filter_str
-
-    raster_filter = property(get_raster_filter,set_raster_filter)
-
-    def prepare_raster(self):
-        pass
-
-    def default_listrasters(self, start_year, end_year):
-        pass
+    
 
     def print_start_year(year):
         print '=============================='
@@ -568,5 +628,6 @@ if __name__ == '__main__':
     ## test contents
     aaa = EDGAR_spatial('D:\\workplace\\DATA\\geodatabase\\test\\EDGAR_test.gdb',st_year=2015,en_year=2015)
     calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
+    aaa.prepare_raster()
     aaa.sector_max('categories_2015',calculate_fields)
     pass
