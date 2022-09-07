@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import os
+from re import L
 import arcpy
 import copy
 from arcpy import env
 from arcpy.sa import *
+from matplotlib.pyplot import get
 import tqdm
 from tqdm import tqdm
 
@@ -171,12 +173,12 @@ class EDGAR_spatial:
     __background_label = 'BA'
 
     # 默认过滤标签
-    __default_filter_label = {'default': True, 'label': {'background_label': __background_label,
+    __default_filter_label_dict = {'default': True, 'label': {'background_label': __background_label,
                                                          'sector': [], 
                                                          'start_year': __default_start_year, 
                                                          'end_year': __default_end_year}}
     # 过滤标签
-    filter_label = __default_filter_label
+    filter_label_dict = __default_filter_label_dict
 
     # 数据库栅格数据筛选过滤标签
     # 默认数据库过滤标签
@@ -232,22 +234,32 @@ class EDGAR_spatial:
     year_range = property(get_year_range, set_year_range)
 
     # 栅格图像背景值设置和查看属性/函数
-    def set_background_value_flag(self, flag, flag_label):
-        # 检查flag参数并赋值
-        try:
-            self.__background_flag = bool(flag)
-        except:
-            print 'Background value flag set failed! Please check the flag argument input.'
+    def set_background_value_flag(self, flag, flag_label=''):
+        # 关闭background，即栅格不包含背景0值
+        if bool(flag) == False:
+            # 检查flag参数并赋值
+            try:
+                self.__background_flag = bool(flag)
+                self.__background_label = ''
+                print 'Background value flag closed!'
+            except:
+                print 'Background value flag set failed! Please check the flag argument input.'
+        # 开启background，即栅格包含背景0值
+        elif bool(flag) == True:
+            # 检查flag参数并赋值
+            try:
+                self.__background_flag = bool(flag)
+            except:
+                print 'Background value flag set failed! Please check the flag argument input.'
 
-        # 检查flag_label参数并
-        if type(flag_label) == str:
-            self.__background_label = flag_label
-        else:
-            print 'Background value flag label set failed! Please check the flag argument input.'
+            # 检查flag_label参数并
+            if type(flag_label) == str:
+                self.__background_label = flag_label
+            else:
+                print 'Background value flag label set failed! Please check the flag argument input.'
 
     def get_background_value_flag(self):
-        print 'Background value enabled: %s' % self.__background_flag
-        print 'Background label: %s' % self.__background_label
+        return (self.__background_flag,self.__background_label)
 
     background_value_flag = property(get_background_value_flag, set_background_value_flag)
 
@@ -281,7 +293,7 @@ class EDGAR_spatial:
             return
         self.raster_filter_wildcard = custom_label
     
-    ## 注意：这里需要为set函数传入一个filter_label字典
+    ## filter_label 构造方法：
     ##      filter_label字典组的构造如下：
     ##      'default':接受一个符合布尔型数据的值，其中True表示使用
     ##              默认方式构造筛选条件；
@@ -290,9 +302,49 @@ class EDGAR_spatial:
     ##              如果使用默认方式构造筛选条件，则label参数
     ##              应该包含由以下标签构成的字典：
     ##              'background_label'：数据是否为包括空值数据；
-    ##              'sector'：部门标签列表list
+    ##              'sector'：部门标签列表list或者str
     ##              'start_year'：起始年份
     ##              'end_year'：结束年份
+    def set_filter_label(self,default_set = True, background_label_set = True, sector_set = EDGAR_sector, start_year_set = start_year, end_year_set = end_year):
+        # 检查default set，并赋值
+        if bool(default_set) == True:
+            self.filter_label_dict['default'] = True
+        elif bool(default_set) == False:
+            self.filter_label_dict['default'] = False
+        else:
+            print 'default set error. Please check default_set argument.'
+        
+        # 检查background label 并赋值
+        if bool(background_label_set) == True:
+            ## 这个方法待测试！！！
+            ## 不能使用！！！
+            self.filter_label_dict['label']['background_label'] = self.background_value_flag[1]
+        elif bool(background_label_set) == False:
+            self.filter_label_dict['label']['background_label'] = ''
+        else:
+            print 'background label set error. Please check backgroud_label_set argument.'
+        
+        # 检查sector是否为str或者list
+        if (type(sector_set) == str) or (type(sector_set) == list):
+            self.filter_label_dict['label']['sector'] = sector_set
+        else:
+            print 'filter_label: sector setting error! sector only accept string or list type.'
+        
+        # 检查start_year 和 end_year
+        if (type(start_year_set) != int) or (type(end_year_set) != int):
+            print 'filter_label: year setting error! please check year arguments'
+            return
+        else:
+            self.filter_label_dict['label']['start_year'] = start_year_set
+            self.filter_label_dict['label']['end_year'] = end_year_set
+
+
+    def get_filter_label(self):
+        return self.filter_label_dict
+
+    filter_label = property(get_filter_label,set_filter_label)
+
+    ## 注意：这里需要为set函数传入一个filter_label字典
     def set_raster_filter(self, filter_label):
         # 判断是否为默认标签，是则调用默认的构造
         if filter_label['default'] == True:
@@ -311,35 +363,45 @@ class EDGAR_spatial:
 
     # 生成需要处理数据列表
     def list_working_rasters(self, raster_filter_wildcard):
-        list_raster_wildcard = []
-
         # 涉及arcpy操作，且所有数据都基于这步筛选，
         # 所以需要进行大量的数据检查。
         temp_type_check = type(raster_filter_wildcard)
         
         # 传入列表情况
         if temp_type_check == list:
-            # 如果list为空则直接显示筛选列表错误
+            # 列表为空
             if raster_filter_wildcard == []:
-                print 'Error: No fliter! Please check input raster filter!'
-                return
-            # 直接复制传入参数            
-            list_raster_wildcard = raster_filter_wildcard
+                # 显示警告：这个操作会列出数据库中的所有栅格
+                print 'WARNING: No fliter! All rasters will be list!'
+
+                # 使用str方式列出所有栅格
+                self.do_arcpy_list_raster_str(wildcard_str='')
+            # 列表不为空的情况
+            else:
+                # 直接将参数传入list方式的方法列出需要栅格
+                self.do_arcpy_list_raster_list(wildcard_list=raster_filter_wildcard)
         # 传入单一字符串情况
         elif temp_type_check == str:
             # 显示筛选列表警告:
             # 如果为空值则警告可能会对所有栅格进行操作：
             if raster_filter_wildcard == '':
                 print 'WARNING: No fliter! All rasters will be list!'
-            # 将字符串添加到wildcard中
-            list_raster_wildcard.append(raster_filter_wildcard)
-        # 其他情况直接退出
+            
+            self.do_arcpy_list_raster_str(wildcard_str=raster_filter_wildcard)
         else:
+            # 其他情况直接退出
+            # 或者，如果raster_filter_wildcard为空则直接显示筛选列表错误
             print 'Error: No fliter! Please check input raster filter!'
             return
         
+    # 实际执行列出栅格的方法，这个为str方式
+    def do_arcpy_list_raster_str(self, wildcard_str):
+        self.working_rasters.append(arcpy.ListRasters(wild_card=wildcard_str))
+
+    # 实际执行列出栅格的方法，这个为str方式
+    def do_arcpy_list_raster_list(self, wildcard_list):
         # 逐年份生成需要处理的数据列表
-        for i in list_raster_wildcard:
+        for i in wildcard_list:
             self.working_rasters.append(arcpy.ListRasters(wild_card=i))
 
 
@@ -641,14 +703,19 @@ class EDGAR_spatial:
 # ======================================================================
 if __name__ == '__main__':
     ## test contents
-    # aaa = EDGAR_spatial('E:\\Documents\\CarbonProject\\geodatabase\\EDGAR.gdb',st_year=2015,en_year=2015)
-    # calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
-    # aaa.prepare_raster()
-    # aaa.sector_max('categories_2015',calculate_fields)
-    
-    test_es = {'ENE':'ENE','IND':'IND','REF_TRF':'REF_TRF','TNR_Aviation_CDS':'TNR_Aviation_CDS'}
+    test_es = {'E2A':'E2A','E3':'E3'}
+    test_esc = {'E2A':1,'E3':2}
 
-    test_esc={'ENE':1,'IND':2,'REF_TRF':3,'TNR_Aviation_CDS':4}
-    aaa = EDGAR_spatial('D:\\workplace\\DATA\\geodatabase\\test\\EDGAR_test.gdb',sector=test_es,colormap=test_esc,st_year=2010,en_year=2014)
+    aaa = EDGAR_spatial('E:\\Documents\\CarbonProject\\geodatabase\\EDGAR.gdb',st_year=2015,en_year=2015,sector=test_es,colormap=test_esc)
+    calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
+    aaa.background_value_flag = False
     aaa.prepare_raster()
+    # aaa.sector_max('categories_2015',calculate_fields)
+    print aaa.working_rasters
+    
+    # test_es = {'ENE':'ENE','IND':'IND','REF_TRF':'REF_TRF','TNR_Aviation_CDS':'TNR_Aviation_CDS'}
+
+    # test_esc={'ENE':1,'IND':2,'REF_TRF':3,'TNR_Aviation_CDS':4}
+    # aaa = EDGAR_spatial('D:\\workplace\\DATA\\geodatabase\\test\\EDGAR_test.gdb',sector=test_es,colormap=test_esc,st_year=2010,en_year=2014)
+    # aaa.prepare_raster()
     # print aaa.working_rasters
