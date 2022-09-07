@@ -185,7 +185,7 @@ class EDGAR_spatial:
     raster_filter_wildcard = __default_raster_filter_wildcard
 
     # 需要操作的栅格
-    working_rasters = ''
+    working_rasters = []
 
     # 特殊变量，用于保存所有部门排放的总和
     __raster_sum = ''
@@ -271,7 +271,7 @@ class EDGAR_spatial:
         # 逐年逐部门生成筛选条件语句，并保存到raster_filter_wildcard中
         for i in temp_sector_year_tupe_list:
             temp_raster_filter_wildcard = '%s*%s_%s' % (
-                background_label, temp_sector_year_tupe_list[i][0], temp_sector_year_tupe_list[i][1])
+                background_label, i[0], i[1])
             self.raster_filter_wildcard.append(temp_raster_filter_wildcard),
 
     def build_raster_filter_costum(self, custom_label):
@@ -340,7 +340,7 @@ class EDGAR_spatial:
         
         # 逐年份生成需要处理的数据列表
         for i in list_raster_wildcard:
-            self.working_rasters.append(arcpy.ListRasters(list_raster_wildcard))
+            self.working_rasters.append(arcpy.ListRasters(wild_card=i))
 
 
     ############################################################################
@@ -651,3 +651,4 @@ if __name__ == '__main__':
     test_esc={'ENE':1,'IND':2,'REF_TRF':3,'TNR_Aviation_CDS':4}
     aaa = EDGAR_spatial('D:\\workplace\\DATA\\geodatabase\\test\\EDGAR_test.gdb',sector=test_es,colormap=test_esc,st_year=2010,en_year=2014)
     aaa.prepare_raster()
+    # print aaa.working_rasters
