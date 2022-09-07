@@ -261,7 +261,7 @@ class EDGAR_spatial:
             print 'Error: Year setting error!'
             return
         
-        temp_time_range = range(end_year,start_year+1)
+        temp_time_range = range(start_year,end_year+1)
         ## 这里使用了zip()函数将部分和年份一一配对。
         ## zip()方法的思路是将两个列表统一到等长度，然后意义对应生成元组
         ## 注意！！！
@@ -650,3 +650,4 @@ if __name__ == '__main__':
 
     test_esc={'ENE':1,'IND':2,'REF_TRF':3,'TNR_Aviation_CDS':4}
     aaa = EDGAR_spatial('D:\\workplace\\DATA\\geodatabase\\test\\EDGAR_test.gdb',sector=test_es,colormap=test_esc,st_year=2010,en_year=2014)
+    aaa.prepare_raster()
