@@ -46,7 +46,7 @@ class EDGAR_spatial:
     ##      2.带有数据位置的构造函数：需要传入一个
     ############################################################################
     ############################################################################
-    def __init__(self, workspace, sector={}, colormap={}, st_year=1970, en_year=2018):
+    def __init__(self, workspace, background_value_flag = True, background_value_flag_label = 'BA', sector={}, colormap={}, st_year=1970, en_year=2018):
         # arcgis 工作空间初始化
         ## 必须明确一个arcgis工作空间！
         ## 初始化构造需要明确arcgis工作空间或者一个确定的数据为
@@ -98,13 +98,24 @@ class EDGAR_spatial:
             print 'Error! Proccessing year range out of data support! The year must containt in 1970 to 2018'
         else:
             self.start_year, self.end_year = st_year, en_year
+        
+        # background_value 参数初始化部分
+        ## 这里要明确处理的数据是否包含背景0值
+        # 检查并赋值label
+        if type(background_value_flag_label) == str:
+            self.background_flag = bool(background_value_flag)
+            self.background_label = background_value_flag_label
+        else:
+            print 'Error: Background_value_flag_label only accept a string input.'
 
         # raster_filter 参数初始化部分
         ## 这里要将初始化传入的部门参数字典“sector”进行列表化并赋值
         ## 和起始、终止时间传入
-        self.filter_label['label']['start_year'] = st_year
-        self.filter_label['label']['end_year'] = en_year
-        self.filter_label['label']['sector'] = list(sector.values())
+        temp_init_filter_label = {'default_set': True, 'background_label_set': self.background_value[1],
+                                                         'sector_set': sector, 
+                                                         'start_year_set': st_year, 
+                                                         'end_year_set':en_year}
+        self.filter_label = temp_init_filter_label
     
     ############################################################################
     ############################################################################
@@ -168,9 +179,13 @@ class EDGAR_spatial:
     start_year = 0
     end_year = 0
 
-    # 栅格数据背景零值标识和区分标签
+    # 默认栅格数据背景零值标识和区分标签
     __background_flag = True
     __background_label = 'BA'
+
+    # 栅格数据背景零值标识和区分标签
+    background_flag = __background_flag
+    background_label = __background_label
 
     # 默认过滤标签
     __default_filter_label_dict = {'default': True, 'label': {'background_label': __background_label,
@@ -234,34 +249,34 @@ class EDGAR_spatial:
     year_range = property(get_year_range, set_year_range)
 
     # 栅格图像背景值设置和查看属性/函数
-    def set_background_value_flag(self, flag, flag_label=''):
+    def set_background_value(self, flag_and_label_dict):
         # 关闭background，即栅格不包含背景0值
-        if bool(flag) == False:
+        if bool(flag_and_label_dict['flag']) == False:
             # 检查flag参数并赋值
             try:
-                self.__background_flag = bool(flag)
-                self.__background_label = ''
+                self.background_flag = bool(flag_and_label_dict['flag'])
+                self.background_label = ''
                 print 'Background value flag closed!'
             except:
                 print 'Background value flag set failed! Please check the flag argument input.'
         # 开启background，即栅格包含背景0值
-        elif bool(flag) == True:
+        elif bool(flag_and_label_dict['flag']) == True:
             # 检查flag参数并赋值
             try:
-                self.__background_flag = bool(flag)
+                self.background_flag = bool(flag_and_label_dict['flag'])
             except:
                 print 'Background value flag set failed! Please check the flag argument input.'
 
             # 检查flag_label参数并
-            if type(flag_label) == str:
-                self.__background_label = flag_label
+            if type(flag_and_label_dict['label']) == str:
+                self.background_label = flag_and_label_dict['label']
             else:
                 print 'Background value flag label set failed! Please check the flag argument input.'
 
-    def get_background_value_flag(self):
-        return (self.__background_flag,self.__background_label)
+    def get_background_value(self):
+        return (self.background_flag,self.background_label)
 
-    background_value_flag = property(get_background_value_flag, set_background_value_flag)
+    background_value = property(get_background_value, set_background_value)
 
     # 类中提供了两个过滤标签的构造方法
     # 1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
@@ -278,7 +293,7 @@ class EDGAR_spatial:
         ## zip()方法的思路是将两个列表统一到等长度，然后意义对应生成元组
         ## 注意！！！
         ##  这里生成的是元组，该元组中包含[0]号元素为部门，[1]号元素为年份
-        temp_sector_year_tupe_list = zip(sector*len(temp_time_range),temp_time_range*len(sector))
+        temp_sector_year_tupe_list = zip(list(sector.values()) * len(temp_time_range),temp_time_range * len(sector))
 
         # 逐年逐部门生成筛选条件语句，并保存到raster_filter_wildcard中
         for i in temp_sector_year_tupe_list:
@@ -305,38 +320,39 @@ class EDGAR_spatial:
     ##              'sector'：部门标签列表list或者str
     ##              'start_year'：起始年份
     ##              'end_year'：结束年份
-    def set_filter_label(self,default_set = True, background_label_set = True, sector_set = EDGAR_sector, start_year_set = start_year, end_year_set = end_year):
+    # def set_filter_label(self,default_set = True, background_label_set = True, sector_set = EDGAR_sector, start_year_set = start_year, end_year_set = end_year):
+    def set_filter_label(self, filter_label):
         # 检查default set，并赋值
-        if bool(default_set) == True:
+        if bool(filter_label['default_set']) == True:
             self.filter_label_dict['default'] = True
-        elif bool(default_set) == False:
+        elif bool(filter_label['default_set']) == False:
             self.filter_label_dict['default'] = False
         else:
             print 'default set error. Please check default_set argument.'
         
         # 检查background label 并赋值
-        if bool(background_label_set) == True:
+        if bool(filter_label['background_label_set']) == True:
             ## 这个方法待测试！！！
             ## 不能使用！！！
             self.filter_label_dict['label']['background_label'] = self.background_value_flag[1]
-        elif bool(background_label_set) == False:
+        elif bool(filter_label['background_label_set']) == False:
             self.filter_label_dict['label']['background_label'] = ''
         else:
             print 'background label set error. Please check backgroud_label_set argument.'
         
         # 检查sector是否为str或者list
-        if (type(sector_set) == str) or (type(sector_set) == list):
-            self.filter_label_dict['label']['sector'] = sector_set
+        if (type(filter_label['sector_set']) == str) or (type(filter_label['sector_set']) == dict):
+            self.filter_label_dict['label']['sector'] = filter_label['sector_set']
         else:
             print 'filter_label: sector setting error! sector only accept string or list type.'
         
         # 检查start_year 和 end_year
-        if (type(start_year_set) != int) or (type(end_year_set) != int):
+        if (type(filter_label['start_year_set']) != int) or (type(filter_label['end_year_set']) != int):
             print 'filter_label: year setting error! please check year arguments'
             return
         else:
-            self.filter_label_dict['label']['start_year'] = start_year_set
-            self.filter_label_dict['label']['end_year'] = end_year_set
+            self.filter_label_dict['label']['start_year'] = filter_label['start_year_set']
+            self.filter_label_dict['label']['end_year'] = filter_label['end_year_set']
 
 
     def get_filter_label(self):
@@ -402,7 +418,7 @@ class EDGAR_spatial:
     def do_arcpy_list_raster_list(self, wildcard_list):
         # 逐年份生成需要处理的数据列表
         for i in wildcard_list:
-            self.working_rasters.append(arcpy.ListRasters(wild_card=i))
+            self.working_rasters.extend(arcpy.ListRasters(wild_card=i))
 
 
     ############################################################################
@@ -706,9 +722,8 @@ if __name__ == '__main__':
     test_es = {'E2A':'E2A','E3':'E3'}
     test_esc = {'E2A':1,'E3':2}
 
-    aaa = EDGAR_spatial('E:\\Documents\\CarbonProject\\geodatabase\\EDGAR.gdb',st_year=2015,en_year=2015,sector=test_es,colormap=test_esc)
+    aaa = EDGAR_spatial('E:\\Documents\\CarbonProject\\geodatabase\\EDGAR.gdb',st_year=2012,en_year=2012,sector=test_es,colormap=test_esc,background_value_flag=False,background_value_flag_label='')
     calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
-    aaa.background_value_flag = False
     aaa.prepare_raster()
     # aaa.sector_max('categories_2015',calculate_fields)
     print aaa.working_rasters

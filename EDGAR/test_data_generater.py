@@ -30,15 +30,30 @@ with arcpy.da.UpdateCursor(shp, fields) as cursor:
 
 
 
-class test_depack:
-    d1 = (4,3,2,1)
+# class test_depack:
+#     d1 = (4,3,2,1)
 
-    def depack(self, d2, d3):
-        print d2
-        print d3
+#     def depack(self, d2, d3):
+#         print d2
+#         print d3
 
-test_d = {'a':3,'b':{'d2':3,'d3':2}}
+# test_d = {'a':3,'b':{'d2':3,'d3':2}}
 
-test_c = test_depack()
+# test_c = test_depack()
 
-test_c.depack(**test_d['b'])
+# test_c.depack(**test_d['b'])
+
+class test_property:
+    inner_s1 = 0
+    inner_s2 = 0
+    def set_property(self, **kwargus):
+        inner_s1 = kwargus['s1']
+        inner_s2 = kwargus['s2']
+    def get_property(self):
+        return (self.inner_s1, self.inner_s2)
+    tt_property = property(get_property, set_property)
+
+ttt = test_property()
+bbb = {'s1':3,'s2':5}
+ttt.tt_property = bbb
+ttt.tt_property
