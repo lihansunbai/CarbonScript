@@ -57,3 +57,32 @@ ttt = test_property()
 bbb = {'s1':3,'s2':5}
 ttt.tt_property = bbb
 ttt.tt_property
+
+
+## 累加栅格函数测试部分
+import arcpy
+from arcpy import env
+from arcpy.sa import *
+import os
+import tqdm
+from tqdm import tqdm
+arcpy.env.workspace = 'C:/Users/lihan/Documents/ArcGIS/Default.gdb'
+arcpy.CheckOutExtension('Spatial')
+
+def do_raster_add(raster_list, result_raster):
+    # 将列表中的第一个栅格作为累加的起始栅格
+    temp_raster = arcpy.Raster(raster_list[0])
+    raster_list.pop(0)
+
+    # 累加剩余栅格
+    for r in tqdm(raster_list):
+        temp_raster = temp_raster + arcpy.Raster(r)
+    
+    return temp_raster.save(result_raster)
+
+ttt = arcpy.ListRasters()
+
+output = 'C:/Users/lihan/Documents/ArcGIS/Default.gdb/output'
+
+do_raster_add(ttt, output)
+

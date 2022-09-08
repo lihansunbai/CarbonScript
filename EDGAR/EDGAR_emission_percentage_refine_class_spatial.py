@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import os
-from re import L
+import re
 import arcpy
 import copy
 from arcpy import env
 from arcpy.sa import *
-from matplotlib.pyplot import get
 import tqdm
 from tqdm import tqdm
 
@@ -442,10 +441,42 @@ class EDGAR_spatial:
         self.list_working_rasters(self.raster_filter_wildcard)
 
     # 栅格叠加
-    def raster_overlay_add(self, add_sector):
-        # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
-        arcpy.CheckOutExtension('Spatial')
+    def do_raster_add(self, raster_list, result_raster):
+        if result_raster != str:
+            print 'Raster add: The output result raster path error.'
+        # 将列表中的第一个栅格作为累加的起始栅格
+        temp_raster = arcpy.Raster(raster_list[0])
+        raster_list.pop(0)
 
+        # 累加剩余栅格
+        for r in tqdm(raster_list):
+            temp_raster = temp_raster + arcpy.Raster(r)
+        
+        return temp_raster.save(result_raster)
+    
+    # 函数需要传入一个包含需要叠加的部门列表list，
+    # 以及执行操作的年份
+    def year_sectors_merge(self, raster_list, merge_sector, year):
+        # 筛选需要计算的部门
+        temp_sector = ''
+        for i in merge_sector:
+            temp_sector = temp_sector + '|%s' % i
+        
+        temp_sector = temp_sector[1:len-1]
+        temp_sector_year = '%s.*%s' % (temp_sector,year)
+        filter_regex = re.compile(temp_sector_year)
+
+        temp_merge_raster = list(filter(filter_regex,raster_list))
+
+        result_year = 'total_emission_%s' % year
+        self.do_raster_add(temp_merge_raster, result_year)
+
+    def year_total_sectors_merge(self, year):
+        pass
+            
+
+
+    def raster_overlay_add(self, working_raster):
         # 栅格叠加的结果保存在__raster_overlay 中
         # self.__raster_overlay = Raster()
 

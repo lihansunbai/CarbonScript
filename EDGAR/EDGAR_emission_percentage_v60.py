@@ -362,7 +362,7 @@ for y in yr:
     emi_cate_temp = {}
     emi_weight_raster_temp = {}
     emi_weight_point_temp = {}
-    emi_raster_save_output = workspace + '\\total_mission_%s' % y
+    emi_raster_save_output = workspace + '\\total_emission_%s' % y
     # 找到所有部分
     # for i in emi_cate:
     #     emi_cate_temp[i] = workspace + '\\' + emi_cate[i] + '_' + str(y)
