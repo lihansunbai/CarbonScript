@@ -319,7 +319,6 @@ class EDGAR_spatial:
     ##              'sector'：部门标签列表list或者str
     ##              'start_year'：起始年份
     ##              'end_year'：结束年份
-    # def set_filter_label(self,default_set = True, background_label_set = True, sector_set = EDGAR_sector, start_year_set = start_year, end_year_set = end_year):
     def set_filter_label(self, filter_label):
         # 检查default set，并赋值
         if bool(filter_label['default_set']) == True:
@@ -411,7 +410,7 @@ class EDGAR_spatial:
         
     # 实际执行列出栅格的方法，这个为str方式
     def do_arcpy_list_raster_str(self, wildcard_str):
-        self.working_rasters.append(arcpy.ListRasters(wild_card=wildcard_str))
+        self.working_rasters.extend(arcpy.ListRasters(wild_card=wildcard_str))
 
     # 实际执行列出栅格的方法，这个为str方式
     def do_arcpy_list_raster_list(self, wildcard_list):
@@ -428,7 +427,7 @@ class EDGAR_spatial:
 
     # 生成arcgis需要的工作环境
     def generate_working_environment(self):
-        pass
+        arcpy.CheckOutExtension('Spatial')
 
     # 检查arcgis工作环境是否完整
     def check_working_environment(self):
@@ -437,10 +436,13 @@ class EDGAR_spatial:
 
     # 生成需要计算的栅格列表
     def prepare_raster(self):
+        # 首先构造用于筛选raster用的wildcard
         self.raster_filter = self.filter_label
+        # 通过arcpy列出需要的栅格
         self.list_working_rasters(self.raster_filter_wildcard)
 
     # 栅格叠加
+    # 这个函数用到了tqdm显示累加进度
     def do_raster_add(self, raster_list, result_raster):
         if result_raster != str:
             print 'Raster add: The output result raster path error.'
@@ -468,37 +470,44 @@ class EDGAR_spatial:
 
         temp_merge_raster = list(filter(filter_regex,raster_list))
 
+        # 此处输出的总量数据文件名不可更改！！！
+        # TODO
+        # 加入自定义文件名功能
         result_year = 'total_emission_%s' % year
         self.do_raster_add(temp_merge_raster, result_year)
 
+    # 实用（暴力）计算全年部门排放总和的函数
     def year_total_sectors_merge(self, year):
-        pass
-            
+        temp_sector = list(self.EDGAR_sector.values())
+        self.year_sectors_merge(self.working_rasters,temp_sector,year)
+        print 'Total emission of %s saved!\n' % year
 
 
-    def raster_overlay_add(self, working_raster):
-        # 栅格叠加的结果保存在__raster_overlay 中
-        # self.__raster_overlay = Raster()
+    # 计算单个部门占年排放总量中的比例
+    # 注意！！！
+    # 这里的比例定义为：
+    #       对每一个栅格：部门排放/该栅格的总量
+    ######################################
+    # 以下的栅格计算部分都存在一个问题：需要构造大量的包含部门和年份的输出路径。
+    # 但是，提供的部门栅格的列表中的栅格名称都很长。并且不仅包括上栅格的部门信息
+    # 还包括了背景、数据来源名等很多信息。
+    # 是否可以直接不加删减的把所有内容都保存为新文件名中的一部分？还是只提取出部门
+    # 名称作为新的文件名？
+    # 简单操作：不删减。可能存在问题：文件名过长，超出系统限制。
+    def sector_emission_percentage(self, sector, year_total, output_sector_point):
+        # 检查输入的栅格是否存在，如果不存在则报错并返回
+        if !(arcpy.Exists(sector)) or !(arcpy.Exists(year_total)):
+            print 'Sector_emission_percentage: Error! sector or year total emission raster does not exist.'
+            return
+        
+        # 计算部门排放相对于全体部门总排放的比例
+        temp_output_weight_raster = sector / year_total
 
-        # 临时变量，防止突发崩溃
-        ## 这里需要一个空白的背景栅格
-        temp_raster = arcpy.Raster()
-
-        # 叠加栅格
-        ## 这里调用了 tqdm 库进行进度显示
-        for r in tqdm(add_sector):
-            temp_raster = Raster(temp_raster) + Raster(add_sector[r])
-
-    def calculate_sum(self, year):
-        # 计算总量的本质就是把所有部门都加起来。
-        self.raster_overlay_add(self.EDGAR_sector)
-        self.__raster_sum = self.__raster_overlay
-
-        # 这里的路径需要修改
-        # 可能需要引入很多个保存文件的输出位置
-        temp_out_path = self.__workspace + '%s' % year
-        self.__raster_sum.save(temp_out_path)
-        print 'Total emission saved!\n'
+        temp_year = ''.join(year_total[-4,-1])
+        temp_sector = 
+        temp_output_weight_raster_path =  '%s_weight_raster_%s' % (i, year)
+        ## 保存栅格权重计算结果
+        temp_output_weight_raster.save(output_sector_point)
 
     def weight_calculate(self, year, sector, output_weight_point):
         for i in tqdm(sector):
@@ -758,6 +767,7 @@ if __name__ == '__main__':
     aaa.prepare_raster()
     # aaa.sector_max('categories_2015',calculate_fields)
     print aaa.working_rasters
+    aaa.year_total_sectors_merge(2012)
     
     # test_es = {'ENE':'ENE','IND':'IND','REF_TRF':'REF_TRF','TNR_Aviation_CDS':'TNR_Aviation_CDS'}
 
