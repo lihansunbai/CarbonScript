@@ -488,26 +488,40 @@ class EDGAR_spatial:
     # 这里的比例定义为：
     #       对每一个栅格：部门排放/该栅格的总量
     ######################################
-    # 以下的栅格计算部分都存在一个问题：需要构造大量的包含部门和年份的输出路径。
-    # 但是，提供的部门栅格的列表中的栅格名称都很长。并且不仅包括上栅格的部门信息
-    # 还包括了背景、数据来源名等很多信息。
-    # 是否可以直接不加删减的把所有内容都保存为新文件名中的一部分？还是只提取出部门
-    # 名称作为新的文件名？
-    # 简单操作：不删减。可能存在问题：文件名过长，超出系统限制。
-    def sector_emission_percentage(self, sector, year_total, output_sector_point):
-        # 检查输入的栅格是否存在，如果不存在则报错并返回
-        if !(arcpy.Exists(sector)) or !(arcpy.Exists(year_total)):
+    def sector_emission_percentage(self, sector, year, output_sector_point):
+        # 尝试列出当年总量的栅格
+        # 这里要注意，总量栅格的名称在year_sector_merge()中写死了
+        temp_year_total = arcpy.Raster('total_emission_'.join(yaer))
+
+        # 检查输入的部门栅格和总量栅格是否存在，如果不存在则报错并返回
+        if not (arcpy.Exists(sector)) or not (arcpy.Exists(temp_year_total)):
             print 'Sector_emission_percentage: Error! sector or year total emission raster does not exist.'
             return
         
         # 计算部门排放相对于全体部门总排放的比例
-        temp_output_weight_raster = sector / year_total
+        temp_output_weight_raster = sector / temp_year_total
 
-        temp_year = ''.join(year_total[-4,-1])
-        temp_sector = 
-        temp_output_weight_raster_path =  '%s_weight_raster_%s' % (i, year)
-        ## 保存栅格权重计算结果
-        temp_output_weight_raster.save(output_sector_point)
+        ## 保存栅格格式权重计算结果
+        temp_output_weight_raster_path =  '%s_weight_raster_%s' % (sector, year)
+        temp_output_weight_raster.save(temp_output_weight_raster_path)
+        print 'Sector emission weight saved: %s\n' % sector
+
+        # 栅格数据转点对象。转为点对象后可以实现计算比例并同时记录对应排放比例的部门名称
+        try:
+                # transform to point features
+                arcpy.RasterToPoint_conversion(temp_output_weight_raster, output_sector_point, 'VALUE')
+
+                # rename value field
+                arcpy.AddField_management(output_weight_point[i], i, 'DOUBLE')
+                arcpy.CalculateField_management(output_weight_point[i], i, '!grid_code!', 'PYTHON_9.3')
+
+                # 删除表链接结果结果中生成的统计字段'pointid'和'grid_code'
+                arcpy.DeleteField_management(output_weight_point[i], 'pointid')
+                arcpy.DeleteField_management(output_weight_point[i], 'grid_code')
+                print 'Categories finished: %s' % i
+            except:
+                print 'Failed categories to point : %s' % i
+                print arcpy.GetMessages()
 
     def weight_calculate(self, year, sector, output_weight_point):
         for i in tqdm(sector):
