@@ -492,6 +492,8 @@ class EDGAR_spatial:
         # 尝试列出当年总量的栅格
         # 这里要注意，总量栅格的名称在year_sector_merge()中写死了
         temp_year_total = arcpy.Raster('total_emission_'.join(yaer))
+        temp_sector_wildcard = '%s*%s*%s' % (self.background_value[1],sector,year)
+        temp_sector_emission = arcpy.ListRasters(wild_card=temp_sector_wildcard)
 
         # 检查输入的部门栅格和总量栅格是否存在，如果不存在则报错并返回
         if not (arcpy.Exists(sector)) or not (arcpy.Exists(temp_year_total)):
@@ -499,6 +501,8 @@ class EDGAR_spatial:
             return
         
         # 计算部门排放相对于全体部门总排放的比例
+        # 注意！！！
+        # 这里涉及除法！0值的背景会被抹去为nodata。所以要再mosaic一个背景上去才能转化为点。
         temp_output_weight_raster = sector / temp_year_total
 
         ## 保存栅格格式权重计算结果
@@ -507,9 +511,12 @@ class EDGAR_spatial:
         print 'Sector emission weight saved: %s\n' % sector
 
         # 栅格数据转点对象。转为点对象后可以实现计算比例并同时记录对应排放比例的部门名称
+        # 这里用到了arcpy.AlterField_management()这个函数可能在10.2版本中没有
         try:
                 # transform to point features
                 arcpy.RasterToPoint_conversion(temp_output_weight_raster, output_sector_point, 'VALUE')
+                # rename value field
+                arcpy.AlterField_management(output_sector_point,'grid_code',new_field_name='test_sector')
 
                 # rename value field
                 arcpy.AddField_management(output_weight_point[i], i, 'DOUBLE')
