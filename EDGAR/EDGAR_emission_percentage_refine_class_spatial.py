@@ -161,6 +161,19 @@ class EDGAR_spatial:
         ES_logger.info('filter_label has set.')
 
         ES_logger.info('Initialization finished.')
+        ES_logger.debug('==========DEGUG INFORMATIONS==========')
+        ES_logger.debug('waiting for construction...')
+        ES_logger.debug('This part will print initialized parameters...')
+        ES_logger.debug('acrpy.env.workspace:%s' % arcpy.env.workspace)
+        ES_logger.debug('arcpy parallelProcessingFactor:%s' % arcpy.env.parallelProcessingFactor)
+        ES_logger.debug('EDGAR_sector was set to:%s' % self.EDGAR_sector)
+        ES_logger.debug('EDGAR_sector_colormap was set to:%s' % self.EDGAR_sector_colormap)
+        ES_logger.debug('Processing begains in year:%s' % self.start_year)
+        ES_logger.debug('Processing ends in year:%s' % self.end_year)
+        ES_logger.debug('Raster has background:%s' % self.background_flag)
+        ES_logger.debug('Raster name\'s background label is:%s' % self.background_label)
+        ES_logger.debug('Raster filter parameters was set to:%s' % self.filter_label)
+        ES_logger.debug('==========DEGUG INFORMATIONS==========')
     
     ############################################################################
     ############################################################################
@@ -829,7 +842,7 @@ if __name__ == '__main__':
     test_es = {'E2A':'E2A','E3':'E3'}
     test_esc = {'E2A':1,'E3':2}
 
-    aaa = EDGAR_spatial('E:\\Documents\\CarbonProject\\geodatabase\\EDGAR.gdb',st_year=2012,en_year=2012,sector=test_es,colormap=test_esc,background_value_flag=False,background_value_flag_label='')
+    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test.gdb',st_year=2012,en_year=2012,sector=test_es,colormap=test_esc,background_value_flag=False,background_value_flag_label='')
     calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
     aaa.prepare_raster()
     # aaa.sector_max('categories_2015',calculate_fields)
