@@ -159,7 +159,6 @@ class EDGAR_spatial:
             self.ES_logger.error('Background setting error!')
             return
 
-
         # raster_filter 参数初始化部分
         ## 这里要将初始化传入的部门参数字典“sector”进行列表化并赋值
         ## 和起始、终止时间传入
@@ -333,44 +332,58 @@ class EDGAR_spatial:
     year_range = property(get_year_range, set_year_range)
 
     # 栅格图像背景值设置和查看属性/函数
-    def set_background(self, flag_and_label_dict):
+    def set_background(self, flag_label_raster_dict):
         # 关闭background，即栅格不包含背景0值
-        if bool(flag_and_label_dict['flag']) == False:
+        if bool(flag_label_raster_dict['flag']) == False:
             # 检查flag参数并赋值
             try:
-                self.background_flag = bool(flag_and_label_dict['flag'])
+                self.background_flag = bool(flag_label_raster_dict['flag'])
                 self.background_label = ''
                 print 'Background value flag closed!'
 
                 # logger output
                 self.ES_logger.debug('Backgroud closed.')
             except:
-                print 'Background value flag set failed! Please check the flag argument input.'
-                self.ES_logger.error('Background value flag set failed! Please check the flag argument input.')
+                print 'Background flag set failed! Please check the flag argument input.'
+                self.ES_logger.error('Background flag set failed! Please check the flag argument input.')
         # 开启background，即栅格包含背景0值
-        elif bool(flag_and_label_dict['flag']) == True:
+        elif bool(flag_label_raster_dict['flag']) == True:
             # 检查flag参数并赋值
             try:
-                self.background_flag = bool(flag_and_label_dict['flag'])
+                self.background_flag = bool(flag_label_raster_dict['flag'])
 
                 # logger output
                 self.ES_logger.debug('Backgroud opened.')
             except:
-                print 'Background value flag set failed! Please check the flag argument input.'
-                self.ES_logger.error('Background value flag set failed! Please check the flag argument input.')
+                print 'Background flag set failed! Please check the flag argument input.'
+                self.ES_logger.error('Background flag set failed! Please check the flag argument input.')
 
             # 检查flag_label参数并
-            if type(flag_and_label_dict['label']) == str:
-                self.background_label = flag_and_label_dict['label']
+            if type(flag_label_raster_dict['label']) == str:
+                self.background_label = flag_label_raster_dict['label']
 
                 # logger output
-                self.ES_logger.debug('Backgroud label changed to:%s' % flag_and_label_dict['label'])
+                self.ES_logger.debug('Backgroud label changed to:%s' % flag_label_raster_dict['label'])
             else:
-                print 'Background value flag label set failed! Please check the flag argument input.'
-                self.ES_logger.error('Background value flag set failed! Please check the flag argument input.')
+                print 'Background flag label set failed! Please check the flag argument input.'
+                self.ES_logger.error('Background flag set failed! Please check the flag argument input.')
+
+            # 检查raster参数并
+            if type(flag_label_raster_dict['raster']) == str:
+                if arcpy.Exists(flag_label_raster_dict['raster']):
+                    self.background_raster = flag_label_raster_dict['raster']
+
+                    # logger output
+                    self.ES_logger.debug('Backgroud label changed to:%s' % flag_label_raster_dict['raster'])
+                else:
+                    print 'Background raster set failed! The background raster dose not exits.'
+                    self.ES_logger.error('Background raster set failed! The background raster dose not exits.')
+            else:
+                print 'Background flag label set failed! Please check the flag argument input.'
+                self.ES_logger.error('Background flag set failed! Please check the flag argument input.')
 
     def get_background(self):
-        return (self.background_flag,self.background_label)
+        return (self.background_flag,self.background_label,self.background_raster)
 
     background = property(get_background, set_background)
 
@@ -651,6 +664,14 @@ class EDGAR_spatial:
         # 注意！！！
         # 这里涉及除法！0值的背景会被抹去为nodata。所以要再mosaic一个背景上去才能转化为点。
         temp_output_weight_raster = sector / temp_year_total
+
+        # Mosaic 比例计算结果和0值背景 
+        # Mosaic 的结果仍然保存在temp_output_weight_raster中
+        arcpy.Mosaic_management(inputs=[temp_output_weight_raster,self.background[2]],
+                                target=temp_output_weight_raster,
+                                mosaic_type="FIRST",
+                                colormap="FIRST",
+                                mosaicking_tolerance=0.5)
 
         ## 保存栅格格式权重计算结果
         temp_output_weight_raster_path =  '%s_weight_raster_%s' % (sector, year)
