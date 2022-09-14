@@ -55,14 +55,14 @@ class EDGAR_spatial:
     def __init__(self, workspace, background_value_flag = True, background_value_flag_label = 'BA', sector={}, colormap={}, st_year=1970, en_year=2018, log_path='EDGAR.log'):
         # 初始化logger记录类的全体工作
         # ES_logger为可使用的logging实例
-        ES_logger = logging.getLogger()
-        ES_logger.setLevel(level=logging.DEBUG)
+        self.ES_logger = logging.getLogger()
+        self.ES_logger.setLevel(level=logging.DEBUG)
         ES_logger_file = logging.FileHandler(log_path)
         ES_logger_formatter = logging.Formatter('%(asctime)s-[%(levelname)s]-%(name)s-%(funcName)s-%(message)s')
         ES_logger_file.setFormatter(ES_logger_formatter)
-        ES_logger.addHandler(ES_logger_file)
+        self.ES_logger.addHandler(ES_logger_file)
 
-        ES_logger.info('==========EDGAR_Spatial start==========')
+        self.ES_logger.info('==========EDGAR_Spatial start==========')
 
         # arcgis 工作空间初始化
         ## 必须明确一个arcgis工作空间！
@@ -70,8 +70,8 @@ class EDGAR_spatial:
         ## 检查输入是否为空值
         if workspace == '':
             print 'Spatial direction or database path error! Please check your input!'
-            ES_logger.info('Empty workspace input.')
-            ES_logger.error('arcpy environment workspace set failed!')
+            self.ES_logger.info('Empty workspace input.')
+            self.ES_logger.error('arcpy environment workspace set failed!')
             return
 
         ## 为工作空间进行赋值
@@ -80,12 +80,12 @@ class EDGAR_spatial:
         ###  缩短代码中“arcpy.env.workspace”属性的书写长度而设置的代用变量。
         self.__workspace = workspace
         arcpy.env.workspace = workspace
-        ES_logger.info('workpace has set.')
+        self.ES_logger.info('workpace has set.')
         # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
         arcpy.CheckOutExtension('Spatial')
-        ES_logger.info('arcpy Spatial extension checked.')
+        self.ES_logger.info('arcpy Spatial extension checked.')
         arcpy.env.parallelProcessingFactor = "100%"
-        ES_logger.info('arcpy parallelProcessingFactor set to 100%.')
+        self.ES_logger.info('arcpy parallelProcessingFactor set to 100%.')
 
         # EDGAR_sector 参数初始化部分
         ## 检查输入参数类型
@@ -93,16 +93,16 @@ class EDGAR_spatial:
         ## 为EDGAR_sector参数赋值
         if type(sector) != dict:
             print 'Error! EDGAR_sector only accept a dictionary type input.'
-            ES_logger.info('EDGAR_sector only accept a dictionary type input.')
-            ES_logger.error('EDGAR_sector type error.')
+            self.ES_logger.info('EDGAR_sector only accept a dictionary type input.')
+            self.ES_logger.error('EDGAR_sector type error.')
             return
         elif sector == {}:
             self.EDGAR_sector = copy.deepcopy(self.__default_EDGAR_sector)
-            ES_logger.info('This run use default EDGAR sector setting.')
-            ES_logger.info('EDGAR_sector has set.')
+            self.ES_logger.info('This run use default EDGAR sector setting.')
+            self.ES_logger.info('EDGAR_sector has set.')
         else:
             self.EDGAR_sector = copy.deepcopy(sector)
-            ES_logger.info('EDGAR_sector has set.')
+            self.ES_logger.info('EDGAR_sector has set.')
 
         # EDGAR_sector_colormap 参数初始化部分
         ## 检查参数输入类型
@@ -110,32 +110,32 @@ class EDGAR_spatial:
         ## 为EDGAR_sector_colormap 参数赋值
         if type(colormap) != dict:
             print 'Error! EDGAR_sector_colormap only accept a dictionary type input.'
-            ES_logger.info('EDGAR_sector_colormap only accept a dictionary type input.')
-            ES_logger.error('EDGAR_sector_colormap type error.')
+            self.ES_logger.info('EDGAR_sector_colormap only accept a dictionary type input.')
+            self.ES_logger.error('EDGAR_sector_colormap type error.')
             return
         elif sector == {}:
             self.EDGAR_sector_colormap = copy.deepcopy(self.__default_EDGAR_sector_colormap)
-            ES_logger.info('This run use default EDGAR sector colormap setting.')
-            ES_logger.info('EDGAR_sector_colormap has set.')
+            self.ES_logger.info('This run use default EDGAR sector colormap setting.')
+            self.ES_logger.info('EDGAR_sector_colormap has set.')
         else:
             self.EDGAR_sector_colormap = copy.deepcopy(colormap)
-            ES_logger.info('EDGAR_sector_colormap has set.')
+            self.ES_logger.info('EDGAR_sector_colormap has set.')
 
         # year_range 参数初始化部分
         ## 这里需要初始化计算的起始和结束
         if (type(st_year) != int) or (type(en_year) != int):
             print 'Error! Proccessing starting year and ending year must be int value'
-            ES_logger.info('Year setting type error.')
-            ES_logger.error('Year setting error!')
+            self.ES_logger.info('Year setting type error.')
+            self.ES_logger.error('Year setting error!')
             return
         elif st_year < 1970 or en_year > 2018:
             print 'Error! Proccessing year range out of data support! The year must containt in 1970 to 2018'
-            ES_logger.info('Year settings are out of range.')
-            ES_logger.error('Year setting error!')
+            self.ES_logger.info('Year settings are out of range.')
+            self.ES_logger.error('Year setting error!')
             return
         else:
             self.start_year, self.end_year = st_year, en_year
-            ES_logger.info('Year has set.')
+            self.ES_logger.info('Year has set.')
         
         # background_value 参数初始化部分
         ## 这里要明确处理的数据是否包含背景0值
@@ -143,11 +143,11 @@ class EDGAR_spatial:
         if type(background_value_flag_label) == str:
             self.background_flag = bool(background_value_flag)
             self.background_label = background_value_flag_label
-            ES_logger.info('Background_value_flag has set.')
+            self.ES_logger.info('Background_value_flag has set.')
         else:
             print 'Error: Background_value_flag_label only accept a string input.'
-            ES_logger.info('Background_value_flag setting type error.')
-            ES_logger.error('Background_value_flag setting error!')
+            self.ES_logger.info('Background_value_flag setting type error.')
+            self.ES_logger.error('Background_value_flag setting error!')
             return
 
         # raster_filter 参数初始化部分
@@ -158,22 +158,20 @@ class EDGAR_spatial:
                                                          'start_year_set': st_year, 
                                                          'end_year_set':en_year}
         self.filter_label = temp_init_filter_label
-        ES_logger.info('filter_label has set.')
+        self.ES_logger.info('filter_label has set.')
 
-        ES_logger.info('Initialization finished.')
-        ES_logger.debug('==========DEGUG INFORMATIONS==========')
-        ES_logger.debug('waiting for construction...')
-        ES_logger.debug('This part will print initialized parameters...')
-        ES_logger.debug('acrpy.env.workspace:%s' % arcpy.env.workspace)
-        ES_logger.debug('arcpy parallelProcessingFactor:%s' % arcpy.env.parallelProcessingFactor)
-        ES_logger.debug('EDGAR_sector was set to:%s' % self.EDGAR_sector)
-        ES_logger.debug('EDGAR_sector_colormap was set to:%s' % self.EDGAR_sector_colormap)
-        ES_logger.debug('Processing begains in year:%s' % self.start_year)
-        ES_logger.debug('Processing ends in year:%s' % self.end_year)
-        ES_logger.debug('Raster has background:%s' % self.background_flag)
-        ES_logger.debug('Raster name\'s background label is:%s' % self.background_label)
-        ES_logger.debug('Raster filter parameters was set to:%s' % self.filter_label)
-        ES_logger.debug('==========DEGUG INFORMATIONS==========')
+        self.ES_logger.info('Initialization finished.')
+        self.ES_logger.debug('==========DEGUG INFORMATIONS==========')
+        self.ES_logger.debug('acrpy.env.workspace:%s' % arcpy.env.workspace)
+        self.ES_logger.debug('arcpy parallelProcessingFactor:%s' % arcpy.env.parallelProcessingFactor)
+        self.ES_logger.debug('EDGAR_sector was set to:%s' % self.EDGAR_sector)
+        self.ES_logger.debug('EDGAR_sector_colormap was set to:%s' % self.EDGAR_sector_colormap)
+        self.ES_logger.debug('Processing begains in year:%s' % self.start_year)
+        self.ES_logger.debug('Processing ends in year:%s' % self.end_year)
+        self.ES_logger.debug('Raster has background:%s' % self.background_flag)
+        self.ES_logger.debug('Raster name\'s background label is:%s' % self.background_label)
+        self.ES_logger.debug('Raster filter parameters was set to:%s' % self.filter_label)
+        self.ES_logger.debug('==========DEGUG INFORMATIONS==========')
     
     ############################################################################
     ############################################################################
@@ -181,6 +179,9 @@ class EDGAR_spatial:
     ## Default values
     ############################################################################
     ############################################################################
+
+    ## Class logger
+    ES_logger = logging.getLogger()
 
     ## Arcgis workspace
     __workspace = ''
@@ -842,7 +843,7 @@ if __name__ == '__main__':
     test_es = {'E2A':'E2A','E3':'E3'}
     test_esc = {'E2A':1,'E3':2}
 
-    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test.gdb',st_year=2012,en_year=2012,sector=test_es,colormap=test_esc,background_value_flag=False,background_value_flag_label='')
+    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_40.gdb',st_year=2012,en_year=2012,sector=test_es,colormap=test_esc,background_value_flag=False,background_value_flag_label='')
     calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
     aaa.prepare_raster()
     # aaa.sector_max('categories_2015',calculate_fields)
