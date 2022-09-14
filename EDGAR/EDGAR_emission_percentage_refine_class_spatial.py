@@ -58,7 +58,7 @@ class EDGAR_spatial:
         self.ES_logger = logging.getLogger()
         self.ES_logger.setLevel(level=logging.DEBUG)
         ES_logger_file = logging.FileHandler(log_path)
-        ES_logger_formatter = logging.Formatter('%(asctime)s-[%(levelname)s]-%(name)s-%(funcName)s-%(message)s')
+        ES_logger_formatter = logging.Formatter('%(asctime)s-[%(levelname)s]-[%(name)s]-[%(funcName)s]-%(message)s')
         ES_logger_file.setFormatter(ES_logger_formatter)
         self.ES_logger.addHandler(ES_logger_file)
 
@@ -160,7 +160,7 @@ class EDGAR_spatial:
         self.filter_label = temp_init_filter_label
         self.ES_logger.info('filter_label has set.')
 
-        print 'EDGAR_Spatial initialized! More information please check the log file.'
+        print 'EDGAR_Spatial initialized! More debug information please check the log file.'
         self.ES_logger.info('Initialization finished.')
         self.ES_logger.debug('==========DEGUG INFORMATIONS==========')
         self.ES_logger.debug('acrpy.env.workspace:%s' % arcpy.env.workspace)
@@ -917,7 +917,7 @@ if __name__ == '__main__':
     test_es = {'E2A':'E2A','E3':'E3'}
     test_esc = {'E2A':1,'E3':2}
 
-    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_40.gdb',st_year=2012,en_year=2012,sector=test_es,colormap=test_esc,background_value_flag=False,background_value_flag_label='')
+    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_42.gdb',st_year=2012,en_year=2012,sector=test_es,colormap=test_esc,background_value_flag=False,background_value_flag_label='')
     calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
     aaa.prepare_raster()
     # aaa.sector_max('categories_2015',calculate_fields)
