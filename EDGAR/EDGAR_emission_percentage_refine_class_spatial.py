@@ -160,6 +160,7 @@ class EDGAR_spatial:
         self.filter_label = temp_init_filter_label
         self.ES_logger.info('filter_label has set.')
 
+        print 'EDGAR_Spatial initialized! More information please check the log file.'
         self.ES_logger.info('Initialization finished.')
         self.ES_logger.debug('==========DEGUG INFORMATIONS==========')
         self.ES_logger.debug('acrpy.env.workspace:%s' % arcpy.env.workspace)
@@ -278,9 +279,13 @@ class EDGAR_spatial:
     def set_EDGAR_sector(self, sector):
         if type(sector) != dict:
             print 'Error type! EDGAR sectors should be dictionary!'
+            self.ES_logger.error('Error type! EDGAR sectors should be dictionary.')
             return
 
         self.EDGAR_sector = sector
+
+        # logger output
+        self.ES_logger.debug('EDGAR_sector changed to:%s' % sector)
 
     def get_EDGAR_sector(self):
         print self.EDGAR_sector
@@ -290,9 +295,13 @@ class EDGAR_spatial:
     def set_EDGAR_sector_colormap(self, sector_colormap):
         if type(sector_colormap) != dict:
             print 'Error type! EDGAR sectors colormap should be diectionary!'
+            self.ES_logger.error('Error type! EDGAR sectors colormap should be diectionary.')
             return
 
         self.EDGAR_sector_colormap = sector_colormap
+
+        # logger output
+        self.ES_logger.debug('EDGAR_sector_colormap changed to:%s' % sector_colormap)
 
     def get_EDGAR_sector_colormap(self):
         print self.EDGAR_sector_colormap
@@ -301,6 +310,9 @@ class EDGAR_spatial:
 
     def set_year_range(self, start_end=(1970, 2018)):
         self.start_year, self.end_year = start_end
+
+        # logger output
+        self.ES_logger.debug('year range changed to:%s' % start_end)
 
     def get_year_range(self):
         print 'Start year: %s\nEnd year: %s' % (self.start_year, self.end_year)
@@ -316,21 +328,33 @@ class EDGAR_spatial:
                 self.background_flag = bool(flag_and_label_dict['flag'])
                 self.background_label = ''
                 print 'Background value flag closed!'
+
+                # logger output
+                self.ES_logger.debug('Backgroud closed.')
             except:
                 print 'Background value flag set failed! Please check the flag argument input.'
+                self.ES_logger.error('Background value flag set failed! Please check the flag argument input.')
         # 开启background，即栅格包含背景0值
         elif bool(flag_and_label_dict['flag']) == True:
             # 检查flag参数并赋值
             try:
                 self.background_flag = bool(flag_and_label_dict['flag'])
+
+                # logger output
+                self.ES_logger.debug('Backgroud opened.')
             except:
                 print 'Background value flag set failed! Please check the flag argument input.'
+                self.ES_logger.error('Background value flag set failed! Please check the flag argument input.')
 
             # 检查flag_label参数并
             if type(flag_and_label_dict['label']) == str:
                 self.background_label = flag_and_label_dict['label']
+
+                # logger output
+                self.ES_logger.debug('Backgroud label changed to:%s' % flag_and_label_dict['label'])
             else:
                 print 'Background value flag label set failed! Please check the flag argument input.'
+                self.ES_logger.error('Background value flag set failed! Please check the flag argument input.')
 
     def get_background_value(self):
         return (self.background_flag,self.background_label)
@@ -345,6 +369,7 @@ class EDGAR_spatial:
         # 检查年份设定是否为整数。（其他参数可以暂时忽略，因为默认格式下基本不会改变）
         if (type(start_year) != int) or (type(end_year) != int):
             print 'Error: Year setting error!'
+            self.ES_logger.error('Year setting error. Year settings must be integer and between 1970 to 2018.')
             return
         
         temp_time_range = range(start_year,end_year+1)
@@ -359,13 +384,20 @@ class EDGAR_spatial:
             temp_raster_filter_wildcard = '%s*%s_%s' % (
                 background_label, i[0], i[1])
             self.raster_filter_wildcard.append(temp_raster_filter_wildcard),
+        
+        # logger output
+        self.ES_logger.debug('raster_filter set by default.')
 
     def build_raster_filter_costum(self, custom_label):
         # 对于自定义筛选条件，只需要检查是否为字符串
         if type(custom_label) != str:
             print "arcpy.ListRasters() need a string for 'wild_card'."
+            self.ES_logger.error('Wild_card set faild. The wild_card string must follow the standard of arcgis wild_card rules.')
             return
         self.raster_filter_wildcard = custom_label
+        
+        # logger output
+        self.ES_logger.debug('raster_filter set by costum.')
     
     ## filter_label 构造方法：
     ##      filter_label字典组的构造如下：
@@ -383,34 +415,54 @@ class EDGAR_spatial:
         # 检查default set，并赋值
         if bool(filter_label['default_set']) == True:
             self.filter_label_dict['default'] = True
+
+            # logger output
+            self.ES_logger.debug('filter label will set by default.')
         elif bool(filter_label['default_set']) == False:
             self.filter_label_dict['default'] = False
+
+            # logger output
+            self.ES_logger.debug('filter label will set by costum.')
         else:
             print 'default set error. Please check default_set argument.'
+            self.ES_logger.error('default set error. default_set argument need a bool type input.')
         
         # 检查background label 并赋值
         if bool(filter_label['background_label_set']) == True:
-            ## 这个方法待测试！！！
-            ## 不能使用！！！
             self.filter_label_dict['label']['background_label'] = self.background_value_flag[1]
+
+            # logger output
+            self.ES_logger.debug('filter label will containt background value.')
         elif bool(filter_label['background_label_set']) == False:
             self.filter_label_dict['label']['background_label'] = ''
+
+            # logger output
+            self.ES_logger.debug('filter label will NOT containt background value.')
         else:
             print 'background label set error. Please check backgroud_label_set argument.'
+            self.ES_logger.error('background label set error. The background_label_set need a dict type input. More information please refere the project readme.md files.')
         
         # 检查sector是否为str或者list
         if (type(filter_label['sector_set']) == str) or (type(filter_label['sector_set']) == dict):
             self.filter_label_dict['label']['sector'] = filter_label['sector_set']
+
+            # logger output
+            self.ES_logger.debug('filter_label changed to:%s' % filter_label['sector_set'])
         else:
             print 'filter_label: sector setting error! sector only accept string or list type.'
+            self.ES_logger.error('filter label set error. The filter_label need a dict or a list type input. More information please refere the project readme.md files.')
         
         # 检查start_year 和 end_year
         if (type(filter_label['start_year_set']) != int) or (type(filter_label['end_year_set']) != int):
             print 'filter_label: year setting error! please check year arguments'
+            self.ES_logger.error('year error. The star year and end year must be integer. More information please refere the project readme.md files.')
             return
         else:
             self.filter_label_dict['label']['start_year'] = filter_label['start_year_set']
             self.filter_label_dict['label']['end_year'] = filter_label['end_year_set']
+
+            #logger output
+            self.ES_logger.debug('filter_label year range changed to:%s to %s' % (filter_label['start_year_set'], filter_label['end_year_set']))
 
 
     def get_filter_label(self):
@@ -424,9 +476,15 @@ class EDGAR_spatial:
         if filter_label['default'] == True:
             # 这里使用python的**kwags特性，**操作符解包字典并提取字典的值。
             self.build_raster_filter_default(**filter_label['label'])
+
+            # logger output
+            self.ES_logger.debug('filter_label changed by default function.')
         # 判断是否为默认标签，否则直接赋值为标签数据
         elif filter_label['default'] == False:
             self.build_raster_filter_costum(filter_label['label'])
+
+            # logger output
+            self.ES_logger.debug('filter_label changed by costum function.')
         else:
             print 'Error: raster filter arguments error.'
     
@@ -450,10 +508,16 @@ class EDGAR_spatial:
 
                 # 使用str方式列出所有栅格
                 self.do_arcpy_list_raster_str(wildcard_str='')
+
+                # logger output
+                self.ES_logger.debug('rasters listed without filter.')
             # 列表不为空的情况
             else:
                 # 直接将参数传入list方式的方法列出需要栅格
                 self.do_arcpy_list_raster_list(wildcard_list=raster_filter_wildcard)
+
+                # logger output
+                self.ES_logger.debug('rasters listed.')
         # 传入单一字符串情况
         elif temp_type_check == str:
             # 显示筛选列表警告:
@@ -462,22 +526,32 @@ class EDGAR_spatial:
                 print 'WARNING: No fliter! All rasters will be list!'
             
             self.do_arcpy_list_raster_str(wildcard_str=raster_filter_wildcard)
+
+            # logger output
+            self.ES_logger.debug('rasters listed without filter.')
         else:
             # 其他情况直接退出
             # 或者，如果raster_filter_wildcard为空则直接显示筛选列表错误
             print 'Error: No fliter! Please check input raster filter!'
+            self.ES_logger.error('No fliter! Please check input raster filter!')
             return
         
     # 实际执行列出栅格的方法，这个为str方式
     def do_arcpy_list_raster_str(self, wildcard_str):
         self.working_rasters.extend(arcpy.ListRasters(wild_card=wildcard_str))
 
-    # 实际执行列出栅格的方法，这个为str方式
+        # logger output
+        self.ES_logger.debug('working rasters chenged to:%s' % self.working_rasters)
+
+    # 实际执行列出栅格的方法，这个为list方式
     def do_arcpy_list_raster_list(self, wildcard_list):
         # 逐年份生成需要处理的数据列表
         for i in wildcard_list:
             self.working_rasters.extend(arcpy.ListRasters(wild_card=i))
 
+
+        # logger output
+        self.ES_logger.debug('working rasters chenged to:%s' % self.working_rasters)
 
     ############################################################################
     ############################################################################
