@@ -52,7 +52,7 @@ class EDGAR_spatial:
     ##      2.带有数据位置的构造函数：需要传入一个
     ############################################################################
     ############################################################################
-    def __init__(self, workspace, background_value_flag = True, background_value_flag_label = 'BA', sector={}, colormap={}, st_year=1970, en_year=2018, log_path='EDGAR.log'):
+    def __init__(self, workspace, background_flag = True, background_flag_label = 'BA',background_raster = 'background', sector={}, colormap={}, st_year=1970, en_year=2018, log_path='EDGAR.log'):
         # 初始化logger记录类的全体工作
         # ES_logger为可使用的logging实例
         self.ES_logger = logging.getLogger()
@@ -70,7 +70,6 @@ class EDGAR_spatial:
         ## 检查输入是否为空值
         if workspace == '':
             print 'Spatial direction or database path error! Please check your input!'
-            self.ES_logger.info('Empty workspace input.')
             self.ES_logger.error('arcpy environment workspace set failed!')
             return
 
@@ -137,23 +136,34 @@ class EDGAR_spatial:
             self.start_year, self.end_year = st_year, en_year
             self.ES_logger.info('Year has set.')
         
-        # background_value 参数初始化部分
+        # background 参数初始化部分
         ## 这里要明确处理的数据是否包含背景0值
         # 检查并赋值label
-        if type(background_value_flag_label) == str:
-            self.background_flag = bool(background_value_flag)
-            self.background_label = background_value_flag_label
-            self.ES_logger.info('Background_value_flag has set.')
+        if bool(background_flag) == True:
+            if type(background_flag_label) == str:
+                if arcpy.Exists(background_raster):
+                    self.background_flag = bool(background_flag)
+                    self.background_label = background_flag_label
+                    self.background_raster = background_raster
+                    self.ES_logger.debug('Background has set.')
+            else:
+                print 'Error: Please check background flag or label or raster.'
+                self.ES_logger.error('Background setting error!')
+                return
+        elif bool(background_flag) == False:
+            self.background_flag = bool(background_flag)
+            self.background_label = ''
+            self.background_raster = ''
+            self.ES_logger.debug('Background has set.')
         else:
-            print 'Error: Background_value_flag_label only accept a string input.'
-            self.ES_logger.info('Background_value_flag setting type error.')
-            self.ES_logger.error('Background_value_flag setting error!')
+            self.ES_logger.error('Background setting error!')
             return
+
 
         # raster_filter 参数初始化部分
         ## 这里要将初始化传入的部门参数字典“sector”进行列表化并赋值
         ## 和起始、终止时间传入
-        temp_init_filter_label = {'default_set': True, 'background_label_set': self.background_value[1],
+        temp_init_filter_label = {'default_set': True, 'background_label_set': self.background[1],
                                                          'sector_set': sector, 
                                                          'start_year_set': st_year, 
                                                          'end_year_set':en_year}
@@ -171,6 +181,7 @@ class EDGAR_spatial:
         self.ES_logger.debug('Processing ends in year:%s' % self.end_year)
         self.ES_logger.debug('Raster has background:%s' % self.background_flag)
         self.ES_logger.debug('Raster name\'s background label is:%s' % self.background_label)
+        self.ES_logger.debug('Background raster is:%s' % self.background_raster)
         self.ES_logger.debug('Raster filter parameters was set to:%s' % self.filter_label)
         self.ES_logger.debug('==========DEGUG INFORMATIONS==========')
     
@@ -242,10 +253,12 @@ class EDGAR_spatial:
     # 默认栅格数据背景零值标识和区分标签
     __background_flag = True
     __background_label = 'BA'
+    __background_raster = 'background'
 
     # 栅格数据背景零值标识和区分标签
     background_flag = __background_flag
     background_label = __background_label
+    background_raster = __background_raster
 
     # 默认过滤标签
     __default_filter_label_dict = {'default': True, 'label': {'background_label': __background_label,
@@ -320,7 +333,7 @@ class EDGAR_spatial:
     year_range = property(get_year_range, set_year_range)
 
     # 栅格图像背景值设置和查看属性/函数
-    def set_background_value(self, flag_and_label_dict):
+    def set_background(self, flag_and_label_dict):
         # 关闭background，即栅格不包含背景0值
         if bool(flag_and_label_dict['flag']) == False:
             # 检查flag参数并赋值
@@ -356,10 +369,10 @@ class EDGAR_spatial:
                 print 'Background value flag label set failed! Please check the flag argument input.'
                 self.ES_logger.error('Background value flag set failed! Please check the flag argument input.')
 
-    def get_background_value(self):
+    def get_background(self):
         return (self.background_flag,self.background_label)
 
-    background_value = property(get_background_value, set_background_value)
+    background = property(get_background, set_background)
 
     # 类中提供了两个过滤标签的构造方法
     # 1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
@@ -429,7 +442,7 @@ class EDGAR_spatial:
         
         # 检查background label 并赋值
         if bool(filter_label['background_label_set']) == True:
-            self.filter_label_dict['label']['background_label'] = self.background_value_flag[1]
+            self.filter_label_dict['label']['background_label'] = self.background[1]
 
             # logger output
             self.ES_logger.debug('filter label will containt background value.')
@@ -626,7 +639,7 @@ class EDGAR_spatial:
         # 尝试列出当年总量的栅格
         # 这里要注意，总量栅格的名称在year_sector_merge()中写死了
         temp_year_total = arcpy.Raster('total_emission_'.join(yaer))
-        temp_sector_wildcard = '%s*%s*%s' % (self.background_value[1],sector,year)
+        temp_sector_wildcard = '%s*%s*%s' % (self.background[1],sector,year)
         temp_sector_emission = arcpy.ListRasters(wild_card=temp_sector_wildcard)
 
         # 检查输入的部门栅格和总量栅格是否存在，如果不存在则报错并返回
@@ -917,7 +930,7 @@ if __name__ == '__main__':
     test_es = {'E2A':'E2A','E3':'E3'}
     test_esc = {'E2A':1,'E3':2}
 
-    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_42.gdb',st_year=2012,en_year=2012,sector=test_es,colormap=test_esc,background_value_flag=False,background_value_flag_label='')
+    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_42.gdb',st_year=2012,en_year=2012,sector=test_es,colormap=test_esc,background_flag=False,background_flag_label='')
     calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
     aaa.prepare_raster()
     # aaa.sector_max('categories_2015',calculate_fields)
