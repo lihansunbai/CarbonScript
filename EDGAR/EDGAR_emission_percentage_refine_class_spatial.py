@@ -601,11 +601,16 @@ class EDGAR_spatial:
         # 通过arcpy列出需要的栅格
         self.list_working_rasters(self.raster_filter_wildcard)
 
-    # 栅格叠加
+    # 栅格叠加的实际执行函数
     # 这个函数用到了tqdm显示累加进度
     def do_raster_add(self, raster_list, result_raster):
-        if result_raster != str:
+        if type(result_raster) != str:
             print 'Raster add: The output result raster path error.'
+
+            # logger output
+            self.ES_logger.error('The output result raster path error.')
+            return
+
         # 将列表中的第一个栅格作为累加的起始栅格
         temp_raster = arcpy.Raster(raster_list[0])
         raster_list.pop(0)
@@ -613,7 +618,12 @@ class EDGAR_spatial:
         # 累加剩余栅格
         for r in tqdm(raster_list):
             temp_raster = temp_raster + arcpy.Raster(r)
-        
+
+            # logger output
+            self.ES_logger.debug('Processing raster:%s' % r)
+
+        # logger output
+        self.ES_logger.info('Rasters added: %s' % raster_list)
         return temp_raster.save(result_raster)
     
     # 函数需要传入一个包含需要叠加的部门列表list，
@@ -624,11 +634,15 @@ class EDGAR_spatial:
         for i in merge_sector:
             temp_sector = temp_sector + '|%s' % i
         
-        temp_sector = temp_sector[1:len-1]
-        temp_sector_year = '%s.*%s' % (temp_sector,year)
+        temp_sector = temp_sector[1:len(temp_sector)]
+        temp_sector_year = '(%s).*%s' % (temp_sector,year)
         filter_regex = re.compile(temp_sector_year)
 
-        temp_merge_raster = list(filter(filter_regex,raster_list))
+        # 神奇的python语法~~~
+        temp_merge_raster = [s for s in raster_list if filter_regex.search(s)]
+
+        # logger output
+        self.ES_logger.debug('mergeing rasters: %s' % temp_merge_raster)
 
         # 此处输出的总量数据文件名不可更改！！！
         # TODO
@@ -636,34 +650,48 @@ class EDGAR_spatial:
         result_year = 'total_emission_%s' % year
         self.do_raster_add(temp_merge_raster, result_year)
 
+        # logger output
+        self.ES_logger.info('year_sectors_merge finished!')
+
     # 实用（暴力）计算全年部门排放总和的函数
     def year_total_sectors_merge(self, year):
         temp_sector = list(self.EDGAR_sector.values())
         self.year_sectors_merge(self.working_rasters,temp_sector,year)
         print 'Total emission of %s saved!\n' % year
 
+        # logger output
+        self.ES_logger.info('All sector merged!')
 
+    ######################################
+    ######################################
     # 计算单个部门占年排放总量中的比例
     # 注意！！！
     # 这里的比例定义为：
     #       对每一个栅格：部门排放/该栅格的总量
     ######################################
+    ######################################
     def sector_emission_percentage(self, sector, year, output_sector_point):
         # 尝试列出当年总量的栅格
         # 这里要注意，总量栅格的名称在year_sector_merge()中写死了
-        temp_year_total = arcpy.Raster('total_emission_'.join(yaer))
+        temp_year_total = arcpy.Raster('total_emission_%s' % year )
         temp_sector_wildcard = '%s*%s*%s' % (self.background[1],sector,year)
-        temp_sector_emission = arcpy.ListRasters(wild_card=temp_sector_wildcard)
+        temp_sector_emission = arcpy.Raster(arcpy.ListRasters(wild_card=temp_sector_wildcard)[0])
 
         # 检查输入的部门栅格和总量栅格是否存在，如果不存在则报错并返回
-        if not (arcpy.Exists(sector)) or not (arcpy.Exists(temp_year_total)):
-            print 'Sector_emission_percentage: Error! sector or year total emission raster does not exist.'
+        if not (arcpy.Exists(temp_sector_emission)) or not (arcpy.Exists(temp_year_total)):
+            print 'Sector_emission_percentage: Error! sector emission or year total emission raster does not exist.'
+
+            # logger output
+            self.ES_logger.error('sector emission or year total emission raster does not exist.')
             return
         
         # 计算部门排放相对于全体部门总排放的比例
         # 注意！！！
         # 这里涉及除法！0值的背景会被抹去为nodata。所以要再mosaic一个背景上去才能转化为点。
-        temp_output_weight_raster = sector / temp_year_total
+        temp_output_weight_raster = temp_sector_emission / temp_year_total
+
+        # logger output
+        self.ES_logger.debug('Sectal raster weight calculated:%s' % sector)
 
         # Mosaic 比例计算结果和0值背景 
         # Mosaic 的结果仍然保存在temp_output_weight_raster中
@@ -673,60 +701,52 @@ class EDGAR_spatial:
                                 colormap="FIRST",
                                 mosaicking_tolerance=0.5)
 
+        # logger output
+        self.ES_logger.debug('Sectal raster weight mosaic to 1800*3600.')
+        
+        ############################################################
+        # 这里需要进行重大修改！！！
+        # 尝试将栅格计算和转点操作拆分为两个函数：
+        # 1、在栅格计算中，手动清除或者说释放所有临时参数
+        # 2、由于转点操作速度过慢，命令行长时间没有相应
+        #   尝试在其中加入一个计时器之类的工具，想办法显示处理进度
+        ############################################################
+
         ## 保存栅格格式权重计算结果
-        temp_output_weight_raster_path =  '%s_weight_raster_%s' % (sector, year)
-        temp_output_weight_raster.save(temp_output_weight_raster_path)
-        print 'Sector emission weight saved: %s\n' % sector
+        # temp_output_weight_raster_path =  '%s_weight_raster_%s' % (sector, year)
+        # temp_output_weight_raster.save(temp_output_weight_raster_path)
+        # print 'Sector emission weight saved: %s\n' % sector
+
+        # logger output
+        # self.ES_logger.info('Sector emission weight saved')
+
+        #temp_trans_raster = arcpy.Raster(temp_output_weight_raster_path)
+        # transform to point features
+        arcpy.RasterToPoint_conversion(temp_output_weight_raster, output_sector_point, 'VALUE')
+
+        # logger output
+        self.ES_logger.debug('Sector emission weight raster convert to point:%s' % sector)
 
         # 栅格数据转点对象。转为点对象后可以实现计算比例并同时记录对应排放比例的部门名称
         # 这里用到了arcpy.AlterField_management()这个函数可能在10.2版本中没有
         try:
-            # transform to point features
-            arcpy.RasterToPoint_conversion(temp_output_weight_raster, output_sector_point, 'VALUE')
-            # rename value field
-            arcpy.AlterField_management(output_sector_point,'grid_code',new_field_name='test_sector')
 
             # rename value field
-            arcpy.AddField_management(output_weight_point[i], i, 'DOUBLE')
-            arcpy.CalculateField_management(output_weight_point[i], i, '!grid_code!', 'PYTHON_9.3')
-
+            arcpy.AlterField_management(output_sector_point,'grid_code',new_field_name=sector)
             # 删除表链接结果结果中生成的统计字段'pointid'和'grid_code'
-            arcpy.DeleteField_management(output_weight_point[i], 'pointid')
-            arcpy.DeleteField_management(output_weight_point[i], 'grid_code')
-            print 'Categories finished: %s' % i
+            arcpy.DeleteField_management(output_sector_point, 'pointid')
+
+            # logger output
+            self.ES_logger.debug('Sector emission weight point fields cleaned:%s' % sector)
+
+            print 'Sector raster convert to pointfinished: %s of %s' % (sector, year)
         except:
-            print 'Failed categories to point : %s' % i
+            print 'Failed sector to point : %s' % sector
+            
+            # logger output
+            self.ES_logger.error('Raster weight converting to point failed:%s' % sector)
+
             print arcpy.GetMessages()
-
-    def weight_calculate(self, year, sector, output_weight_point):
-        for i in tqdm(sector):
-            # 计算部门排放相对于全体部门总排放的比例
-            output_weight_raster = sector[i] / self.__raster_sum
-            ## 保存栅格权重计算结果
-            temp_output_weight_raster_path = self.__workspace + '\\' + '%s_weight_raster_%s' % (i, year)
-            output_weight_point.save(temp_output_weight_raster_path)
-            print 'Sector emission weight saved: %s\n' % i
-
-            # 栅格数据转点对象。转为点对象后可以实现计算比例并同时记录对应排放比例的部门名称
-            output_weight_point[i] = self.__workspace + '\\' + '%s_weight_point_%s' % (i, year)
-
-            try:
-                # transform to point features
-                arcpy.RasterToPoint_conversion(output_weight_raster, output_weight_point, 'VALUE')
-
-                # rename value field
-                arcpy.AddField_management(output_weight_point[i], i, 'DOUBLE')
-                arcpy.CalculateField_management(output_weight_point[i], i, '!grid_code!', 'PYTHON_9.3')
-
-                # 删除表链接结果结果中生成的统计字段'pointid'和'grid_code'
-                arcpy.DeleteField_management(output_weight_point[i], 'pointid')
-                arcpy.DeleteField_management(output_weight_point[i], 'grid_code')
-                print 'Categories finished: %s' % i
-            except:
-                print 'Failed categories to point : %s' % i
-                print arcpy.GetMessages()
-
-        print 'Categories to point finished of %s' % year
 
     def weight_joint(self, year, weight_point):
         # 理解这个函数中的操作需要将temp_pointer_a, temp_pointer_b视为指针一样的东西
@@ -948,19 +968,22 @@ class EDGAR_spatial:
 # ======================================================================
 if __name__ == '__main__':
     ## test contents
-    test_es = {'E2A':'E2A','E3':'E3'}
-    test_esc = {'E2A':1,'E3':2}
+    # test_es = {'E2A':'E2A','E1A1A':'E1A1A','E1A4':'E1A4'}
+    # test_esc = {'E2A':1,'E1A1A':2,'E1A4':3}
 
-    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_42.gdb',st_year=2012,en_year=2012,sector=test_es,colormap=test_esc,background_flag=False,background_flag_label='')
-    calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
-    aaa.prepare_raster()
-    # aaa.sector_max('categories_2015',calculate_fields)
-    print aaa.working_rasters
-    #aaa.year_total_sectors_merge(2012)
-    
-    # test_es = {'ENE':'ENE','IND':'IND','REF_TRF':'REF_TRF','TNR_Aviation_CDS':'TNR_Aviation_CDS'}
-
-    # test_esc={'ENE':1,'IND':2,'REF_TRF':3,'TNR_Aviation_CDS':4}
-    # aaa = EDGAR_spatial('D:\\workplace\\DATA\\geodatabase\\test\\EDGAR_test.gdb',sector=test_es,colormap=test_esc,st_year=2010,en_year=2014)
+    # aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_42.gdb',st_year=2012,en_year=2012,sector=test_es,colormap=test_esc,background_flag=True, background_flag_label='')
     # aaa.prepare_raster()
     # print aaa.working_rasters
+    # aaa.year_total_sectors_merge(2012)
+    # aaa.sector_emission_percentage('E2A',2012,'test_e2a_weight')
+
+    
+    test_es = {'AGS':'AGS','ENE':'ENE','RCO':'RCO'}
+    test_esc = {'AGS':1,'ENE':2,'RCO':3}
+
+    #calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
+    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_60.gdb',st_year=2018,en_year=2018,sector=test_es,colormap=test_esc)
+    aaa.prepare_raster()
+    print aaa.working_rasters
+    aaa.year_total_sectors_merge(2018)
+    aaa.sector_emission_percentage('RCO',2018,'test_RCO_weight')
