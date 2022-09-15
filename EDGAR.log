@@ -1,0 +1,306 @@
+2022-09-15 21:15:03,667-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-15 21:15:13,904-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-15 21:15:15,134-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-15 21:15:16,209-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-15 21:15:19,822-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-15 21:15:29,259-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-15 21:15:38,371-[INFO]-[root]-[__init__]-Year has set.
+2022-09-15 21:16:14,660-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-15 21:16:39,967-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-15 21:17:24,032-[DEBUG]-[root]-[set_filter_label]-filter label will containt background value.
+2022-09-15 21:17:35,038-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:17:56,483-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2012 to 2012
+2022-09-15 21:18:09,674-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-15 21:18:12,803-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-15 21:18:13,453-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:18:13,795-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_42.gdb
+2022-09-15 21:18:14,173-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-15 21:18:14,522-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:18:14,809-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'E1A4': 3, 'E1A1A': 2, 'E2A': 1}
+2022-09-15 21:18:15,096-[DEBUG]-[root]-[__init__]-Processing begains in year:2012
+2022-09-15 21:18:15,352-[DEBUG]-[root]-[__init__]-Processing ends in year:2012
+2022-09-15 21:18:15,647-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-15 21:18:15,944-[DEBUG]-[root]-[__init__]-Raster name's background label is:BA
+2022-09-15 21:18:16,331-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-15 21:18:17,474-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}, 'end_year': 2012, 'start_year': 2012, 'background_label': 'BA'}}
+2022-09-15 21:18:18,117-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:18:19,737-[DEBUG]-[root]-[build_raster_filter_default]-raster_filter set by default.
+2022-09-15 21:18:19,737-[DEBUG]-[root]-[set_raster_filter]-filter_label changed by default function.
+2022-09-15 21:22:25,868-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-15 21:22:32,780-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-15 21:22:32,782-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-15 21:22:32,786-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-15 21:22:32,788-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-15 21:22:32,788-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-15 21:22:32,788-[INFO]-[root]-[__init__]-Year has set.
+2022-09-15 21:22:34,793-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-15 21:22:45,010-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-15 21:22:47,338-[DEBUG]-[root]-[set_filter_label]-filter label will NOT containt background value.
+2022-09-15 21:22:48,930-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:22:51,674-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2012 to 2012
+2022-09-15 21:22:52,809-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-15 21:22:54,138-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-15 21:22:54,588-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:22:54,812-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_42.gdb
+2022-09-15 21:22:55,075-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-15 21:22:55,319-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:22:55,553-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'E1A4': 3, 'E1A1A': 2, 'E2A': 1}
+2022-09-15 21:22:55,808-[DEBUG]-[root]-[__init__]-Processing begains in year:2012
+2022-09-15 21:22:56,052-[DEBUG]-[root]-[__init__]-Processing ends in year:2012
+2022-09-15 21:22:56,282-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-15 21:22:56,516-[DEBUG]-[root]-[__init__]-Raster name's background label is:
+2022-09-15 21:22:56,763-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-15 21:22:57,154-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}, 'end_year': 2012, 'start_year': 2012, 'background_label': ''}}
+2022-09-15 21:22:57,683-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:22:58,967-[DEBUG]-[root]-[build_raster_filter_default]-raster_filter set by default.
+2022-09-15 21:22:58,967-[DEBUG]-[root]-[set_raster_filter]-filter_label changed by default function.
+2022-09-15 21:23:10,358-[DEBUG]-[root]-[do_arcpy_list_raster_list]-working rasters chenged to:[u'E1A4_2012', u'E1A1A_2012', u'E2A_2012']
+2022-09-15 21:23:20,354-[DEBUG]-[root]-[list_working_rasters]-rasters listed.
+2022-09-15 21:41:22,220-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-15 21:41:26,405-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-15 21:41:26,405-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-15 21:41:26,405-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-15 21:41:26,405-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-15 21:41:26,405-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-15 21:41:26,405-[INFO]-[root]-[__init__]-Year has set.
+2022-09-15 21:41:27,596-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-15 21:41:27,596-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-15 21:41:27,596-[DEBUG]-[root]-[set_filter_label]-filter label will NOT containt background value.
+2022-09-15 21:41:27,596-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:41:27,596-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2012 to 2012
+2022-09-15 21:41:27,596-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-15 21:41:27,596-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-15 21:41:27,596-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:41:27,596-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_42.gdb
+2022-09-15 21:41:27,607-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-15 21:41:27,607-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:41:27,607-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'E1A4': 3, 'E1A1A': 2, 'E2A': 1}
+2022-09-15 21:41:27,607-[DEBUG]-[root]-[__init__]-Processing begains in year:2012
+2022-09-15 21:41:27,607-[DEBUG]-[root]-[__init__]-Processing ends in year:2012
+2022-09-15 21:41:27,607-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-15 21:41:27,607-[DEBUG]-[root]-[__init__]-Raster name's background label is:
+2022-09-15 21:41:27,608-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-15 21:41:27,608-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}, 'end_year': 2012, 'start_year': 2012, 'background_label': ''}}
+2022-09-15 21:41:27,608-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:41:29,500-[DEBUG]-[root]-[build_raster_filter_default]-raster_filter set by default.
+2022-09-15 21:41:29,500-[DEBUG]-[root]-[set_raster_filter]-filter_label changed by default function.
+2022-09-15 21:41:29,767-[DEBUG]-[root]-[do_arcpy_list_raster_list]-working rasters chenged to:[u'E1A4_2012', u'E1A1A_2012', u'E2A_2012']
+2022-09-15 21:41:29,767-[DEBUG]-[root]-[list_working_rasters]-rasters listed.
+2022-09-15 21:43:09,726-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-15 21:43:16,588-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-15 21:43:16,588-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-15 21:43:16,588-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-15 21:43:16,588-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-15 21:43:16,588-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-15 21:43:16,588-[INFO]-[root]-[__init__]-Year has set.
+2022-09-15 21:43:18,563-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-15 21:43:18,563-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-15 21:43:18,563-[DEBUG]-[root]-[set_filter_label]-filter label will NOT containt background value.
+2022-09-15 21:43:18,563-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:43:18,563-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2012 to 2012
+2022-09-15 21:43:18,563-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-15 21:43:18,563-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-15 21:43:18,563-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:43:18,566-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_42.gdb
+2022-09-15 21:43:18,566-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-15 21:43:18,568-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:43:18,568-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'E1A4': 3, 'E1A1A': 2, 'E2A': 1}
+2022-09-15 21:43:18,568-[DEBUG]-[root]-[__init__]-Processing begains in year:2012
+2022-09-15 21:43:18,568-[DEBUG]-[root]-[__init__]-Processing ends in year:2012
+2022-09-15 21:43:18,569-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-15 21:43:18,569-[DEBUG]-[root]-[__init__]-Raster name's background label is:
+2022-09-15 21:43:18,569-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-15 21:43:18,569-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}, 'end_year': 2012, 'start_year': 2012, 'background_label': ''}}
+2022-09-15 21:43:18,569-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:43:20,812-[DEBUG]-[root]-[build_raster_filter_default]-raster_filter set by default.
+2022-09-15 21:43:20,813-[DEBUG]-[root]-[set_raster_filter]-filter_label changed by default function.
+2022-09-15 21:43:21,184-[DEBUG]-[root]-[do_arcpy_list_raster_list]-working rasters chenged to:[u'E1A4_2012', u'E1A1A_2012', u'E2A_2012']
+2022-09-15 21:43:21,184-[DEBUG]-[root]-[list_working_rasters]-rasters listed.
+2022-09-15 21:44:17,319-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-15 21:44:24,201-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-15 21:44:24,201-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-15 21:44:24,201-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-15 21:44:24,201-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-15 21:44:24,201-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-15 21:44:24,201-[INFO]-[root]-[__init__]-Year has set.
+2022-09-15 21:44:26,187-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-15 21:44:26,187-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-15 21:44:26,187-[DEBUG]-[root]-[set_filter_label]-filter label will NOT containt background value.
+2022-09-15 21:44:26,187-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:44:26,187-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2012 to 2012
+2022-09-15 21:44:26,187-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-15 21:44:26,187-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-15 21:44:26,187-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:44:26,194-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_42.gdb
+2022-09-15 21:44:26,194-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-15 21:44:26,194-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:44:26,194-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'E1A4': 3, 'E1A1A': 2, 'E2A': 1}
+2022-09-15 21:44:26,194-[DEBUG]-[root]-[__init__]-Processing begains in year:2012
+2022-09-15 21:44:26,196-[DEBUG]-[root]-[__init__]-Processing ends in year:2012
+2022-09-15 21:44:26,196-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-15 21:44:26,197-[DEBUG]-[root]-[__init__]-Raster name's background label is:
+2022-09-15 21:44:26,197-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-15 21:44:26,197-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}, 'end_year': 2012, 'start_year': 2012, 'background_label': ''}}
+2022-09-15 21:44:26,197-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:44:26,436-[DEBUG]-[root]-[build_raster_filter_default]-raster_filter set by default.
+2022-09-15 21:44:26,437-[DEBUG]-[root]-[set_raster_filter]-filter_label changed by default function.
+2022-09-15 21:44:26,806-[DEBUG]-[root]-[do_arcpy_list_raster_list]-working rasters chenged to:[u'E1A4_2012', u'E1A1A_2012', u'E2A_2012']
+2022-09-15 21:44:26,806-[DEBUG]-[root]-[list_working_rasters]-rasters listed.
+2022-09-15 21:48:13,819-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-15 21:48:20,733-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-15 21:48:20,733-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-15 21:48:20,733-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-15 21:48:20,733-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-15 21:48:20,733-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-15 21:48:20,733-[INFO]-[root]-[__init__]-Year has set.
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[set_filter_label]-filter label will NOT containt background value.
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2012 to 2012
+2022-09-15 21:48:22,711-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-15 21:48:22,711-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_42.gdb
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'E1A4': 3, 'E1A1A': 2, 'E2A': 1}
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[__init__]-Processing begains in year:2012
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[__init__]-Processing ends in year:2012
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[__init__]-Raster name's background label is:
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}, 'end_year': 2012, 'start_year': 2012, 'background_label': ''}}
+2022-09-15 21:48:22,711-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:48:27,371-[DEBUG]-[root]-[build_raster_filter_default]-raster_filter set by default.
+2022-09-15 21:48:27,371-[DEBUG]-[root]-[set_raster_filter]-filter_label changed by default function.
+2022-09-15 21:48:27,737-[DEBUG]-[root]-[do_arcpy_list_raster_list]-working rasters chenged to:[u'E1A4_2012', u'E1A1A_2012', u'E2A_2012']
+2022-09-15 21:48:27,737-[DEBUG]-[root]-[list_working_rasters]-rasters listed.
+2022-09-15 21:49:19,617-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-15 21:49:26,474-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-15 21:49:26,474-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-15 21:49:26,483-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-15 21:49:26,483-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-15 21:49:26,483-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-15 21:49:26,483-[INFO]-[root]-[__init__]-Year has set.
+2022-09-15 21:49:28,466-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-15 21:49:28,467-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-15 21:49:28,467-[DEBUG]-[root]-[set_filter_label]-filter label will NOT containt background value.
+2022-09-15 21:49:28,467-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:49:28,467-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2012 to 2012
+2022-09-15 21:49:28,467-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-15 21:49:28,469-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-15 21:49:28,469-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:49:28,470-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_42.gdb
+2022-09-15 21:49:28,470-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-15 21:49:28,470-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:49:28,470-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'E1A4': 3, 'E1A1A': 2, 'E2A': 1}
+2022-09-15 21:49:28,470-[DEBUG]-[root]-[__init__]-Processing begains in year:2012
+2022-09-15 21:49:28,470-[DEBUG]-[root]-[__init__]-Processing ends in year:2012
+2022-09-15 21:49:28,470-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-15 21:49:28,470-[DEBUG]-[root]-[__init__]-Raster name's background label is:
+2022-09-15 21:49:28,471-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-15 21:49:28,471-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}, 'end_year': 2012, 'start_year': 2012, 'background_label': ''}}
+2022-09-15 21:49:28,471-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:49:30,223-[DEBUG]-[root]-[build_raster_filter_default]-raster_filter set by default.
+2022-09-15 21:49:30,223-[DEBUG]-[root]-[set_raster_filter]-filter_label changed by default function.
+2022-09-15 21:49:30,598-[DEBUG]-[root]-[do_arcpy_list_raster_list]-working rasters chenged to:[u'E1A4_2012', u'E1A1A_2012', u'E2A_2012']
+2022-09-15 21:49:30,598-[DEBUG]-[root]-[list_working_rasters]-rasters listed.
+2022-09-15 21:52:08,118-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-15 21:52:14,855-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-15 21:52:14,855-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-15 21:52:14,858-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-15 21:52:14,858-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-15 21:52:14,859-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-15 21:52:14,859-[INFO]-[root]-[__init__]-Year has set.
+2022-09-15 21:52:16,030-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-15 21:52:16,030-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-15 21:52:16,030-[DEBUG]-[root]-[set_filter_label]-filter label will NOT containt background value.
+2022-09-15 21:52:16,030-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:52:16,030-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2012 to 2012
+2022-09-15 21:52:16,030-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-15 21:52:16,040-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-15 21:52:16,040-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:52:16,042-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_42.gdb
+2022-09-15 21:52:16,042-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-15 21:52:16,042-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:52:16,042-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'E1A4': 3, 'E1A1A': 2, 'E2A': 1}
+2022-09-15 21:52:16,042-[DEBUG]-[root]-[__init__]-Processing begains in year:2012
+2022-09-15 21:52:16,042-[DEBUG]-[root]-[__init__]-Processing ends in year:2012
+2022-09-15 21:52:16,042-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-15 21:52:16,042-[DEBUG]-[root]-[__init__]-Raster name's background label is:
+2022-09-15 21:52:16,042-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-15 21:52:16,042-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}, 'end_year': 2012, 'start_year': 2012, 'background_label': ''}}
+2022-09-15 21:52:16,042-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:52:17,782-[DEBUG]-[root]-[build_raster_filter_default]-raster_filter set by default.
+2022-09-15 21:52:17,783-[DEBUG]-[root]-[set_raster_filter]-filter_label changed by default function.
+2022-09-15 21:52:18,039-[DEBUG]-[root]-[do_arcpy_list_raster_list]-working rasters chenged to:[u'E1A4_2012', u'E1A1A_2012', u'E2A_2012']
+2022-09-15 21:52:18,039-[DEBUG]-[root]-[list_working_rasters]-rasters listed.
+2022-09-15 21:53:09,240-[DEBUG]-[root]-[year_sectors_merge]-mergeing rasters: [u'E1A4_2012', u'E1A1A_2012', u'E2A_2012']
+2022-09-15 21:55:20,414-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-15 21:55:24,594-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-15 21:55:24,594-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-15 21:55:24,594-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-15 21:55:24,594-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-15 21:55:24,594-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-15 21:55:24,594-[INFO]-[root]-[__init__]-Year has set.
+2022-09-15 21:55:25,792-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-15 21:55:25,792-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-15 21:55:25,792-[DEBUG]-[root]-[set_filter_label]-filter label will NOT containt background value.
+2022-09-15 21:55:25,792-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:55:25,792-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2012 to 2012
+2022-09-15 21:55:25,792-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-15 21:55:25,792-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-15 21:55:25,792-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:55:25,792-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_42.gdb
+2022-09-15 21:55:25,795-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-15 21:55:25,795-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}
+2022-09-15 21:55:25,795-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'E1A4': 3, 'E1A1A': 2, 'E2A': 1}
+2022-09-15 21:55:25,795-[DEBUG]-[root]-[__init__]-Processing begains in year:2012
+2022-09-15 21:55:25,795-[DEBUG]-[root]-[__init__]-Processing ends in year:2012
+2022-09-15 21:55:25,795-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-15 21:55:25,796-[DEBUG]-[root]-[__init__]-Raster name's background label is:
+2022-09-15 21:55:25,796-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-15 21:55:25,796-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'E1A4': 'E1A4', 'E1A1A': 'E1A1A', 'E2A': 'E2A'}, 'end_year': 2012, 'start_year': 2012, 'background_label': ''}}
+2022-09-15 21:55:25,796-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-15 21:55:29,246-[DEBUG]-[root]-[build_raster_filter_default]-raster_filter set by default.
+2022-09-15 21:55:29,247-[DEBUG]-[root]-[set_raster_filter]-filter_label changed by default function.
+2022-09-15 21:55:29,480-[DEBUG]-[root]-[do_arcpy_list_raster_list]-working rasters chenged to:[u'E1A4_2012', u'E1A1A_2012', u'E2A_2012']
+2022-09-15 21:55:29,480-[DEBUG]-[root]-[list_working_rasters]-rasters listed.
+2022-09-15 21:55:32,529-[DEBUG]-[root]-[year_sectors_merge]-mergeing rasters: [u'E1A4_2012', u'E1A1A_2012', u'E2A_2012']
+2022-09-15 21:55:33,334-[DEBUG]-[root]-[do_raster_add]-Processing raster:E1A1A_2012
+2022-09-15 21:55:33,655-[DEBUG]-[root]-[do_raster_add]-Processing raster:E2A_2012
+2022-09-15 21:55:33,721-[INFO]-[root]-[do_raster_add]-Rasters added: [u'E1A1A_2012', u'E2A_2012']
+2022-09-15 21:55:35,016-[INFO]-[root]-[year_sectors_merge]-year_sectors_merge finished!
+2022-09-15 21:55:35,016-[INFO]-[root]-[year_total_sectors_merge]-All sector merged!
+2022-09-16 00:01:57,792-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-16 00:02:01,915-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-16 00:02:01,915-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-16 00:02:01,915-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-16 00:02:01,915-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-16 00:02:01,915-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-16 00:02:01,915-[INFO]-[root]-[__init__]-Year has set.
+2022-09-16 00:02:03,105-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-16 00:02:03,105-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-16 00:02:03,105-[DEBUG]-[root]-[set_filter_label]-filter label will containt background value.
+2022-09-16 00:02:03,105-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'RCO': 'RCO', 'AGS': 'AGS', 'ENE': 'ENE'}
+2022-09-16 00:02:03,105-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2018 to 2018
+2022-09-16 00:02:03,105-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-16 00:02:03,105-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-16 00:02:03,105-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-16 00:02:03,105-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_60.gdb
+2022-09-16 00:02:03,105-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-16 00:02:03,114-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'RCO': 'RCO', 'AGS': 'AGS', 'ENE': 'ENE'}
+2022-09-16 00:02:03,114-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'RCO': 3, 'AGS': 1, 'ENE': 2}
+2022-09-16 00:02:03,114-[DEBUG]-[root]-[__init__]-Processing begains in year:2018
+2022-09-16 00:02:03,114-[DEBUG]-[root]-[__init__]-Processing ends in year:2018
+2022-09-16 00:02:03,114-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-16 00:02:03,114-[DEBUG]-[root]-[__init__]-Raster name's background label is:BA
+2022-09-16 00:02:03,114-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-16 00:02:03,114-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'RCO': 'RCO', 'AGS': 'AGS', 'ENE': 'ENE'}, 'end_year': 2018, 'start_year': 2018, 'background_label': 'BA'}}
+2022-09-16 00:02:03,115-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-16 00:02:28,309-[DEBUG]-[root]-[build_raster_filter_default]-raster_filter set by default.
+2022-09-16 00:02:28,312-[DEBUG]-[root]-[set_raster_filter]-filter_label changed by default function.
+2022-09-16 00:02:28,690-[DEBUG]-[root]-[do_arcpy_list_raster_list]-working rasters chenged to:[u'BA_EDGAR_RCO_2018', u'BA_EDGAR_AGS_2018', u'BA_EDGAR_ENE_2018']
+2022-09-16 00:02:28,691-[DEBUG]-[root]-[list_working_rasters]-rasters listed.
+2022-09-16 00:04:08,687-[DEBUG]-[root]-[year_sectors_merge]-mergeing rasters: []

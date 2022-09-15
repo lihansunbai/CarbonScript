@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from tkinter import W
 import arcpy
 from arcpy import env
 from arcpy.sa import *
 import os
 from tqdm import tqdm
-from time import sleep
 
 arcpy.env.workspace = 'C:\\Users\\fang\\Documents\\ArcGIS\\Default.gdb'
 arcpy.CheckOutExtension('Spatial')
@@ -86,3 +84,16 @@ output = 'C:/Users/lihan/Documents/ArcGIS/Default.gdb/output'
 
 do_raster_add(ttt, output)
 
+
+## 权重测试函数
+import sys
+sys.path.append("E:/CODE/CARBON/CarbonScript/EDGAR/") 
+from EDGAR_emission_percentage_refine_class_spatial import EDGAR_spatial
+test_es = {'E2A':'E2A','E1A1A':'E1A1A','E1A4':'E1A4'}
+test_esc = {'E2A':1,'E1A1A':2,'E1A4':3}
+
+aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_42.gdb',st_year=2012,en_year=2012,sector=test_es,colormap=test_esc,background_flag=True, background_flag_label='')
+aaa.prepare_raster()
+print aaa.working_rasters
+aaa.year_total_sectors_merge(2012)
+aaa.sector_emission_percentage('E2A',2012,'test_e2a_weight')
