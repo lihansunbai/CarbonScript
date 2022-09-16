@@ -704,32 +704,45 @@ class EDGAR_spatial:
         # logger output
         self.ES_logger.debug('Sectal raster weight mosaic to 1800*3600.')
         
-        ############################################################
-        # 这里需要进行重大修改！！！
-        # 尝试将栅格计算和转点操作拆分为两个函数：
-        # 1、在栅格计算中，手动清除或者说释放所有临时参数
         # 2、由于转点操作速度过慢，命令行长时间没有相应
         #   尝试在其中加入一个计时器之类的工具，想办法显示处理进度
-        ############################################################
 
         ## 保存栅格格式权重计算结果
-        # temp_output_weight_raster_path =  '%s_weight_raster_%s' % (sector, year)
-        # temp_output_weight_raster.save(temp_output_weight_raster_path)
-        # print 'Sector emission weight saved: %s\n' % sector
+        temp_output_weight_raster_path =  '%s_weight_raster_%s' % (sector, year)
+        temp_output_weight_raster.save(temp_output_weight_raster_path)
+
+        #######################################################################
+        #######################################################################
+        # 注意！
+        # 以下的del操作不能删除！
+        # 删除del操作会导致arcpy.RasterToPoint_conversion()出错！
+        # 具体表现形式为RasterToPoint会错误的引用一个已经被删除的匿名中间变量。
+        # Warning!
+        # CAN NOT remove the following `del` operation!
+        # Removing the `del` operation will
+        # product a error in arcpy.RasterToPoint_conversion().
+        # The error will throll an exception of NOT found table in raster, 
+        # because of the RasterToPoint_conversion miss include a deleted
+        # anonymous temporary variable.
+        #######################################################################
+        #######################################################################
+        del temp_output_weight_raster
+        #######################################################################
+        #######################################################################
+
+        print 'Sector emission weight saved: %s\n' % sector
 
         # logger output
-        # self.ES_logger.info('Sector emission weight saved')
-
-        #temp_trans_raster = arcpy.Raster(temp_output_weight_raster_path)
-        # transform to point features
-        arcpy.RasterToPoint_conversion(temp_output_weight_raster, output_sector_point, 'VALUE')
-
-        # logger output
-        self.ES_logger.debug('Sector emission weight raster convert to point:%s' % sector)
+        self.ES_logger.info('Sector emission weight saved')
 
         # 栅格数据转点对象。转为点对象后可以实现计算比例并同时记录对应排放比例的部门名称
         # 这里用到了arcpy.AlterField_management()这个函数可能在10.2版本中没有
         try:
+            # transform to point features
+            arcpy.RasterToPoint_conversion(temp_output_weight_raster_path, output_sector_point, 'VALUE')
+
+            # logger output
+            self.ES_logger.debug('Sector emission weight raster convert to point:%s' % sector)
 
             # rename value field
             arcpy.AlterField_management(output_sector_point,'grid_code',new_field_name=sector)
