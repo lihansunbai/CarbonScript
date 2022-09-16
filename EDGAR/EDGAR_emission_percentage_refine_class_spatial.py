@@ -579,6 +579,10 @@ class EDGAR_spatial:
         # logger output
         self.ES_logger.debug('working rasters chenged to:%s' % self.working_rasters)
 
+    # 将部门key和对应的栅格文件组合为一个字典
+    def do_arcpy_list_raster_to_dict(self,sector_key, wildcard_list):
+        pass
+
     ############################################################################
     ############################################################################
     ## 实际数据计算相关函数/方法
@@ -761,7 +765,58 @@ class EDGAR_spatial:
 
             print arcpy.GetMessages()
 
-    def weight_joint(self, year, weight_point):
+    def year_weight_joint(self, year, sector_list):
+        #######################################################################
+        #######################################################################
+        # 这个函数的设计思想来源于指针和指针的操作。
+        # 有若干个变量被当作指针进行使用，要注意这些变量在不同的位置被指向了
+        # 不同的实际数据.通过不停的改变他们指向的对象，来完成空间链接的操作。
+        # C/C++万岁！！！指针天下第一！！！
+        #######################################################################
+        #######################################################################
+
+        # 筛选需要计算的部门
+        # 首先弹出一个部门作为合并的起始指针
+        temp_point_start_wildcard = '%s*%s' % (sector_list.pop(), year)
+        temp_point_start = arcpy.ListFeatureClasses(wild_card=temp_point_start_wildcard,
+                                                    feature_type=Point)
+
+        # 列出提取值的栅格
+        # do_arcpy_list_raster_list的结果会保存到self.working_rasters
+        self.do_arcpy_list_raster_list(wildcard_list=sector_list)
+        temp_extract_raster = self.working_rasters
+
+        # 设定的保存的文件名的格式
+        output_sectoral_weights = 'sectoral_weights_%s' % year
+
+        temp_point_output = 'ETP_output'
+        temp_point_iter = 'ETP_iter'
+
+        # 需要先进行一次提取操作，输入到EPT_iter中
+        # 这里需要开启覆盖操作，或者执行一个del工作
+        try:
+            arcpy.sa.ExtractValuesToPoints(in_point_features=temp_point_start,
+                                           in_raster=temp_extract_raster.pop(),
+                                           out_point_features=temp_point_iter,
+                                           interpolate_values='NONE',
+                                           add_attributes='VALUE_ONLY')
+            
+            # 提取成功以后需要将RASTERVALU字段改为部门名称
+            arcpy.AlterField_management(in_table=temp_point_iter,
+                                        field='RASTERVALU',
+                                        new_field_name=sector_list.pop())
+        except:
+            pass
+
+        for sect in tqdm(temp_extract_raster):
+
+
+
+
+
+
+
+    def old_weight_joint(self, year, weight_point):
         # 理解这个函数中的操作需要将temp_pointer_a, temp_pointer_b视为指针一样的东西
         # 通过不停的改变他们指向的对象，来完成空间链接的操作。
         # C/C++万岁！！！指针天下第一！！！
@@ -784,6 +839,7 @@ class EDGAR_spatial:
         temp_second = temp_emi_weight.popitem()
         temp_final = temp_emi_weight.popitem()
 
+        
         # 连接第一个表和第二个表(temp_first and temp_second)
         temp_pointer_a = self.__workspace + '\\iter_%s_%s' % (year, temp_second[1])
         try:
