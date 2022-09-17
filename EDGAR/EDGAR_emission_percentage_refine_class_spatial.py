@@ -3,6 +3,7 @@
 # 路径处理模块
 # Systerm path proccessing module
 import os
+from sys import _enablelegacywindowsfsencoding
 
 # Arcpy 相关模块
 # Arcpy module
@@ -580,8 +581,20 @@ class EDGAR_spatial:
         self.ES_logger.debug('working rasters chenged to:%s' % self.working_rasters)
 
     # 将部门key和对应的栅格文件组合为一个字典
-    def do_arcpy_list_raster_to_dict(self,sector_key, wildcard_list):
-        pass
+    # 注意这个函数只能使用在确定了年份的列表中。
+    # 如果暴力使用这个函数返回的字典将没有任何意义。
+    def zip_sector_raster_to_dict(self, sector_list, raster_list):
+        # 函数返回的字典
+        sector_raster_dict = {}
+
+        for s in sector_list:
+            temp_regex = re.compile('%s' % s)
+            # 注意这里filter函数返回的是一个list，
+            # 需要取出其中的值赋值到字典中
+            temp_value = filter(re.search, raster_list)
+            sector_raster_dict[s] = temp_value.pop()
+        
+        return sector_raster_dict
 
     ############################################################################
     ############################################################################
@@ -665,6 +678,18 @@ class EDGAR_spatial:
 
         # logger output
         self.ES_logger.info('All sector merged!')
+
+    # 删除临时生成的图层文件
+    def delete_temporary_feature_classes(self, feature_list):
+        print 'Deleting temporary files'
+
+        for f in tqdm(feature_list):
+            arcpy.DeleteFeatures_management(f)
+
+            # logger output
+            self.ES_logger.debug('Deleted feature:%s' % f)
+
+        print 'Deleting temporary files finished!'
 
     ######################################
     ######################################
@@ -775,129 +800,105 @@ class EDGAR_spatial:
         #######################################################################
         #######################################################################
 
-        # 筛选需要计算的部门
-        # 首先弹出一个部门作为合并的起始指针
-        temp_point_start_wildcard = '%s*%s' % (sector_list.pop(), year)
-        temp_point_start = arcpy.ListFeatureClasses(wild_card=temp_point_start_wildcard,
-                                                    feature_type=Point)
+        # 初始化部分参数
+        # 设定的保存的文件名的格式
+        output_sectoral_weights = 'sectoral_weights_%s' % year
+        # 设定需要删除的临时生成文件列表
+        delete_temporary = []
 
+        # 筛选需要计算的部门
         # 列出提取值的栅格
         # do_arcpy_list_raster_list的结果会保存到self.working_rasters
         self.do_arcpy_list_raster_list(wildcard_list=sector_list)
-        temp_extract_raster = self.working_rasters
+        temp_extract_raster = self.zip_sector_raster_to_dict(sector_list,self.working_rasters)
 
-        # 设定的保存的文件名的格式
-        output_sectoral_weights = 'sectoral_weights_%s' % year
+        # logger output
+        self.ES_logger.debug('Calculate weight in: %s' % str(temp_extract_raster))
 
+        # 首先弹出一个部门作为合并的起始指针
+        temp_point_start_wildcard = '%s*%s' % (temp_extract_raster.popitem()[1], year)
+        # 这里的逻辑看似有点奇怪，其实并不奇怪。
+        # 因为在sector_emission_percentage()中已经保存了完整的‘部门-年份’点数据
+        # 所以可以用其中一个点数据作为提取的起点。
+        temp_point_start = arcpy.ListFeatureClasses(wild_card=temp_point_start_wildcard,
+                                                    feature_type=Point)
+
+        # logger output
+        self.ES_logger.debug('First weight extract point:%s' % temp_point_start)
+
+
+        # 构造三个特殊变量来完成操作和循环的大和谐~、
+        # 因为sa.ExtractValuesToPoint函数需要一个输出表，同时又不能覆盖替换另一个表
+        # 所以需要用前两个表生成第一个循环用的表
+        # 在程序的结尾用最后（其实可以是任意一个表）来完成年份的输出
+        temp_point_trigger = 'ETP_trigger'
+        temp_point_iter_root = 'ETP_iter'
         temp_point_output = 'ETP_output'
-        temp_point_iter = 'ETP_iter'
+
+        delete_temporary.extend(temp_point_trigger)
+        delete_temporary.extend(temp_point_output)
 
         # 需要先进行一次提取操作，输入到EPT_iter中
         # 这里需要开启覆盖操作，或者执行一个del工作
         try:
+            # 构建启动循环的第一次提取
+            # 从字典中pop出一部门，保存部门名称和对应的待提取值栅格
+            temp_ETP_1_sector, temp_ETP_1_raster = temp_extract_raster.popitem()
             arcpy.sa.ExtractValuesToPoints(in_point_features=temp_point_start,
-                                           in_raster=temp_extract_raster.pop(),
-                                           out_point_features=temp_point_iter,
+                                           in_raster=temp_ETP_1_raster,
+                                           out_point_features=temp_point_trigger,
                                            interpolate_values='NONE',
                                            add_attributes='VALUE_ONLY')
             
             # 提取成功以后需要将RASTERVALU字段改为部门名称
-            arcpy.AlterField_management(in_table=temp_point_iter,
+            arcpy.AlterField_management(in_table=temp_point_trigger,
                                         field='RASTERVALU',
-                                        new_field_name=sector_list.pop())
+                                        new_field_name=temp_ETP_1_sector)
+            # logger output
+            self.ES_logger.debug('Extract trigger built:%s' % temp_ETP_1_raster)
         except:
-            pass
+            print 'Error: Extract value to point failed! The trigger building failed.'
+
+            # logger output
+            self.ES_logger.error('The trigger building failed.')
+
+            print arcpy.GetMessage()
 
         for sect in tqdm(temp_extract_raster):
-
-
-
-
-
-
-
-    def old_weight_joint(self, year, weight_point):
-        # 理解这个函数中的操作需要将temp_pointer_a, temp_pointer_b视为指针一样的东西
-        # 通过不停的改变他们指向的对象，来完成空间链接的操作。
-        # C/C++万岁！！！指针天下第一！！！
-
-        # 复制这个函数操作中需要用到的字典
-        ## 复制传入的参数字典
-        temp_emi_weight = weight_point.copy()
-
-        # 输出路径
-        save_shp = self.__workspace + '\\categories_%s' % year
-
-        # # 函数内的全局循环计数
-        # iter_counter = 1
-
-        # 构造三个特殊变量来完成操作和循环的大和谐~、
-        # 因为SpatialJoin函数需要一个输出表，同时又不能覆盖替换另一个表
-        # 所以需要用前两个表生成第一个循环用的表
-        # 在程序的结尾用最后（其实可以是任意一个表）来完成年份的输出
-        temp_first = temp_emi_weight.popitem()
-        temp_second = temp_emi_weight.popitem()
-        temp_final = temp_emi_weight.popitem()
-
-        
-        # 连接第一个表和第二个表(temp_first and temp_second)
-        temp_pointer_a = self.__workspace + '\\iter_%s_%s' % (year, temp_second[1])
-        try:
-            print 'Spatial join start:'
-            arcpy.SpatialJoin_analysis(temp_first,
-                                       temp_second,
-                                       temp_pointer_a,
-                                       'JOIN_ONE_TO_ONE', 'KEEP_ALL')
-            ## 删除表中的链接结果的字段
-            arcpy.Delete_management(temp_pointer_a, 'Join_Count')
-            arcpy.Delete_management(temp_pointer_a, 'TARGET_FID')
-
-            # ## 循环计数增1
-            # iter_counter += 1
-            print 'Spatial join complete: %s %s with %s' % (year, temp_first[1], temp_second[2])
-        except:
-            print 'Spatia join failed: %s and %s' % (temp_first, temp_second)
-            print arcpy.GetMessages()
-
-        # loop begain
-        for i in tqdm(temp_emi_weight):
-            temp_pointer_b = self.__workspace + '\\iter_%s_%s' % (year, i)
             try:
-                arcpy.SpatialJoin_analysis(temp_pointer_a,
-                                           temp_emi_weight[i],
-                                           temp_pointer_b,
-                                           'JOIN_ONE_TO_ONE', 'KEEP_ALL')
+                # 从字典中获得部门和对应的待提取值栅格
+                temp_ETP_raster = temp_extract_raster[sect]
+                temp_point_output = temp_point_iter_root + sect
 
-                ## 交换指针，使b指针成为下一次循环的链接目标
-                temp_pointer_a = temp_pointer_b
+                arcpy.sa.ExtractValuesToPoints(in_point_features=temp_point_trigger,
+                                            in_raster=temp_ETP_raster,
+                                            out_point_features=temp_point_output
+                                            interpolate_values='NONE',
+                                            add_attributes='VALUE_ONLY')
+                
+                # 提取成功以后需要将RASTERVALU字段改为部门名称
+                arcpy.AlterField_management(in_table=temp_point_output,
+                                            field='RASTERVALU',
+                                            new_field_name=sect)
+                # logger output
+                self.ES_logger.debug('Extract raster:%s' % temp_extract_raster[sect])
 
-                ## 删除表中的链接结果的字段
-                arcpy.Delete_management(temp_pointer_a, 'Join_Count')
-                arcpy.Delete_management(temp_pointer_a, 'TARGET_FID')
-
-                # ## 循环计数增1
-                # iter_counter += 1
-                print 'Spatial join complete: %s with %s' % (year, i)
+                # 交换temp_point_iter和temp_point_output指针
+                temp_point_trigger = temp_point_output
             except:
-                print 'Spatia join failed: %s' % temp_emi_weight[i]
-                print arcpy.GetMessages()
-        # loop ends
+                print 'Error: Extract value to point failed!'
 
-        # 保存最后的数据
-        try:
-            arcpy.SpatialJoin_analysis(temp_pointer_a,
-                                       temp_final,
-                                       save_shp,
-                                       'JOIN_ONE_TO_ONE', 'KEEP_ALL')
+                # logger output
+                self.ES_logger.error('Extract raster failed:%s' % temp_extract_raster[sect])
 
-            ## 删除表中的链接结果的字段
-            arcpy.Delete_management(save_shp, 'Join_Count')
-            arcpy.Delete_management(save_shp, 'TARGET_FID')
-        except:
-            print 'Spatia join failed: %s' % temp_final
-            print arcpy.GetMessages()
+                print arcpy.GetMessage()
 
-        print 'Finished categories to point features: %s' % save_shp
+        # 保存最后的输出结果
+        arcpy.CopyFeatures_management(temp_point_output, output_sectoral_weights)
+        print 'Sectoral weights finished:%s' % year
+
+        # logger output
+        self.ES_logger.debug('Sectoral weights saved:%s' % output_sectoral_weights)
 
     # 导出不同年份最大权重栅格
     def weight_raster(self, year):
