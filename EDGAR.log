@@ -304,3 +304,140 @@
 2022-09-16 00:02:28,690-[DEBUG]-[root]-[do_arcpy_list_raster_list]-working rasters chenged to:[u'BA_EDGAR_RCO_2018', u'BA_EDGAR_AGS_2018', u'BA_EDGAR_ENE_2018']
 2022-09-16 00:02:28,691-[DEBUG]-[root]-[list_working_rasters]-rasters listed.
 2022-09-16 00:04:08,687-[DEBUG]-[root]-[year_sectors_merge]-mergeing rasters: []
+2022-09-17 20:40:53,941-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-17 20:41:00,938-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-17 20:41:00,940-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-17 20:41:00,944-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-17 20:41:00,944-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-17 20:41:00,944-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-17 20:41:00,944-[INFO]-[root]-[__init__]-Year has set.
+2022-09-17 20:41:02,947-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-17 20:41:02,947-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-17 20:41:02,947-[DEBUG]-[root]-[set_filter_label]-filter label will containt background value.
+2022-09-17 20:41:02,947-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}
+2022-09-17 20:41:02,947-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2018 to 2018
+2022-09-17 20:41:02,948-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-17 20:41:02,948-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-17 20:41:02,950-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-17 20:41:02,950-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_60.gdb
+2022-09-17 20:41:02,950-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-17 20:41:02,950-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}
+2022-09-17 20:41:02,950-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'SWD_INC': 6, 'ENE': 2, 'REF_TRF': 5, 'RCO': 3, 'IND': 4, 'TNR_ship': 7, 'AGS': 1}
+2022-09-17 20:41:02,950-[DEBUG]-[root]-[__init__]-Processing begains in year:2018
+2022-09-17 20:41:02,950-[DEBUG]-[root]-[__init__]-Processing ends in year:2018
+2022-09-17 20:41:02,951-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-17 20:41:02,951-[DEBUG]-[root]-[__init__]-Raster name's background label is:BA
+2022-09-17 20:41:02,951-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-17 20:41:02,951-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}, 'end_year': 2018, 'start_year': 2018, 'background_label': 'BA'}}
+2022-09-17 20:41:02,953-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-17 22:03:26,683-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-17 22:03:30,871-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-17 22:03:30,872-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-17 22:03:30,875-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-17 22:03:30,875-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-17 22:03:30,875-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-17 22:03:30,877-[INFO]-[root]-[__init__]-Year has set.
+2022-09-17 22:03:32,058-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-17 22:03:32,058-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-17 22:03:32,058-[DEBUG]-[root]-[set_filter_label]-filter label will containt background value.
+2022-09-17 22:03:32,058-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}
+2022-09-17 22:03:32,058-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2018 to 2018
+2022-09-17 22:03:32,058-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-17 22:03:32,058-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-17 22:03:32,058-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-17 22:03:32,058-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_60.gdb
+2022-09-17 22:03:32,062-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-17 22:03:32,062-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}
+2022-09-17 22:03:32,062-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'SWD_INC': 6, 'ENE': 2, 'REF_TRF': 5, 'RCO': 3, 'IND': 4, 'TNR_ship': 7, 'AGS': 1}
+2022-09-17 22:03:32,062-[DEBUG]-[root]-[__init__]-Processing begains in year:2018
+2022-09-17 22:03:32,062-[DEBUG]-[root]-[__init__]-Processing ends in year:2018
+2022-09-17 22:03:32,062-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-17 22:03:32,062-[DEBUG]-[root]-[__init__]-Raster name's background label is:BA
+2022-09-17 22:03:32,063-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-17 22:03:32,063-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}, 'end_year': 2018, 'start_year': 2018, 'background_label': 'BA'}}
+2022-09-17 22:03:32,063-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-17 22:05:50,170-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-17 22:05:54,410-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-17 22:05:54,411-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-17 22:05:54,413-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-17 22:05:54,414-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-17 22:05:54,414-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-17 22:05:54,414-[INFO]-[root]-[__init__]-Year has set.
+2022-09-17 22:05:55,632-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-17 22:05:55,632-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-17 22:05:55,632-[DEBUG]-[root]-[set_filter_label]-filter label will containt background value.
+2022-09-17 22:05:55,641-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}
+2022-09-17 22:05:55,641-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2018 to 2018
+2022-09-17 22:05:55,641-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-17 22:05:55,641-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-17 22:05:55,641-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-17 22:05:55,641-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_60.gdb
+2022-09-17 22:05:55,642-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-17 22:05:55,642-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}
+2022-09-17 22:05:55,642-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'SWD_INC': 6, 'ENE': 2, 'REF_TRF': 5, 'RCO': 3, 'IND': 4, 'TNR_ship': 7, 'AGS': 1}
+2022-09-17 22:05:55,642-[DEBUG]-[root]-[__init__]-Processing begains in year:2018
+2022-09-17 22:05:55,642-[DEBUG]-[root]-[__init__]-Processing ends in year:2018
+2022-09-17 22:05:55,642-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-17 22:05:55,644-[DEBUG]-[root]-[__init__]-Raster name's background label is:BA
+2022-09-17 22:05:55,644-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-17 22:05:55,644-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}, 'end_year': 2018, 'start_year': 2018, 'background_label': 'BA'}}
+2022-09-17 22:05:55,644-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-17 22:06:58,947-[DEBUG]-[root]-[do_arcpy_list_raster_list]-working rasters chenged to:[u'SWD_INC_weight_raster_2018', u'ENE_weight_raster_2018', u'REF_TRF_weight_raster_2018', u'RCO_weight_raster_2018', u'IND_weight_raster_2018', u'TNR_ship_weight_raster_2018', u'AGS_weight_raster_2018']
+2022-09-17 22:07:23,755-[DEBUG]-[root]-[year_weight_joint]-Calculate weight in: {'SWD_INC': u'SWD_INC_weight_raster_2018', 'ENE': u'ENE_weight_raster_2018', 'REF_TRF': u'REF_TRF_weight_raster_2018', 'RCO': u'RCO_weight_raster_2018', 'IND': u'IND_weight_raster_2018', 'TNR_ship': u'TNR_ship_weight_raster_2018', 'AGS': u'AGS_weight_raster_2018'}
+2022-09-17 22:09:03,062-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-17 22:09:10,049-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-17 22:09:10,051-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-17 22:09:10,055-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-17 22:09:10,056-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-17 22:09:10,056-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-17 22:09:10,058-[INFO]-[root]-[__init__]-Year has set.
+2022-09-17 22:09:12,107-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-17 22:09:12,115-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-17 22:09:12,115-[DEBUG]-[root]-[set_filter_label]-filter label will containt background value.
+2022-09-17 22:09:12,115-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}
+2022-09-17 22:09:12,115-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2018 to 2018
+2022-09-17 22:09:12,115-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-17 22:09:12,115-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-17 22:09:12,115-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-17 22:09:12,121-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_60.gdb
+2022-09-17 22:09:12,121-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-17 22:09:12,121-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}
+2022-09-17 22:09:12,121-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'SWD_INC': 6, 'ENE': 2, 'REF_TRF': 5, 'RCO': 3, 'IND': 4, 'TNR_ship': 7, 'AGS': 1}
+2022-09-17 22:09:12,121-[DEBUG]-[root]-[__init__]-Processing begains in year:2018
+2022-09-17 22:09:12,121-[DEBUG]-[root]-[__init__]-Processing ends in year:2018
+2022-09-17 22:09:12,121-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-17 22:09:12,121-[DEBUG]-[root]-[__init__]-Raster name's background label is:BA
+2022-09-17 22:09:12,121-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-17 22:09:12,121-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}, 'end_year': 2018, 'start_year': 2018, 'background_label': 'BA'}}
+2022-09-17 22:09:12,122-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-17 22:09:26,286-[DEBUG]-[root]-[do_arcpy_list_raster_list]-working rasters chenged to:[u'SWD_INC_weight_raster_2018', u'ENE_weight_raster_2018', u'REF_TRF_weight_raster_2018', u'RCO_weight_raster_2018', u'IND_weight_raster_2018', u'TNR_ship_weight_raster_2018', u'AGS_weight_raster_2018']
+2022-09-17 22:09:41,736-[DEBUG]-[root]-[year_weight_joint]-Calculate weight in: {'SWD_INC': u'SWD_INC_weight_raster_2018', 'ENE': u'ENE_weight_raster_2018', 'REF_TRF': u'REF_TRF_weight_raster_2018', 'RCO': u'RCO_weight_raster_2018', 'IND': u'IND_weight_raster_2018', 'TNR_ship': u'TNR_ship_weight_raster_2018', 'AGS': u'AGS_weight_raster_2018'}
+2022-09-17 22:13:47,558-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-09-17 22:13:54,687-[INFO]-[root]-[__init__]-workpace has set.
+2022-09-17 22:13:54,687-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-09-17 22:13:54,687-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-09-17 22:13:54,687-[INFO]-[root]-[__init__]-EDGAR_sector has set.
+2022-09-17 22:13:54,694-[INFO]-[root]-[__init__]-EDGAR_sector_colormap has set.
+2022-09-17 22:13:54,694-[INFO]-[root]-[__init__]-Year has set.
+2022-09-17 22:13:56,667-[DEBUG]-[root]-[__init__]-Background has set.
+2022-09-17 22:13:56,674-[DEBUG]-[root]-[set_filter_label]-filter label will set by default.
+2022-09-17 22:13:56,674-[DEBUG]-[root]-[set_filter_label]-filter label will containt background value.
+2022-09-17 22:13:56,674-[DEBUG]-[root]-[set_filter_label]-filter_label changed to:{'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}
+2022-09-17 22:13:56,674-[DEBUG]-[root]-[set_filter_label]-filter_label year range changed to:2018 to 2018
+2022-09-17 22:13:56,674-[INFO]-[root]-[__init__]-filter_label has set.
+2022-09-17 22:13:56,674-[INFO]-[root]-[__init__]-Initialization finished.
+2022-09-17 22:13:56,674-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-17 22:13:56,680-[DEBUG]-[root]-[__init__]-acrpy.env.workspace:D:\workplace\geodatabase\EDGAR_test_60.gdb
+2022-09-17 22:13:56,680-[DEBUG]-[root]-[__init__]-arcpy parallelProcessingFactor:100%
+2022-09-17 22:13:56,681-[DEBUG]-[root]-[__init__]-EDGAR_sector was set to:{'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}
+2022-09-17 22:13:56,681-[DEBUG]-[root]-[__init__]-EDGAR_sector_colormap was set to:{'SWD_INC': 6, 'ENE': 2, 'REF_TRF': 5, 'RCO': 3, 'IND': 4, 'TNR_ship': 7, 'AGS': 1}
+2022-09-17 22:13:56,681-[DEBUG]-[root]-[__init__]-Processing begains in year:2018
+2022-09-17 22:13:56,684-[DEBUG]-[root]-[__init__]-Processing ends in year:2018
+2022-09-17 22:13:56,684-[DEBUG]-[root]-[__init__]-Raster has background:True
+2022-09-17 22:13:56,684-[DEBUG]-[root]-[__init__]-Raster name's background label is:BA
+2022-09-17 22:13:56,686-[DEBUG]-[root]-[__init__]-Background raster is:background
+2022-09-17 22:13:56,686-[DEBUG]-[root]-[__init__]-Raster filter parameters was set to:{'default': True, 'label': {'sector': {'SWD_INC': 'SWD_INC', 'ENE': 'ENE', 'REF_TRF': 'REF_TRF', 'RCO': 'RCO', 'IND': 'IND', 'TNR_ship': 'TNR_ship', 'AGS': 'AGS'}, 'end_year': 2018, 'start_year': 2018, 'background_label': 'BA'}}
+2022-09-17 22:13:56,687-[DEBUG]-[root]-[__init__]-==========DEGUG INFORMATIONS==========
+2022-09-17 22:14:07,997-[DEBUG]-[root]-[do_arcpy_list_raster_list]-working rasters chenged to:[u'SWD_INC_weight_raster_2018', u'ENE_weight_raster_2018', u'REF_TRF_weight_raster_2018', u'RCO_weight_raster_2018', u'IND_weight_raster_2018', u'TNR_ship_weight_raster_2018', u'AGS_weight_raster_2018']
+2022-09-17 22:14:20,917-[DEBUG]-[root]-[year_weight_joint]-Calculate weight in: {'SWD_INC': u'SWD_INC_weight_raster_2018', 'ENE': u'ENE_weight_raster_2018', 'REF_TRF': u'REF_TRF_weight_raster_2018', 'RCO': u'RCO_weight_raster_2018', 'IND': u'IND_weight_raster_2018', 'TNR_ship': u'TNR_ship_weight_raster_2018', 'AGS': u'AGS_weight_raster_2018'}
+2022-09-17 22:14:57,279-[DEBUG]-[root]-[year_weight_joint]-First weight extract point:[u'SWD_INC_weight_2018']

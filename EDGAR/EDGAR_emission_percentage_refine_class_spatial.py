@@ -3,7 +3,6 @@
 # 路径处理模块
 # Systerm path proccessing module
 import os
-from sys import _enablelegacywindowsfsencoding
 
 # Arcpy 相关模块
 # Arcpy module
@@ -576,7 +575,6 @@ class EDGAR_spatial:
         for i in wildcard_list:
             self.working_rasters.extend(arcpy.ListRasters(wild_card=i))
 
-
         # logger output
         self.ES_logger.debug('working rasters chenged to:%s' % self.working_rasters)
 
@@ -591,7 +589,7 @@ class EDGAR_spatial:
             temp_regex = re.compile('%s' % s)
             # 注意这里filter函数返回的是一个list，
             # 需要取出其中的值赋值到字典中
-            temp_value = filter(re.search, raster_list)
+            temp_value = filter(temp_regex.search, raster_list)
             sector_raster_dict[s] = temp_value.pop()
         
         return sector_raster_dict
@@ -790,6 +788,15 @@ class EDGAR_spatial:
 
             print arcpy.GetMessages()
 
+    # 计算一年中所有部门的比例
+    def year_sector_emission_percentage(self, year):
+        for s in tqdm(self.EDGAR_sector):
+            # 设定输出点数据的格式
+            output = '%s_weight_%s' % (s, year)
+            self.sector_emission_percentage(s,year,output)
+
+
+    # 将同一年份的部门整合到同一个点数据图层中
     def year_weight_joint(self, year, sector_list):
         #######################################################################
         #######################################################################
@@ -809,19 +816,21 @@ class EDGAR_spatial:
         # 筛选需要计算的部门
         # 列出提取值的栅格
         # do_arcpy_list_raster_list的结果会保存到self.working_rasters
-        self.do_arcpy_list_raster_list(wildcard_list=sector_list)
-        temp_extract_raster = self.zip_sector_raster_to_dict(sector_list,self.working_rasters)
+        temp_wildcard_pair = zip(sector_list, [str(year)]*len(sector_list))
+        temp_wildcard = ['%s_weight_raster_%s' % i for i in temp_wildcard_pair]
+        self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard)
+        temp_extract_raster = self.zip_sector_raster_to_dict(sector_list, self.working_rasters)
 
         # logger output
         self.ES_logger.debug('Calculate weight in: %s' % str(temp_extract_raster))
 
         # 首先弹出一个部门作为合并的起始指针
-        temp_point_start_wildcard = '%s*%s' % (temp_extract_raster.popitem()[1], year)
+        temp_point_start_wildcard = '%s*%s' % (temp_extract_raster.popitem()[0], year)
         # 这里的逻辑看似有点奇怪，其实并不奇怪。
         # 因为在sector_emission_percentage()中已经保存了完整的‘部门-年份’点数据
         # 所以可以用其中一个点数据作为提取的起点。
         temp_point_start = arcpy.ListFeatureClasses(wild_card=temp_point_start_wildcard,
-                                                    feature_type=Point)
+                                                    feature_type=Point).pop()
 
         # logger output
         self.ES_logger.debug('First weight extract point:%s' % temp_point_start)
@@ -862,7 +871,7 @@ class EDGAR_spatial:
             # logger output
             self.ES_logger.error('The trigger building failed.')
 
-            print arcpy.GetMessage()
+            print arcpy.GetMessages()
 
         for sect in tqdm(temp_extract_raster):
             try:
@@ -872,7 +881,7 @@ class EDGAR_spatial:
 
                 arcpy.sa.ExtractValuesToPoints(in_point_features=temp_point_trigger,
                                             in_raster=temp_ETP_raster,
-                                            out_point_features=temp_point_output
+                                            out_point_features=temp_point_output,
                                             interpolate_values='NONE',
                                             add_attributes='VALUE_ONLY')
                 
@@ -885,20 +894,27 @@ class EDGAR_spatial:
 
                 # 交换temp_point_iter和temp_point_output指针
                 temp_point_trigger = temp_point_output
+
+                # 添加到删除名单
+                delete_temporary.extend(temp_point_output)
+
             except:
                 print 'Error: Extract value to point failed!'
 
                 # logger output
                 self.ES_logger.error('Extract raster failed:%s' % temp_extract_raster[sect])
 
-                print arcpy.GetMessage()
+                print arcpy.GetMessages()
 
         # 保存最后的输出结果
+        print 'Saving sectoral weights...'
         arcpy.CopyFeatures_management(temp_point_output, output_sectoral_weights)
         print 'Sectoral weights finished:%s' % year
 
         # logger output
         self.ES_logger.debug('Sectoral weights saved:%s' % output_sectoral_weights)
+
+        self.delete_temporary_feature_classes(delete_temporary)
 
     # 导出不同年份最大权重栅格
     def weight_raster(self, year):
@@ -1012,8 +1028,6 @@ class EDGAR_spatial:
     def proccess_all(self):
         pass
 
-    
-
     def print_start_year(year):
         print '=============================='
         print '=============================='
@@ -1048,12 +1062,13 @@ if __name__ == '__main__':
     # aaa.sector_emission_percentage('E2A',2012,'test_e2a_weight')
 
     
-    test_es = {'AGS':'AGS','ENE':'ENE','RCO':'RCO'}
-    test_esc = {'AGS':1,'ENE':2,'RCO':3}
+    test_es = {'AGS':'AGS','ENE':'ENE','RCO':'RCO','IND':'IND','REF_TRF':'REF_TRF','SWD_INC':'SWD_INC','TNR_ship':'TNR_ship'}
+    test_esc = {'AGS':1,'ENE':2,'RCO':3,'IND':4,'REF_TRF':5,'SWD_INC':6,'TNR_ship':7}
 
     #calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
     aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_60.gdb',st_year=2018,en_year=2018,sector=test_es,colormap=test_esc)
-    aaa.prepare_raster()
-    print aaa.working_rasters
-    aaa.year_total_sectors_merge(2018)
-    aaa.sector_emission_percentage('RCO',2018,'test_RCO_weight')
+    # aaa.prepare_raster()
+    # print aaa.working_rasters
+    # aaa.year_total_sectors_merge(2018)
+    # aaa.year_sector_emission_percentage(2018)
+    aaa.year_weight_joint(2018, list(test_es.values()))
