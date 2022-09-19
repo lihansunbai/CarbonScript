@@ -917,10 +917,10 @@ class EDGAR_spatial:
         self.delete_temporary_feature_classes(delete_temporary)
 
     # 导出不同年份最大权重栅格
-    def weight_raster(self, year):
-        temp_point = self.__workspace + '\\categories_%s' % year
-        save_raster_categories = self.__workspace + '\\main_emi_%s' % year
-        save_raster_weight = self.__workspace + '\\main_emi_weight_%s' % year
+    def max_weight_rasterize(self, year):
+        temp_point = 'sectoral_weights_%s' % year
+        save_raster_categories = 'main_emi_%s' % year
+        save_raster_weight = 'main_emi_weight_%s' % year
 
         # 向point feature中添加列
         # 1.权重最大值 wmax
@@ -959,7 +959,7 @@ class EDGAR_spatial:
             return
 
         # 这里的year参数可能需要删除aa
-        self.sector_max(year, temp_point, temp_new_fields)
+        self.do_sector_max_extract(temp_point, temp_new_fields)
 
         print 'Field calculate finished: %s in wraster' % year
         print 'Add and calculate fields finished: %s' % temp_point
@@ -985,7 +985,7 @@ class EDGAR_spatial:
 
     # 用arcpy.da.cursor类进行操作
     # 在一行中同时实现找到最大值，最大值对应的id，最大值对应的colormap
-    def sector_max(self, sector_points, calculate_fields):
+    def do_sector_max_extract(self, sector_points, calculate_fields):
         temp_sector = copy.deepcopy(self.EDGAR_sector)
         temp_sector_colormap = copy.deepcopy(self.EDGAR_sector_colormap)
         ## temp_working_sector = self.__workspace + '\\%s' % sector_points
@@ -1071,4 +1071,5 @@ if __name__ == '__main__':
     # print aaa.working_rasters
     # aaa.year_total_sectors_merge(2018)
     # aaa.year_sector_emission_percentage(2018)
-    aaa.year_weight_joint(2018, list(test_es.values()))
+    #aaa.year_weight_joint(2018, list(test_es.values()))
+    aaa.max_weight_rasterize(2018)
