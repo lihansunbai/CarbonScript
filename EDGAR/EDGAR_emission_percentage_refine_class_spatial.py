@@ -42,41 +42,44 @@ __metaclass__ = type
 # SPATIAL OPERATIONS CLASS
 # ======================================================================
 # ======================================================================
+
+
 class EDGAR_spatial:
     ############################################################################
     ############################################################################
-    ## 构造函数部分
-    ## 注意：这里需要两类构造函数：
-    ##      1.默认构造函数：不需要传入任何参数。所有计算用到的参数均
-    ##        为默认值。
-    ##      2.带有数据位置的构造函数：需要传入一个
+    # 构造函数部分
+    # 注意：这里需要两类构造函数：
+    # 1.默认构造函数：不需要传入任何参数。所有计算用到的参数均
+    # 为默认值。
+    # 2.带有数据位置的构造函数：需要传入一个
     ############################################################################
     ############################################################################
-    def __init__(self, workspace, background_flag = True, background_flag_label = 'BA',background_raster = 'background', sector={}, colormap={}, st_year=1970, en_year=2018, log_path='EDGAR.log'):
+    def __init__(self, workspace, background_flag=True, background_flag_label='BA', background_raster='background', sector={}, colormap={}, st_year=1970, en_year=2018, log_path='EDGAR.log'):
         # 初始化logger记录类的全体工作
         # ES_logger为可使用的logging实例
         self.ES_logger = logging.getLogger()
         self.ES_logger.setLevel(level=logging.DEBUG)
         ES_logger_file = logging.FileHandler(log_path)
-        ES_logger_formatter = logging.Formatter('%(asctime)s-[%(levelname)s]-[%(name)s]-[%(funcName)s]-%(message)s')
+        ES_logger_formatter = logging.Formatter(
+            '%(asctime)s-[%(levelname)s]-[%(name)s]-[%(funcName)s]-%(message)s')
         ES_logger_file.setFormatter(ES_logger_formatter)
         self.ES_logger.addHandler(ES_logger_file)
 
         self.ES_logger.info('==========EDGAR_Spatial start==========')
 
         # arcgis 工作空间初始化
-        ## 必须明确一个arcgis工作空间！
-        ## 初始化构造需要明确arcgis工作空间或者一个确定的数据为
-        ## 检查输入是否为空值
+        # 必须明确一个arcgis工作空间！
+        # 初始化构造需要明确arcgis工作空间或者一个确定的数据为
+        # 检查输入是否为空值
         if workspace == '':
             print 'Spatial direction or database path error! Please check your input!'
             self.ES_logger.error('arcpy environment workspace set failed!')
             return
 
-        ## 为工作空间进行赋值
-        ### 这里需要为两个参数赋值：第一个参数是系统中arcpy environment workspace 参数，
-        ###  该参数保证了进行arcgis空间运算的“空间分析扩展”检查通过；第二个参数是为了
-        ###  缩短代码中“arcpy.env.workspace”属性的书写长度而设置的代用变量。
+        # 为工作空间进行赋值
+        # 这里需要为两个参数赋值：第一个参数是系统中arcpy environment workspace 参数，
+        # 该参数保证了进行arcgis空间运算的“空间分析扩展”检查通过；第二个参数是为了
+        # 缩短代码中“arcpy.env.workspace”属性的书写长度而设置的代用变量。
         self.__workspace = workspace
         arcpy.env.workspace = workspace
         self.ES_logger.info('workpace has set.')
@@ -87,12 +90,13 @@ class EDGAR_spatial:
         self.ES_logger.info('arcpy parallelProcessingFactor set to 100%.')
 
         # EDGAR_sector 参数初始化部分
-        ## 检查输入参数类型
-        ## 默认情况下使用默认参数初始化
-        ## 为EDGAR_sector参数赋值
+        # 检查输入参数类型
+        # 默认情况下使用默认参数初始化
+        # 为EDGAR_sector参数赋值
         if type(sector) != dict:
             print 'Error! EDGAR_sector only accept a dictionary type input.'
-            self.ES_logger.info('EDGAR_sector only accept a dictionary type input.')
+            self.ES_logger.info(
+                'EDGAR_sector only accept a dictionary type input.')
             self.ES_logger.error('EDGAR_sector type error.')
             return
         elif sector == {}:
@@ -104,24 +108,27 @@ class EDGAR_spatial:
             self.ES_logger.info('EDGAR_sector has set.')
 
         # EDGAR_sector_colormap 参数初始化部分
-        ## 检查参数输入类型
-        ## 默认情况下使用默认参数初始化
-        ## 为EDGAR_sector_colormap 参数赋值
+        # 检查参数输入类型
+        # 默认情况下使用默认参数初始化
+        # 为EDGAR_sector_colormap 参数赋值
         if type(colormap) != dict:
             print 'Error! EDGAR_sector_colormap only accept a dictionary type input.'
-            self.ES_logger.info('EDGAR_sector_colormap only accept a dictionary type input.')
+            self.ES_logger.info(
+                'EDGAR_sector_colormap only accept a dictionary type input.')
             self.ES_logger.error('EDGAR_sector_colormap type error.')
             return
         elif sector == {}:
-            self.EDGAR_sector_colormap = copy.deepcopy(self.__default_EDGAR_sector_colormap)
-            self.ES_logger.info('This run use default EDGAR sector colormap setting.')
+            self.EDGAR_sector_colormap = copy.deepcopy(
+                self.__default_EDGAR_sector_colormap)
+            self.ES_logger.info(
+                'This run use default EDGAR sector colormap setting.')
             self.ES_logger.info('EDGAR_sector_colormap has set.')
         else:
             self.EDGAR_sector_colormap = copy.deepcopy(colormap)
             self.ES_logger.info('EDGAR_sector_colormap has set.')
 
         # year_range 参数初始化部分
-        ## 这里需要初始化计算的起始和结束
+        # 这里需要初始化计算的起始和结束
         if (type(st_year) != int) or (type(en_year) != int):
             print 'Error! Proccessing starting year and ending year must be int value'
             self.ES_logger.info('Year setting type error.')
@@ -135,9 +142,9 @@ class EDGAR_spatial:
         else:
             self.start_year, self.end_year = st_year, en_year
             self.ES_logger.info('Year has set.')
-        
+
         # background 参数初始化部分
-        ## 这里要明确处理的数据是否包含背景0值
+        # 这里要明确处理的数据是否包含背景0值
         # 检查并赋值label
         if bool(background_flag) == True:
             if type(background_flag_label) == str:
@@ -160,12 +167,12 @@ class EDGAR_spatial:
             return
 
         # raster_filter 参数初始化部分
-        ## 这里要将初始化传入的部门参数字典“sector”进行列表化并赋值
-        ## 和起始、终止时间传入
+        # 这里要将初始化传入的部门参数字典“sector”进行列表化并赋值
+        # 和起始、终止时间传入
         temp_init_filter_label = {'default_set': True, 'background_label_set': self.background[1],
-                                                         'sector_set': sector, 
-                                                         'start_year_set': st_year, 
-                                                         'end_year_set':en_year}
+                                  'sector_set': sector,
+                                  'start_year_set': st_year,
+                                  'end_year_set': en_year}
         self.filter_label = temp_init_filter_label
         self.ES_logger.info('filter_label has set.')
 
@@ -173,31 +180,36 @@ class EDGAR_spatial:
         self.ES_logger.info('Initialization finished.')
         self.ES_logger.debug('==========DEGUG INFORMATIONS==========')
         self.ES_logger.debug('acrpy.env.workspace:%s' % arcpy.env.workspace)
-        self.ES_logger.debug('arcpy parallelProcessingFactor:%s' % arcpy.env.parallelProcessingFactor)
+        self.ES_logger.debug('arcpy parallelProcessingFactor:%s' %
+                             arcpy.env.parallelProcessingFactor)
         self.ES_logger.debug('EDGAR_sector was set to:%s' % self.EDGAR_sector)
-        self.ES_logger.debug('EDGAR_sector_colormap was set to:%s' % self.EDGAR_sector_colormap)
+        self.ES_logger.debug(
+            'EDGAR_sector_colormap was set to:%s' % self.EDGAR_sector_colormap)
         self.ES_logger.debug('Processing begains in year:%s' % self.start_year)
         self.ES_logger.debug('Processing ends in year:%s' % self.end_year)
         self.ES_logger.debug('Raster has background:%s' % self.background_flag)
-        self.ES_logger.debug('Raster name\'s background label is:%s' % self.background_label)
-        self.ES_logger.debug('Background raster is:%s' % self.background_raster)
-        self.ES_logger.debug('Raster filter parameters was set to:%s' % self.filter_label)
+        self.ES_logger.debug(
+            'Raster name\'s background label is:%s' % self.background_label)
+        self.ES_logger.debug('Background raster is:%s' %
+                             self.background_raster)
+        self.ES_logger.debug(
+            'Raster filter parameters was set to:%s' % self.filter_label)
         self.ES_logger.debug('==========DEGUG INFORMATIONS==========')
-    
+
     ############################################################################
     ############################################################################
-    ## 默认参数
-    ## Default values
+    # 默认参数
+    # Default values
     ############################################################################
     ############################################################################
 
-    ## Class logger
+    # Class logger
     ES_logger = logging.getLogger()
 
-    ## Arcgis workspace
+    # Arcgis workspace
     __workspace = ''
 
-    ## EDGAR sector dicts & colormap dicts
+    # EDGAR sector dicts & colormap dicts
     __default_EDGAR_sector = {'ENE': 'ENE',
                               'REF_TRF': 'REF_TRF',
                               'IND': 'IND',
@@ -261,9 +273,9 @@ class EDGAR_spatial:
 
     # 默认过滤标签
     __default_filter_label_dict = {'default': True, 'label': {'background_label': __background_label,
-                                                         'sector': [], 
-                                                         'start_year': __default_start_year, 
-                                                         'end_year': __default_end_year}}
+                                                              'sector': [],
+                                                              'start_year': __default_start_year,
+                                                              'end_year': __default_end_year}}
     # 过滤标签
     filter_label_dict = __default_filter_label_dict
 
@@ -284,14 +296,15 @@ class EDGAR_spatial:
 
     ############################################################################
     ############################################################################
-    ## 参数设定部分
+    # 参数设定部分
     ############################################################################
     ############################################################################
     # 想要自定义或者修改处理的部门排放需要使用特殊的set函数
     def set_EDGAR_sector(self, sector):
         if type(sector) != dict:
             print 'Error type! EDGAR sectors should be dictionary!'
-            self.ES_logger.error('Error type! EDGAR sectors should be dictionary.')
+            self.ES_logger.error(
+                'Error type! EDGAR sectors should be dictionary.')
             return
 
         self.EDGAR_sector = sector
@@ -307,18 +320,21 @@ class EDGAR_spatial:
     def set_EDGAR_sector_colormap(self, sector_colormap):
         if type(sector_colormap) != dict:
             print 'Error type! EDGAR sectors colormap should be diectionary!'
-            self.ES_logger.error('Error type! EDGAR sectors colormap should be diectionary.')
+            self.ES_logger.error(
+                'Error type! EDGAR sectors colormap should be diectionary.')
             return
 
         self.EDGAR_sector_colormap = sector_colormap
 
         # logger output
-        self.ES_logger.debug('EDGAR_sector_colormap changed to:%s' % sector_colormap)
+        self.ES_logger.debug(
+            'EDGAR_sector_colormap changed to:%s' % sector_colormap)
 
     def get_EDGAR_sector_colormap(self):
         print self.EDGAR_sector_colormap
 
-    sector_colormap = property(get_EDGAR_sector_colormap, set_EDGAR_sector_colormap)
+    sector_colormap = property(
+        get_EDGAR_sector_colormap, set_EDGAR_sector_colormap)
 
     def set_year_range(self, start_end=(1970, 2018)):
         self.start_year, self.end_year = start_end
@@ -345,7 +361,8 @@ class EDGAR_spatial:
                 self.ES_logger.debug('Backgroud closed.')
             except:
                 print 'Background flag set failed! Please check the flag argument input.'
-                self.ES_logger.error('Background flag set failed! Please check the flag argument input.')
+                self.ES_logger.error(
+                    'Background flag set failed! Please check the flag argument input.')
         # 开启background，即栅格包含背景0值
         elif bool(flag_label_raster_dict['flag']) == True:
             # 检查flag参数并赋值
@@ -356,17 +373,20 @@ class EDGAR_spatial:
                 self.ES_logger.debug('Backgroud opened.')
             except:
                 print 'Background flag set failed! Please check the flag argument input.'
-                self.ES_logger.error('Background flag set failed! Please check the flag argument input.')
+                self.ES_logger.error(
+                    'Background flag set failed! Please check the flag argument input.')
 
             # 检查flag_label参数并
             if type(flag_label_raster_dict['label']) == str:
                 self.background_label = flag_label_raster_dict['label']
 
                 # logger output
-                self.ES_logger.debug('Backgroud label changed to:%s' % flag_label_raster_dict['label'])
+                self.ES_logger.debug(
+                    'Backgroud label changed to:%s' % flag_label_raster_dict['label'])
             else:
                 print 'Background flag label set failed! Please check the flag argument input.'
-                self.ES_logger.error('Background flag set failed! Please check the flag argument input.')
+                self.ES_logger.error(
+                    'Background flag set failed! Please check the flag argument input.')
 
             # 检查raster参数并
             if type(flag_label_raster_dict['raster']) == str:
@@ -374,16 +394,19 @@ class EDGAR_spatial:
                     self.background_raster = flag_label_raster_dict['raster']
 
                     # logger output
-                    self.ES_logger.debug('Backgroud label changed to:%s' % flag_label_raster_dict['raster'])
+                    self.ES_logger.debug(
+                        'Backgroud label changed to:%s' % flag_label_raster_dict['raster'])
                 else:
                     print 'Background raster set failed! The background raster dose not exits.'
-                    self.ES_logger.error('Background raster set failed! The background raster dose not exits.')
+                    self.ES_logger.error(
+                        'Background raster set failed! The background raster dose not exits.')
             else:
                 print 'Background flag label set failed! Please check the flag argument input.'
-                self.ES_logger.error('Background flag set failed! Please check the flag argument input.')
+                self.ES_logger.error(
+                    'Background flag set failed! Please check the flag argument input.')
 
     def get_background(self):
-        return (self.background_flag,self.background_label,self.background_raster)
+        return (self.background_flag, self.background_label, self.background_raster)
 
     background = property(get_background, set_background)
 
@@ -395,22 +418,24 @@ class EDGAR_spatial:
         # 检查年份设定是否为整数。（其他参数可以暂时忽略，因为默认格式下基本不会改变）
         if (type(start_year) != int) or (type(end_year) != int):
             print 'Error: Year setting error!'
-            self.ES_logger.error('Year setting error. Year settings must be integer and between 1970 to 2018.')
+            self.ES_logger.error(
+                'Year setting error. Year settings must be integer and between 1970 to 2018.')
             return
-        
-        temp_time_range = range(start_year,end_year+1)
-        ## 这里使用了zip()函数将部分和年份一一配对。
-        ## zip()方法的思路是将两个列表统一到等长度，然后意义对应生成元组
-        ## 注意！！！
-        ##  这里生成的是元组，该元组中包含[0]号元素为部门，[1]号元素为年份
-        temp_sector_year_tupe_list = zip(list(sector.values()) * len(temp_time_range),temp_time_range * len(sector))
+
+        temp_time_range = range(start_year, end_year+1)
+        # 这里使用了zip()函数将部分和年份一一配对。
+        # zip()方法的思路是将两个列表统一到等长度，然后意义对应生成元组
+        # 注意！！！
+        # 这里生成的是元组，该元组中包含[0]号元素为部门，[1]号元素为年份
+        temp_sector_year_tupe_list = zip(
+            list(sector.values()) * len(temp_time_range), temp_time_range * len(sector))
 
         # 逐年逐部门生成筛选条件语句，并保存到raster_filter_wildcard中
         for i in temp_sector_year_tupe_list:
             temp_raster_filter_wildcard = '%s*%s_%s' % (
                 background_label, i[0], i[1])
             self.raster_filter_wildcard.append(temp_raster_filter_wildcard),
-        
+
         # logger output
         self.ES_logger.debug('raster_filter set by default.')
 
@@ -418,25 +443,26 @@ class EDGAR_spatial:
         # 对于自定义筛选条件，只需要检查是否为字符串
         if type(custom_label) != str:
             print "arcpy.ListRasters() need a string for 'wild_card'."
-            self.ES_logger.error('Wild_card set faild. The wild_card string must follow the standard of arcgis wild_card rules.')
+            self.ES_logger.error(
+                'Wild_card set faild. The wild_card string must follow the standard of arcgis wild_card rules.')
             return
         self.raster_filter_wildcard = custom_label
-        
+
         # logger output
         self.ES_logger.debug('raster_filter set by costum.')
-    
-    ## filter_label 构造方法：
-    ##      filter_label字典组的构造如下：
-    ##      'default':接受一个符合布尔型数据的值，其中True表示使用
-    ##              默认方式构造筛选条件；
-    ##      'label':该参数中应该保存需要的筛选条件语句。
-    ##              注意！！！：
-    ##              如果使用默认方式构造筛选条件，则label参数
-    ##              应该包含由以下标签构成的字典：
-    ##              'background_label'：数据是否为包括空值数据；
-    ##              'sector'：部门标签列表list或者str
-    ##              'start_year'：起始年份
-    ##              'end_year'：结束年份
+
+    # filter_label 构造方法：
+    # filter_label字典组的构造如下：
+    # 'default':接受一个符合布尔型数据的值，其中True表示使用
+    # 默认方式构造筛选条件；
+    # 'label':该参数中应该保存需要的筛选条件语句。
+    # 注意！！！：
+    # 如果使用默认方式构造筛选条件，则label参数
+    # 应该包含由以下标签构成的字典：
+    # 'background_label'：数据是否为包括空值数据；
+    # 'sector'：部门标签列表list或者str
+    # 'start_year'：起始年份
+    # 'end_year'：结束年份
     def set_filter_label(self, filter_label):
         # 检查default set，并赋值
         if bool(filter_label['default_set']) == True:
@@ -451,52 +477,59 @@ class EDGAR_spatial:
             self.ES_logger.debug('filter label will set by costum.')
         else:
             print 'default set error. Please check default_set argument.'
-            self.ES_logger.error('default set error. default_set argument need a bool type input.')
-        
+            self.ES_logger.error(
+                'default set error. default_set argument need a bool type input.')
+
         # 检查background label 并赋值
         if bool(filter_label['background_label_set']) == True:
             self.filter_label_dict['label']['background_label'] = self.background[1]
 
             # logger output
-            self.ES_logger.debug('filter label will containt background value.')
+            self.ES_logger.debug(
+                'filter label will containt background value.')
         elif bool(filter_label['background_label_set']) == False:
             self.filter_label_dict['label']['background_label'] = ''
 
             # logger output
-            self.ES_logger.debug('filter label will NOT containt background value.')
+            self.ES_logger.debug(
+                'filter label will NOT containt background value.')
         else:
             print 'background label set error. Please check backgroud_label_set argument.'
-            self.ES_logger.error('background label set error. The background_label_set need a dict type input. More information please refere the project readme.md files.')
-        
+            self.ES_logger.error(
+                'background label set error. The background_label_set need a dict type input. More information please refere the project readme.md files.')
+
         # 检查sector是否为str或者list
         if (type(filter_label['sector_set']) == str) or (type(filter_label['sector_set']) == dict):
             self.filter_label_dict['label']['sector'] = filter_label['sector_set']
 
             # logger output
-            self.ES_logger.debug('filter_label changed to:%s' % filter_label['sector_set'])
+            self.ES_logger.debug('filter_label changed to:%s' %
+                                 filter_label['sector_set'])
         else:
             print 'filter_label: sector setting error! sector only accept string or list type.'
-            self.ES_logger.error('filter label set error. The filter_label need a dict or a list type input. More information please refere the project readme.md files.')
-        
+            self.ES_logger.error(
+                'filter label set error. The filter_label need a dict or a list type input. More information please refere the project readme.md files.')
+
         # 检查start_year 和 end_year
         if (type(filter_label['start_year_set']) != int) or (type(filter_label['end_year_set']) != int):
             print 'filter_label: year setting error! please check year arguments'
-            self.ES_logger.error('year error. The star year and end year must be integer. More information please refere the project readme.md files.')
+            self.ES_logger.error(
+                'year error. The star year and end year must be integer. More information please refere the project readme.md files.')
             return
         else:
             self.filter_label_dict['label']['start_year'] = filter_label['start_year_set']
             self.filter_label_dict['label']['end_year'] = filter_label['end_year_set']
 
-            #logger output
-            self.ES_logger.debug('filter_label year range changed to:%s to %s' % (filter_label['start_year_set'], filter_label['end_year_set']))
-
+            # logger output
+            self.ES_logger.debug('filter_label year range changed to:%s to %s' % (
+                filter_label['start_year_set'], filter_label['end_year_set']))
 
     def get_filter_label(self):
         return self.filter_label_dict
 
-    filter_label = property(get_filter_label,set_filter_label)
+    filter_label = property(get_filter_label, set_filter_label)
 
-    ## 注意：这里需要为set函数传入一个filter_label字典
+    # 注意：这里需要为set函数传入一个filter_label字典
     def set_raster_filter(self, filter_label):
         # 判断是否为默认标签，是则调用默认的构造
         if filter_label['default'] == True:
@@ -513,10 +546,10 @@ class EDGAR_spatial:
             self.ES_logger.debug('filter_label changed by costum function.')
         else:
             print 'Error: raster filter arguments error.'
-    
+
     def get_raster_filter(self):
         return self.raster_filter_wildcard
-    
+
     raster_filter = property(get_raster_filter, set_raster_filter)
 
     # 生成需要处理数据列表
@@ -524,7 +557,7 @@ class EDGAR_spatial:
         # 涉及arcpy操作，且所有数据都基于这步筛选，
         # 所以需要进行大量的数据检查。
         temp_type_check = type(raster_filter_wildcard)
-        
+
         # 传入列表情况
         if temp_type_check == list:
             # 列表为空
@@ -540,7 +573,8 @@ class EDGAR_spatial:
             # 列表不为空的情况
             else:
                 # 直接将参数传入list方式的方法列出需要栅格
-                self.do_arcpy_list_raster_list(wildcard_list=raster_filter_wildcard)
+                self.do_arcpy_list_raster_list(
+                    wildcard_list=raster_filter_wildcard)
 
                 # logger output
                 self.ES_logger.debug('rasters listed.')
@@ -550,7 +584,7 @@ class EDGAR_spatial:
             # 如果为空值则警告可能会对所有栅格进行操作：
             if raster_filter_wildcard == '':
                 print 'WARNING: No fliter! All rasters will be list!'
-            
+
             self.do_arcpy_list_raster_str(wildcard_str=raster_filter_wildcard)
 
             # logger output
@@ -559,15 +593,17 @@ class EDGAR_spatial:
             # 其他情况直接退出
             # 或者，如果raster_filter_wildcard为空则直接显示筛选列表错误
             print 'Error: No fliter! Please check input raster filter!'
-            self.ES_logger.error('No fliter! Please check input raster filter!')
+            self.ES_logger.error(
+                'No fliter! Please check input raster filter!')
             return
-        
+
     # 实际执行列出栅格的方法，这个为str方式
     def do_arcpy_list_raster_str(self, wildcard_str):
         self.working_rasters.extend(arcpy.ListRasters(wild_card=wildcard_str))
 
         # logger output
-        self.ES_logger.debug('working rasters chenged to:%s' % self.working_rasters)
+        self.ES_logger.debug('working rasters chenged to:%s' %
+                             self.working_rasters)
 
     # 实际执行列出栅格的方法，这个为list方式
     def do_arcpy_list_raster_list(self, wildcard_list):
@@ -576,7 +612,8 @@ class EDGAR_spatial:
             self.working_rasters.extend(arcpy.ListRasters(wild_card=i))
 
         # logger output
-        self.ES_logger.debug('working rasters chenged to:%s' % self.working_rasters)
+        self.ES_logger.debug('working rasters chenged to:%s' %
+                             self.working_rasters)
 
     # 将部门key和对应的栅格文件组合为一个字典
     # 注意这个函数只能使用在确定了年份的列表中。
@@ -591,12 +628,12 @@ class EDGAR_spatial:
             # 需要取出其中的值赋值到字典中
             temp_value = filter(temp_regex.search, raster_list)
             sector_raster_dict[s] = temp_value.pop()
-        
+
         return sector_raster_dict
 
     ############################################################################
     ############################################################################
-    ## 实际数据计算相关函数/方法
+    # 实际数据计算相关函数/方法
     ############################################################################
     ############################################################################
 
@@ -640,7 +677,7 @@ class EDGAR_spatial:
         # logger output
         self.ES_logger.info('Rasters added: %s' % raster_list)
         return temp_raster.save(result_raster)
-    
+
     # 函数需要传入一个包含需要叠加的部门列表list，
     # 以及执行操作的年份
     def year_sectors_merge(self, raster_list, merge_sector, year):
@@ -648,9 +685,9 @@ class EDGAR_spatial:
         temp_sector = ''
         for i in merge_sector:
             temp_sector = temp_sector + '|%s' % i
-        
+
         temp_sector = temp_sector[1:len(temp_sector)]
-        temp_sector_year = '(%s).*%s' % (temp_sector,year)
+        temp_sector_year = '(%s).*%s' % (temp_sector, year)
         filter_regex = re.compile(temp_sector_year)
 
         # 神奇的python语法~~~
@@ -660,8 +697,7 @@ class EDGAR_spatial:
         self.ES_logger.debug('mergeing rasters: %s' % temp_merge_raster)
 
         # 此处输出的总量数据文件名不可更改！！！
-        # TODO
-        # 加入自定义文件名功能
+        # 未来加入自定义文件名功能
         result_year = 'total_emission_%s' % year
         self.do_raster_add(temp_merge_raster, result_year)
 
@@ -671,7 +707,7 @@ class EDGAR_spatial:
     # 实用（暴力）计算全年部门排放总和的函数
     def year_total_sectors_merge(self, year):
         temp_sector = list(self.EDGAR_sector.values())
-        self.year_sectors_merge(self.working_rasters,temp_sector,year)
+        self.year_sectors_merge(self.working_rasters, temp_sector, year)
         print 'Total emission of %s saved!\n' % year
 
         # logger output
@@ -700,18 +736,20 @@ class EDGAR_spatial:
     def sector_emission_percentage(self, sector, year, output_sector_point):
         # 尝试列出当年总量的栅格
         # 这里要注意，总量栅格的名称在year_sector_merge()中写死了
-        temp_year_total = arcpy.Raster('total_emission_%s' % year )
-        temp_sector_wildcard = '%s*%s*%s' % (self.background[1],sector,year)
-        temp_sector_emission = arcpy.Raster(arcpy.ListRasters(wild_card=temp_sector_wildcard)[0])
+        temp_year_total = arcpy.Raster('total_emission_%s' % year)
+        temp_sector_wildcard = '%s*%s*%s' % (self.background[1], sector, year)
+        temp_sector_emission = arcpy.Raster(
+            arcpy.ListRasters(wild_card=temp_sector_wildcard)[0])
 
         # 检查输入的部门栅格和总量栅格是否存在，如果不存在则报错并返回
         if not (arcpy.Exists(temp_sector_emission)) or not (arcpy.Exists(temp_year_total)):
             print 'Sector_emission_percentage: Error! sector emission or year total emission raster does not exist.'
 
             # logger output
-            self.ES_logger.error('sector emission or year total emission raster does not exist.')
+            self.ES_logger.error(
+                'sector emission or year total emission raster does not exist.')
             return
-        
+
         # 计算部门排放相对于全体部门总排放的比例
         # 注意！！！
         # 这里涉及除法！0值的背景会被抹去为nodata。所以要再mosaic一个背景上去才能转化为点。
@@ -720,9 +758,9 @@ class EDGAR_spatial:
         # logger output
         self.ES_logger.debug('Sectal raster weight calculated:%s' % sector)
 
-        # Mosaic 比例计算结果和0值背景 
+        # Mosaic 比例计算结果和0值背景
         # Mosaic 的结果仍然保存在temp_output_weight_raster中
-        arcpy.Mosaic_management(inputs=[temp_output_weight_raster,self.background[2]],
+        arcpy.Mosaic_management(inputs=[temp_output_weight_raster, self.background[2]],
                                 target=temp_output_weight_raster,
                                 mosaic_type="FIRST",
                                 colormap="FIRST",
@@ -730,12 +768,12 @@ class EDGAR_spatial:
 
         # logger output
         self.ES_logger.debug('Sectal raster weight mosaic to 1800*3600.')
-        
+
         # 2、由于转点操作速度过慢，命令行长时间没有相应
         #   尝试在其中加入一个计时器之类的工具，想办法显示处理进度
 
-        ## 保存栅格格式权重计算结果
-        temp_output_weight_raster_path =  '%s_weight_raster_%s' % (sector, year)
+        # 保存栅格格式权重计算结果
+        temp_output_weight_raster_path = '%s_weight_raster_%s' % (sector, year)
         temp_output_weight_raster.save(temp_output_weight_raster_path)
 
         #######################################################################
@@ -748,7 +786,7 @@ class EDGAR_spatial:
         # CAN NOT remove the following `del` operation!
         # Removing the `del` operation will
         # product a error in arcpy.RasterToPoint_conversion().
-        # The error will throll an exception of NOT found table in raster, 
+        # The error will throll an exception of NOT found table in raster,
         # because of the RasterToPoint_conversion miss include a deleted
         # anonymous temporary variable.
         #######################################################################
@@ -766,25 +804,30 @@ class EDGAR_spatial:
         # 这里用到了arcpy.AlterField_management()这个函数可能在10.2版本中没有
         try:
             # transform to point features
-            arcpy.RasterToPoint_conversion(temp_output_weight_raster_path, output_sector_point, 'VALUE')
+            arcpy.RasterToPoint_conversion(
+                temp_output_weight_raster_path, output_sector_point, 'VALUE')
 
             # logger output
-            self.ES_logger.debug('Sector emission weight raster convert to point:%s' % sector)
+            self.ES_logger.debug(
+                'Sector emission weight raster convert to point:%s' % sector)
 
             # rename value field
-            arcpy.AlterField_management(output_sector_point,'grid_code',new_field_name=sector)
+            arcpy.AlterField_management(
+                output_sector_point, 'grid_code', new_field_name=sector)
             # 删除表链接结果结果中生成的统计字段'pointid'和'grid_code'
             arcpy.DeleteField_management(output_sector_point, 'pointid')
 
             # logger output
-            self.ES_logger.debug('Sector emission weight point fields cleaned:%s' % sector)
+            self.ES_logger.debug(
+                'Sector emission weight point fields cleaned:%s' % sector)
 
             print 'Sector raster convert to pointfinished: %s of %s' % (sector, year)
         except:
             print 'Failed sector to point : %s' % sector
-            
+
             # logger output
-            self.ES_logger.error('Raster weight converting to point failed:%s' % sector)
+            self.ES_logger.error(
+                'Raster weight converting to point failed:%s' % sector)
 
             print arcpy.GetMessages()
 
@@ -793,7 +836,7 @@ class EDGAR_spatial:
         for s in tqdm(self.EDGAR_sector):
             # 设定输出点数据的格式
             output = '%s_weight_%s' % (s, year)
-            self.sector_emission_percentage(s,year,output)
+            self.sector_emission_percentage(s, year, output)
 
     # 将同一年份的部门整合到同一个点数据图层中
     def year_weight_joint(self, year, sector_list):
@@ -818,13 +861,16 @@ class EDGAR_spatial:
         temp_wildcard_pair = zip(sector_list, [str(year)]*len(sector_list))
         temp_wildcard = ['%s_weight_raster_%s' % i for i in temp_wildcard_pair]
         self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard)
-        temp_extract_raster = self.zip_sector_raster_to_dict(sector_list, self.working_rasters)
+        temp_extract_raster = self.zip_sector_raster_to_dict(
+            sector_list, self.working_rasters)
 
         # logger output
-        self.ES_logger.debug('Calculate weight in: %s' % str(temp_extract_raster))
+        self.ES_logger.debug('Calculate weight in: %s' %
+                             str(temp_extract_raster))
 
         # 首先弹出一个部门作为合并的起始指针
-        temp_point_start_wildcard = '%s*%s' % (temp_extract_raster.popitem()[0], year)
+        temp_point_start_wildcard = '%s*%s' % (
+            temp_extract_raster.popitem()[0], year)
         # 这里的逻辑看似有点奇怪，其实并不奇怪。
         # 因为在sector_emission_percentage()中已经保存了完整的‘部门-年份’点数据
         # 所以可以用其中一个点数据作为提取的起点。
@@ -832,8 +878,8 @@ class EDGAR_spatial:
                                                     feature_type=Point).pop()
 
         # logger output
-        self.ES_logger.debug('First weight extract point:%s' % temp_point_start)
-
+        self.ES_logger.debug('First weight extract point:%s' %
+                             temp_point_start)
 
         # 构造三个特殊变量来完成操作和循环的大和谐~、
         # 因为sa.ExtractValuesToPoint函数需要一个输出表，同时又不能覆盖替换另一个表
@@ -857,13 +903,14 @@ class EDGAR_spatial:
                                            out_point_features=temp_point_trigger,
                                            interpolate_values='NONE',
                                            add_attributes='VALUE_ONLY')
-            
+
             # 提取成功以后需要将RASTERVALU字段改为部门名称
             arcpy.AlterField_management(in_table=temp_point_trigger,
                                         field='RASTERVALU',
                                         new_field_name=temp_ETP_1_sector)
             # logger output
-            self.ES_logger.debug('Extract trigger built:%s' % temp_ETP_1_raster)
+            self.ES_logger.debug('Extract trigger built:%s' %
+                                 temp_ETP_1_raster)
         except:
             print 'Error: Extract value to point failed! The trigger building failed.'
 
@@ -879,17 +926,18 @@ class EDGAR_spatial:
                 temp_point_output = temp_point_iter_root + sect
 
                 arcpy.sa.ExtractValuesToPoints(in_point_features=temp_point_trigger,
-                                            in_raster=temp_ETP_raster,
-                                            out_point_features=temp_point_output,
-                                            interpolate_values='NONE',
-                                            add_attributes='VALUE_ONLY')
-                
+                                               in_raster=temp_ETP_raster,
+                                               out_point_features=temp_point_output,
+                                               interpolate_values='NONE',
+                                               add_attributes='VALUE_ONLY')
+
                 # 提取成功以后需要将RASTERVALU字段改为部门名称
                 arcpy.AlterField_management(in_table=temp_point_output,
                                             field='RASTERVALU',
                                             new_field_name=sect)
                 # logger output
-                self.ES_logger.debug('Extract raster:%s' % temp_extract_raster[sect])
+                self.ES_logger.debug('Extract raster:%s' %
+                                     temp_extract_raster[sect])
 
                 # 交换temp_point_iter和temp_point_output指针
                 temp_point_trigger = temp_point_output
@@ -901,17 +949,20 @@ class EDGAR_spatial:
                 print 'Error: Extract value to point failed!'
 
                 # logger output
-                self.ES_logger.error('Extract raster failed:%s' % temp_extract_raster[sect])
+                self.ES_logger.error('Extract raster failed:%s' %
+                                     temp_extract_raster[sect])
 
                 print arcpy.GetMessages()
 
         # 保存最后的输出结果
         print 'Saving sectoral weights...'
-        arcpy.CopyFeatures_management(temp_point_output, output_sectoral_weights)
+        arcpy.CopyFeatures_management(
+            temp_point_output, output_sectoral_weights)
         print 'Sectoral weights finished:%s' % year
 
         # logger output
-        self.ES_logger.debug('Sectoral weights saved:%s' % output_sectoral_weights)
+        self.ES_logger.debug('Sectoral weights saved:%s' %
+                             output_sectoral_weights)
 
         self.delete_temporary_feature_classes(delete_temporary)
 
@@ -927,7 +978,7 @@ class EDGAR_spatial:
         # 3.将权重最大值名称映射为一个整数，方便输出为栅格 wraster
         # 4.统计一个栅格中共计有多少个部门排放
         # 并计算添加字段的值
-        temp_new_fields = ['wmax','wmaxid','wraster','sector_counts']
+        temp_new_fields = ['wmax', 'wmaxid', 'wraster', 'sector_counts']
         try:
             # wmax
             arcpy.AddField_management(temp_point,
@@ -952,14 +1003,15 @@ class EDGAR_spatial:
                                       temp_new_fields[3],
                                       'DOUBLE', '#', '#', '#', '#',
                                       'NULLABLE', '#', '#')
-            #logger output
-            self.ES_logger.debug('Max-Classes fields added:%s' % temp_new_fields)
+            # logger output
+            self.ES_logger.debug(
+                'Max-Classes fields added:%s' % temp_new_fields)
         except:
             print 'Add field to point faild in: %s' % temp_point
 
-            
             # logger output
-            self.ES_logger.error('Add field to point faild in: %s' % temp_point)
+            self.ES_logger.error(
+                'Add field to point faild in: %s' % temp_point)
 
             print arcpy.GetMessages()
             return
@@ -1004,14 +1056,14 @@ class EDGAR_spatial:
         temp_working_sector = sector_points
 
         # 构造需要操作的字段
-        ## 神奇的python赋值解包
+        # 神奇的python赋值解包
         temp_cursor_fileds = [i for i in temp_sector]
 
         # 按照calculate_fields 参数追加需要进行计算的字段
-        ## 输出结果的四个字段：最大值、最大值部门、colormap、部门数量
-        ### 部门字段的数量
+        # 输出结果的四个字段：最大值、最大值部门、colormap、部门数量
+        # 部门字段的数量
         sector_counts = len(temp_sector)
-        ### 计算字段的数量
+        # 计算字段的数量
         calculate_fields_counts = len(calculate_fields)
 
         # 添加需要计算的字段到游标提取字段的list中
@@ -1023,7 +1075,8 @@ class EDGAR_spatial:
                 max_weight = max(row[0:-calculate_fields_counts])
                 max_id = temp_cursor_fileds[row.index(max_weight)]
                 max_colormap = temp_sector_colormap[max_id]
-                emitted_sectors = len([i for i in row[0:-calculate_fields_counts] if i != 0])
+                emitted_sectors = len(
+                    [i for i in row[0:-calculate_fields_counts] if i != 0])
 
                 row[-1] = emitted_sectors
                 row[-2] = max_colormap
@@ -1032,8 +1085,8 @@ class EDGAR_spatial:
 
                 cursor.updateRow(row)
 
-    def proccess_year(self,start_year,end_year):
-        for yr in tqdm(range(start_year,end_year+1)):
+    def proccess_year(self, start_year, end_year):
+        for yr in tqdm(range(start_year, end_year+1)):
             self.print_start_year(yr)
             self.prepare_raster()
             self.year_total_sectors_merge(yr)
@@ -1045,7 +1098,7 @@ class EDGAR_spatial:
     def proccess_all_year(self):
         self.proccess_year(start_year=1970, end_year=2018)
 
-    def print_start_year(year):
+    def print_start_year(self, year):
 
         # logger output
         self.ES_logger.debug('Processing start of year %s' % year)
@@ -1056,7 +1109,7 @@ class EDGAR_spatial:
         print '=============================='
         print '=============================='
 
-    def print_finish_year(year):
+    def print_finish_year(self, year):
 
         # logger output
         self.ES_logger.debug('Finished processing data of year %s' % year)
@@ -1069,14 +1122,13 @@ class EDGAR_spatial:
         print '=============================='
 
 
-
 # ======================================================================
 # ======================================================================
 # TEST SCRIPT
 # ======================================================================
 # ======================================================================
 if __name__ == '__main__':
-    ## test contents
+    # test contents
     # test_es = {'E2A':'E2A','E1A1A':'E1A1A','E1A4':'E1A4'}
     # test_esc = {'E2A':1,'E1A1A':2,'E1A4':3}
 
@@ -1086,16 +1138,18 @@ if __name__ == '__main__':
     # aaa.year_total_sectors_merge(2012)
     # aaa.sector_emission_percentage('E2A',2012,'test_e2a_weight')
 
-    
-    test_es = {'AGS':'AGS','ENE':'ENE','RCO':'RCO','IND':'IND','REF_TRF':'REF_TRF','SWD_INC':'SWD_INC','TNR_ship':'TNR_ship'}
-    test_esc = {'AGS':1,'ENE':2,'RCO':3,'IND':4,'REF_TRF':5,'SWD_INC':6,'TNR_ship':7}
+    test_es = {'AGS': 'AGS', 'ENE': 'ENE', 'RCO': 'RCO', 'IND': 'IND',
+               'REF_TRF': 'REF_TRF', 'SWD_INC': 'SWD_INC', 'TNR_Ship': 'TNR_Ship'}
+    test_esc = {'AGS': 1, 'ENE': 2, 'RCO': 3, 'IND': 4,
+                'REF_TRF': 5, 'SWD_INC': 6, 'TNR_Ship': 7}
 
     #calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
-    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_60.gdb',st_year=2018,en_year=2018,sector=test_es,colormap=test_esc)
+    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_60.gdb',
+                        st_year=2018, en_year=2018, sector=test_es, colormap=test_esc)
     # aaa.prepare_raster()
     # print aaa.working_rasters
     # aaa.year_total_sectors_merge(2018)
     # aaa.year_sector_emission_percentage(2018)
     # aaa.year_weight_joint(2018, list(test_es.values()))
     # aaa.max_weight_rasterize(2018)
-    aaa.proccess_year(2018)
+    aaa.proccess_year(start_year=2018, end_year=2018)
