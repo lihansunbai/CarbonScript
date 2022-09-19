@@ -889,8 +889,8 @@ class EDGAR_spatial:
         temp_point_iter_root = 'ETP_iter'
         temp_point_output = 'ETP_output'
 
-        delete_temporary.extend(temp_point_trigger)
-        delete_temporary.extend(temp_point_output)
+        delete_temporary.append(temp_point_trigger)
+        delete_temporary.append(temp_point_output)
 
         # 需要先进行一次提取操作，输入到EPT_iter中
         # 这里需要开启覆盖操作，或者执行一个del工作
@@ -943,7 +943,7 @@ class EDGAR_spatial:
                 temp_point_trigger = temp_point_output
 
                 # 添加到删除名单
-                delete_temporary.extend(temp_point_output)
+                delete_temporary.append(temp_point_output)
 
             except:
                 print 'Error: Extract value to point failed!'
