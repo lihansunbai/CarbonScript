@@ -795,7 +795,6 @@ class EDGAR_spatial:
             output = '%s_weight_%s' % (s, year)
             self.sector_emission_percentage(s,year,output)
 
-
     # 将同一年份的部门整合到同一个点数据图层中
     def year_weight_joint(self, year, sector_list):
         #######################################################################
@@ -953,8 +952,15 @@ class EDGAR_spatial:
                                       temp_new_fields[3],
                                       'DOUBLE', '#', '#', '#', '#',
                                       'NULLABLE', '#', '#')
+            #logger output
+            self.ES_logger.debug('Max-Classes fields added:%s' % temp_new_fields)
         except:
-            print 'Add field to point faild: %s' % temp_point
+            print 'Add field to point faild in: %s' % temp_point
+
+            
+            # logger output
+            self.ES_logger.error('Add field to point faild in: %s' % temp_point)
+
             print arcpy.GetMessages()
             return
 
@@ -979,8 +985,15 @@ class EDGAR_spatial:
                                            '#',
                                            '0.1')
             print 'Create main emission raster: %s' % temp_point
+
+            # logger output
+            self.ES_logger.debug('Max-Classes rasterize finished:%s' % year)
         except:
             print 'Create main emission raster field: %s' % temp_point
+
+            # logger output
+            self.ES_logger.error('Max-Classes rasterize failed:%s' % year)
+
             print arcpy.GetMessages()
 
     # 用arcpy.da.cursor类进行操作
@@ -988,7 +1001,6 @@ class EDGAR_spatial:
     def do_sector_max_extract(self, sector_points, calculate_fields):
         temp_sector = copy.deepcopy(self.EDGAR_sector)
         temp_sector_colormap = copy.deepcopy(self.EDGAR_sector_colormap)
-        ## temp_working_sector = self.__workspace + '\\%s' % sector_points
         temp_working_sector = sector_points
 
         # 构造需要操作的字段
@@ -1021,14 +1033,23 @@ class EDGAR_spatial:
                 cursor.updateRow(row)
 
     def proccess_year(self,start_year,end_year):
-        # for year in [start_year:end_year]:
-        #     self.sector_max()
-        pass
+        for yr in tqdm(range(start_year,end_year+1)):
+            self.print_start_year(yr)
+            self.prepare_raster()
+            self.year_total_sectors_merge(yr)
+            self.year_sector_emission_percentage(yr)
+            self.year_weight_joint(yr, self.EDGAR_sector)
+            self.max_weight_rasterize(yr)
+            self.print_finish_year(yr)
 
-    def proccess_all(self):
-        pass
+    def proccess_all_year(self):
+        self.proccess_year(start_year=1970, end_year=2018)
 
     def print_start_year(year):
+
+        # logger output
+        self.ES_logger.debug('Processing start of year %s' % year)
+
         print '=============================='
         print '=============================='
         print 'Processing start of year %s' % year
@@ -1036,6 +1057,10 @@ class EDGAR_spatial:
         print '=============================='
 
     def print_finish_year(year):
+
+        # logger output
+        self.ES_logger.debug('Finished processing data of year %s' % year)
+
         print '=============================='
         print '=============================='
         print 'Congratulations!'
@@ -1071,5 +1096,6 @@ if __name__ == '__main__':
     # print aaa.working_rasters
     # aaa.year_total_sectors_merge(2018)
     # aaa.year_sector_emission_percentage(2018)
-    #aaa.year_weight_joint(2018, list(test_es.values()))
-    aaa.max_weight_rasterize(2018)
+    # aaa.year_weight_joint(2018, list(test_es.values()))
+    # aaa.max_weight_rasterize(2018)
+    aaa.proccess_year(2018)
