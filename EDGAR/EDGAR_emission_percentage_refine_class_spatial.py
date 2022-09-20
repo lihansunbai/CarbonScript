@@ -717,8 +717,15 @@ class EDGAR_spatial:
     def delete_temporary_feature_classes(self, feature_list):
         print 'Deleting temporary files'
 
-        for f in tqdm(feature_list):
-            arcpy.DeleteFeatures_management(f)
+        prepare_feature = [s for s in feature_list if arcpy.ListFeatureClasses(wild_card=s,feature_type=Point)]
+
+        for f in prepare_feature:
+            # 这里可能涉及一个arcpy的BUG。在独立脚本中使用删除图层工具时
+            # 需要提供完整路径，即使你已经设置了env.workspace。
+            # 而且在删除的时候不能使用deletefeature！
+            # 需要使用delete_management.
+            feature_fullpath = os.path.join(self.__workspace,f)
+            arcpy.Delete_management(feature_fullpath)
 
             # logger output
             self.ES_logger.debug('Deleted feature:%s' % f)
@@ -1152,4 +1159,5 @@ if __name__ == '__main__':
     # aaa.year_sector_emission_percentage(2018)
     # aaa.year_weight_joint(2018, list(test_es.values()))
     # aaa.max_weight_rasterize(2018)
-    aaa.proccess_year(start_year=2018, end_year=2018)
+    # aaa.proccess_year(start_year=2018, end_year=2018)
+    aaa.delete_temporary_feature_classes(['ETP_trigger','ETP_iter','ETP_output'])
