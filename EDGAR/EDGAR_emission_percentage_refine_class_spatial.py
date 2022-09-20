@@ -719,7 +719,7 @@ class EDGAR_spatial:
 
         prepare_feature = [s for s in feature_list if arcpy.ListFeatureClasses(wild_card=s,feature_type=Point)]
 
-        for f in prepare_feature:
+        for f in tqdm(prepare_feature):
             # 这里可能涉及一个arcpy的BUG。在独立脚本中使用删除图层工具时
             # 需要提供完整路径，即使你已经设置了env.workspace。
             # 而且在删除的时候不能使用deletefeature！
@@ -802,10 +802,10 @@ class EDGAR_spatial:
         #######################################################################
         #######################################################################
 
-        print 'Sector emission weight saved: %s\n' % sector
+        print 'Sector emission weight raster saved: %s\n' % sector
 
         # logger output
-        self.ES_logger.info('Sector emission weight saved')
+        self.ES_logger.info('Sector emission weight raster saved')
 
         # 栅格数据转点对象。转为点对象后可以实现计算比例并同时记录对应排放比例的部门名称
         # 这里用到了arcpy.AlterField_management()这个函数可能在10.2版本中没有
@@ -1159,5 +1159,4 @@ if __name__ == '__main__':
     # aaa.year_sector_emission_percentage(2018)
     # aaa.year_weight_joint(2018, list(test_es.values()))
     # aaa.max_weight_rasterize(2018)
-    # aaa.proccess_year(start_year=2018, end_year=2018)
-    aaa.delete_temporary_feature_classes(['ETP_trigger','ETP_iter','ETP_output'])
+    aaa.proccess_year(start_year=2018, end_year=2018)
