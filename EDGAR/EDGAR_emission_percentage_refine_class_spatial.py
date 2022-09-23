@@ -713,6 +713,12 @@ class EDGAR_spatial:
         # logger output
         self.ES_logger.info('All sector merged!')
 
+        # 这里要清理全局的working_rasters变量，防止突发bug 
+        self.working_rasters = []
+
+        # logger output
+        self.ES_logger.debug('working_rasters cleaned!')
+
     # 删除临时生成的图层文件
     def delete_temporary_feature_classes(self, feature_list):
         print 'Deleting temporary files'
@@ -971,7 +977,15 @@ class EDGAR_spatial:
         self.ES_logger.debug('Sectoral weights saved:%s' %
                              output_sectoral_weights)
 
+        # 删除临时生成的迭代变量
         self.delete_temporary_feature_classes(delete_temporary)
+
+        # 清空全局working_rasters变量，防止突发bug
+        self.working_rasters = []
+
+        # logger output
+        self.ES_logger.debug('working_rasters cleaned!')
+
 
     # 导出不同年份最大权重栅格
     def max_weight_rasterize(self, year):
