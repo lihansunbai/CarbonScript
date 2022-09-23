@@ -599,7 +599,7 @@ class EDGAR_spatial:
 
         # logger output
         self.ES_logger.debug('working rasters chenged to:%s' %
-                             self.working_rasters)
+                             self.all_prepare_working_rasters)
 
     # 准备栅格时实际执行列出栅格的方法，这个为list方式
     def do_prepare_arcpy_list_raster_list(self, wildcard_list):
@@ -609,7 +609,7 @@ class EDGAR_spatial:
 
         # logger output
         self.ES_logger.debug('working rasters chenged to:%s' %
-                             self.working_rasters)
+                             self.all_prepare_working_rasters)
 
     # 实际执行列出栅格的方法，这个为str方式
     def do_arcpy_list_raster_str(self, wildcard_str):
