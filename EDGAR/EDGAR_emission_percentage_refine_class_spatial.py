@@ -721,7 +721,7 @@ class EDGAR_spatial:
     # 实用（暴力）计算全年部门排放总和的函数
     def year_total_sectors_merge(self, year):
         temp_sector = list(self.EDGAR_sector.values())
-        self.year_sectors_merge(self.prepare_working_rasters, temp_sector, year)
+        self.year_sectors_merge(self.all_prepare_working_rasters, temp_sector, year)
         print 'Total emission of %s saved!\n' % year
 
         # logger output
