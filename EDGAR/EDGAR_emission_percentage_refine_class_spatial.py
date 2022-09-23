@@ -279,7 +279,7 @@ class EDGAR_spatial:
     raster_filter_wildcard = __default_raster_filter_wildcard
 
     # 准备时间范围内的所有部门的栅格
-    prepare_working_rasters = []
+    all_prepare_working_rasters = []
 
     # 需要操作的栅格
     working_rasters = []
@@ -595,7 +595,7 @@ class EDGAR_spatial:
 
     # 准备栅格时实际执行列出栅格的方法，这个为str方式
     def do_prepare_arcpy_list_raster_str(self, wildcard_str):
-        self.prepare_working_rasters.extend(arcpy.ListRasters(wild_card=wildcard_str))
+        self.all_prepare_working_rasters.extend(arcpy.ListRasters(wild_card=wildcard_str))
 
         # logger output
         self.ES_logger.debug('working rasters chenged to:%s' %
@@ -605,7 +605,7 @@ class EDGAR_spatial:
     def do_prepare_arcpy_list_raster_list(self, wildcard_list):
         # 逐年份生成需要处理的数据列表
         for i in wildcard_list:
-            self.prepare_working_rasters.extend(arcpy.ListRasters(wild_card=i))
+            self.all_prepare_working_rasters.extend(arcpy.ListRasters(wild_card=i))
 
         # logger output
         self.ES_logger.debug('working rasters chenged to:%s' %
@@ -1180,12 +1180,15 @@ if __name__ == '__main__':
                 'REF_TRF': 5, 'SWD_INC': 6, 'TNR_Ship': 7}
 
     #calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
-    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_60.gdb',
-                        st_year=2018, en_year=2018, sector=test_es, colormap=test_esc)
+    #aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_60.gdb',
+    #                    st_year=2018, en_year=2018, sector=test_es, colormap=test_esc)
+    aaa = EDGAR_spatial('D:\\workplace\\workplace\\dissertation\\total_emission\\EDGAR_v60_raster.gdb',
+                        st_year=2010, en_year=2018, sector=test_es, colormap=test_esc)
+    
     # aaa.prepare_raster()
     # print aaa.working_rasters
     # aaa.year_total_sectors_merge(2018)
     # aaa.year_sector_emission_percentage(2018)
     # aaa.year_weight_joint(2018, list(test_es.values()))
     # aaa.max_weight_rasterize(2018)
-    aaa.proccess_year(start_year=2018, end_year=2018)
+    aaa.proccess_year(start_year=2010, end_year=2018)
