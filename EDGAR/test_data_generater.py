@@ -97,3 +97,10 @@ aaa.prepare_raster()
 print aaa.working_rasters
 aaa.year_total_sectors_merge(2012)
 aaa.sector_emission_percentage('E2A',2012,'test_e2a_weight')
+
+
+## 筛选测试函数
+aaa = [u'BA_EDGAR_SWD_INC_2018', u'BA_EDGAR_ENE_2018', u'BA_EDGAR_REF_TRF_2019', u'BA_EDGAR_RCO_2019', u'BA_EDGAR_IND_2019', u'BA_EDGAR_TNR_Ship_2019', u'BA_EDGAR_AGS_2018',
+       u'SWD_INC_weight_raster_2018', u'ENE_weight_raster_2018', u'REF_TRF_weight_raster_2018', u'RCO_weight_raster_2018', u'IND_weight_raster_2018', u'TNR_Ship_weight_raster_2018', u'AGS_weight_raster_2018']
+
+bbb = [results for s in aaa if '2019']

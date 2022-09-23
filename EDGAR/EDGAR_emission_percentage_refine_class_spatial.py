@@ -25,15 +25,8 @@ __metaclass__ = type
 # Memorandum:
 # 备忘录：
 #   1. 考虑是否需要在构造函数中包含 arcpy 的几个环境变量的引入；
-#   2. 构造函数中需要初始化那些内容？例如：
-#       a）传入年份
-#       b）是否需要传入排放种类的字典
-#       c) 是否需要在这里引入tqdm组建来展示处理进度？或者是在外层控制调用脚本显示
-#           处理进？
-#   3. 所有涉及数据的操作都需要采用绝对路径，防止arcpy出现识别数据错误。
-#   4. 多年份处理函数
-#   5. 计算字段的构造方法
-#   6. 正式开始写数据运算部分内容
+#   2. 所有涉及数据的操作都需要采用绝对路径，防止arcpy出现识别数据错误。
+#   3. 计算字段的构造方法
 # ======================================================================
 # ======================================================================
 
@@ -169,8 +162,8 @@ class EDGAR_spatial:
         # raster_filter 参数初始化部分
         # 这里要将初始化传入的部门参数字典“sector”进行列表化并赋值
         # 和起始、终止时间传入
-        temp_init_filter_label = {'default_set': True, 'background_label_set': self.background[1],
-                                  'sector_set': sector,
+        temp_init_filter_label = {'default_set': True, 'background_label_set': self.background_label,
+                                  'sector_set': self.EDGAR_sector,
                                   'start_year_set': st_year,
                                   'end_year_set': en_year}
         self.filter_label = temp_init_filter_label
@@ -284,6 +277,9 @@ class EDGAR_spatial:
     __default_raster_filter_wildcard = []
     # 数据库过滤标签
     raster_filter_wildcard = __default_raster_filter_wildcard
+
+    # 准备时间范围内的所有部门的栅格
+    prepare_working_rasters = []
 
     # 需要操作的栅格
     working_rasters = []
@@ -553,7 +549,7 @@ class EDGAR_spatial:
     raster_filter = property(get_raster_filter, set_raster_filter)
 
     # 生成需要处理数据列表
-    def list_working_rasters(self, raster_filter_wildcard):
+    def prepare_working_rasters(self, raster_filter_wildcard):
         # 涉及arcpy操作，且所有数据都基于这步筛选，
         # 所以需要进行大量的数据检查。
         temp_type_check = type(raster_filter_wildcard)
@@ -566,14 +562,14 @@ class EDGAR_spatial:
                 print 'WARNING: No fliter! All rasters will be list!'
 
                 # 使用str方式列出所有栅格
-                self.do_arcpy_list_raster_str(wildcard_str='')
+                self.do_prepare_arcpy_list_raster_str(wildcard_str='')
 
                 # logger output
                 self.ES_logger.debug('rasters listed without filter.')
             # 列表不为空的情况
             else:
                 # 直接将参数传入list方式的方法列出需要栅格
-                self.do_arcpy_list_raster_list(
+                self.do_prepare_arcpy_list_raster_list(
                     wildcard_list=raster_filter_wildcard)
 
                 # logger output
@@ -585,7 +581,7 @@ class EDGAR_spatial:
             if raster_filter_wildcard == '':
                 print 'WARNING: No fliter! All rasters will be list!'
 
-            self.do_arcpy_list_raster_str(wildcard_str=raster_filter_wildcard)
+            self.do_prepare_arcpy_list_raster_str(wildcard_str=raster_filter_wildcard)
 
             # logger output
             self.ES_logger.debug('rasters listed without filter.')
@@ -596,6 +592,24 @@ class EDGAR_spatial:
             self.ES_logger.error(
                 'No fliter! Please check input raster filter!')
             return
+
+    # 准备栅格时实际执行列出栅格的方法，这个为str方式
+    def do_prepare_arcpy_list_raster_str(self, wildcard_str):
+        self.prepare_working_rasters.extend(arcpy.ListRasters(wild_card=wildcard_str))
+
+        # logger output
+        self.ES_logger.debug('working rasters chenged to:%s' %
+                             self.working_rasters)
+
+    # 准备栅格时实际执行列出栅格的方法，这个为list方式
+    def do_prepare_arcpy_list_raster_list(self, wildcard_list):
+        # 逐年份生成需要处理的数据列表
+        for i in wildcard_list:
+            self.prepare_working_rasters.extend(arcpy.ListRasters(wild_card=i))
+
+        # logger output
+        self.ES_logger.debug('working rasters chenged to:%s' %
+                             self.working_rasters)
 
     # 实际执行列出栅格的方法，这个为str方式
     def do_arcpy_list_raster_str(self, wildcard_str):
@@ -651,7 +665,7 @@ class EDGAR_spatial:
         # 首先构造用于筛选raster用的wildcard
         self.raster_filter = self.filter_label
         # 通过arcpy列出需要的栅格
-        self.list_working_rasters(self.raster_filter_wildcard)
+        self.prepare_working_rasters(self.raster_filter_wildcard)
 
     # 栅格叠加的实际执行函数
     # 这个函数用到了tqdm显示累加进度
@@ -707,14 +721,14 @@ class EDGAR_spatial:
     # 实用（暴力）计算全年部门排放总和的函数
     def year_total_sectors_merge(self, year):
         temp_sector = list(self.EDGAR_sector.values())
-        self.year_sectors_merge(self.working_rasters, temp_sector, year)
+        self.year_sectors_merge(self.prepare_working_rasters, temp_sector, year)
         print 'Total emission of %s saved!\n' % year
 
         # logger output
         self.ES_logger.info('All sector merged!')
 
-        # 这里要清理全局的working_rasters变量，防止突发bug 
-        self.working_rasters = []
+        # # 这里要清理全局的working_rasters变量，防止突发bug 
+        # self.working_rasters = []
 
         # logger output
         self.ES_logger.debug('working_rasters cleaned!')
@@ -1107,9 +1121,10 @@ class EDGAR_spatial:
                 cursor.updateRow(row)
 
     def proccess_year(self, start_year, end_year):
-        for yr in tqdm(range(start_year, end_year+1)):
+        self.prepare_raster()
+
+        for yr in range(start_year, end_year+1):
             self.print_start_year(yr)
-            self.prepare_raster()
             self.year_total_sectors_merge(yr)
             self.year_sector_emission_percentage(yr)
             self.year_weight_joint(yr, self.EDGAR_sector)
