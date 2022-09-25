@@ -3,6 +3,7 @@
 # 路径处理模块
 # Systerm path proccessing module
 import os
+from typing import Tuple
 
 # Arcpy 相关模块
 # Arcpy module
@@ -1162,6 +1163,127 @@ class EDGAR_spatial:
         print '=============================='
         print '=============================='
 
+    # 这个函数实际执行从一个年份中提取中心操作
+    # 这里要求可以center_range是一个元组
+    def do_extract_center_area(self,center_range, total_emission_raster, year):
+        # 临时变量
+        temp_center_upper_bound = 0
+        temp_center_lower_bound = 0
+        temp_center = 0
+
+        # 变量检查
+        if type(center_range) == tuple:
+            temp_center_upper_bound = max(center_range)
+            temp_center_lower_bound = min(center_range)
+            temp_center = str((temp_center_lower_bound+temp_center_upper_bound)/2).replace('.', '')
+        else:
+            print "Error: center range require a tuple. Please check the input."
+
+            # logger output
+            self.ES_logger.error('Center range type error.')
+            return
+        
+        # 检查两个输入的栅格是否存在
+        # 检查total_emission
+        if not(arcpy.Exists(total_emission_raster)):
+            print 'Error: input total emission raster does not exist'
+
+            # logger output
+            self.ES_logger.error('input tatal emission not found.')
+            return
+
+        # 检查对应年份的主要排放部门栅格
+        temp_main_sector = 'main_emi_%s' % year
+
+        if not(arcpy.Exists(temp_main_sector)):
+            print 'Error: input total emission raster does not exist'
+
+            # logger output
+            self.ES_logger.error('input tatal emission not found.')
+            return
+        
+        # 将大于上界和小于下界范围的栅格设为nodata
+        # Set local variables
+        whereClause = "VALUE < %s OR VALUE > %s" % (temp_center_lower_bound, temp_center_upper_bound)
+
+        # Execute SetNull
+        outSetNull = SetNull(total_emission_raster, total_emission_raster, whereClause)
+
+        # Save the output 
+        temp_center_path = 'center_%s_%s' % (year, temp_center)
+        outSetNull.save(temp_center_path)
+
+        # 防止BUG删除outSetNull
+        del outSetNull
+
+        # 生成中心的mask
+        # Execute Con
+        outCon = Con(temp_center_path, 1, '')
+
+        # Save the outputs 
+        temp_center_mask_path = 'center_mask_%s_%s' % (year, temp_center)
+        outCon.save(temp_center_mask_path)
+
+        # 防止BUG删除outCon
+        del outCon
+
+        # 生成中心主要排放部门栅格
+        outMain = arcpy.Raster(temp_center_mask_path) * arcpy.Raster(temp_main_sector)
+
+        # Save the output
+        temp_center_main = 'center_main_sector_%s_%s' % (year, temp_center)
+        outMain.save(temp_center_main)
+
+        # 防止BUG删除outCon
+        del outMain
+
+    # 这里要求可以center_range和year_range是一个元组
+    def extract_center_area(self, center_range, year_range, isLog):
+        # 临时变量
+        temp_start_year = self.start_year
+        temp_end_year = self.end_year
+
+        # 检查年份变量
+        if (type(year_range[0]) != int) or (type(year_range[1]) != int):
+            print 'Error! Proccessing starting year and ending year must be int value'
+            self.ES_logger.info('Year setting type error.')
+            self.ES_logger.error('Year setting error!')
+            return
+        elif min(year_range) < 1970 or max(year_range) > 2018:
+            print 'Error! Proccessing year range out of data support! The year must containt in 1970 to 2018'
+            self.ES_logger.info('Year settings are out of range.')
+            self.ES_logger.error('Year setting error!')
+            return
+        else:
+            temp_start_year, temp_end_year = min(year_range),max(year_range)
+            self.ES_logger.info('Year has set.')
+        
+        # 列出总排放量栅格
+        if bool(isLog) == True:
+            temp_wild_card = ['total_emission_%s_log' % s for s in range(temp_start_year,temp_end_year+1)]
+        elif bool(isLog) == False:
+            temp_wild_card = ['total_emission_%s' % s for s in range(temp_start_year,temp_end_year+1)]
+        else:
+            print 'Error: Please set the isLog flag.'
+
+            # logger output
+            self.ES_logger.error('isLog flag check failed.')
+            return
+
+        # 列出需要的total emission 栅格
+        self.do_arcpy_list_raster_list(temp_wild_card)
+
+
+        # 逐年处理
+        for yr in tqdm(range(temp_start_year,temp_end_year+1)):
+            temp_total_emission = [s for s in self.working_rasters if str(yr) in s].pop()
+
+            self.do_extract_center_area(center_range=center_range,
+                                        total_emission_raster=temp_total_emission,
+                                        year=yr)
+
+        self.working_rasters = []
+
 
 # ======================================================================
 # ======================================================================
@@ -1187,8 +1309,8 @@ if __name__ == '__main__':
     #calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
     # aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_60.gdb',
     #                    st_year=2018, en_year=2018, sector=test_es, colormap=test_esc)
-    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_v60_raster.gdb',
-                        st_year=1980, en_year=1989)
+    aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\result_no_ship.gdb',
+                        st_year=2010, en_year=2018)
 
     # aaa.prepare_raster()
     # print aaa.working_rasters
@@ -1196,4 +1318,5 @@ if __name__ == '__main__':
     # aaa.year_sector_emission_percentage(2018)
     # aaa.year_weight_joint(2018, list(test_es.values()))
     # aaa.max_weight_rasterize(2018)
-    aaa.proccess_year(start_year=1980, end_year=1989)
+    # aaa.proccess_year(start_year=1980, end_year=1989)
+    aaa.extract_center_area(center_range=(3.5,4.5),year_range=(2010,2018),isLog=True)
