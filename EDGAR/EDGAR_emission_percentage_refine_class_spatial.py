@@ -18,6 +18,8 @@ import copy
 import tqdm
 from tqdm import tqdm
 import logging
+import csv
+import pandas
 
 __metaclass__ = type
 
@@ -1283,6 +1285,85 @@ class EDGAR_spatial:
                                         year=yr)
 
         self.working_rasters = []
+
+    def do_zonal_statistic_to_table(self, year, inZoneData, zoneField, inValueRaster, outTable):
+        # Execute ZonalStatisticsAsTable
+        outZSaT = ZonalStatisticsAsTable(inZoneData, zoneField, inValueRaster, 
+                                        outTable, "DATA", "ALL")
+        
+        # logger output
+        self.ES_logger.debug('Sataistics finished.')
+    
+    def do_zonal_table_to_csv(self, table, year, outPath):
+        temp_table = table
+
+        #--first lets make a list of all of the fields in the table
+        fields = arcpy.ListFields(table)
+        field_names = [field.name for field in fields]
+        # 追加年份在最后一列
+        field_names.append('year')
+
+        # 获得输出文件的绝对路径
+        temp_outPath = os.path.abspath(outPath)
+
+        with open(temp_outPath,'wt') as f:
+            w = csv.writer(f)
+            #--write all field names to the output file
+            w.writerow(field_names)
+
+            #--now we make the search cursor that will iterate through the rows of the table
+            for row in arcpy.SearchCursor(temp_table):
+                field_vals = [row.getValue(field.name) for field in fields]
+                field_vals.append(str(year))
+                w.writerow(field_vals)
+            del row
+        
+        # logger output
+        self.ES_logger.debug('Convert %s\'s statistics table to csv file:%s' % (year,temp_outPath))
+
+    def zonal_year_statistics(self, year_range, inZone, center, outPath):
+        # 获得保存路径
+        temp_out_csv_path = os.path.abspath(outPath) 
+
+        # 检查输入的分区是否存在
+        if not(arcpy.Exists(inZone)):
+            print 'Error: inZone not found.'
+
+            # logger output
+            self.ES_logger.error('inZone does not exist.')
+
+            return
+
+        for yr in tqdm(range(min(year_range),max(year_range)+1)):
+            # 生成中心的栅格名称
+            temp_inRaster = 'center_main_sector_%s_%s' % (center, yr)
+            # 检查输入的待统计值
+            if not(arcpy.Exists(temp_inRaster)):
+                print 'Error: inRaster not found.'
+
+                # logger output
+                self.ES_logger.error('inRaster does not exist.')
+
+                return
+
+            temp_outTable = 'table_' + temp_inRaster 
+
+            self.do_zonal_statistic_to_table(inZoneData=inZone,
+                                            zoneField='ISO_A3',
+                                            inValueRaster=temp_inRaster,
+                                            outTable= temp_outTable)
+            # logger output
+            self.ES_logger.debug('Zonal statistics finished:%s' % temp_inRaster)
+
+            temp_outCsv = os.path.join(temp_out_csv_path,temp_inRaster,'.csv')
+            self.do_zonal_table_to_csv(table=temp_outTable,
+                                        year=yr,
+                                        outPath=temp_outCsv)
+            
+            # logger output
+            self.ES_logger.debug('Zonal statitics convert to csv.')
+                                            
+
 
 
 # ======================================================================
