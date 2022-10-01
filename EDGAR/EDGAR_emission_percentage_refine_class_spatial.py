@@ -1203,6 +1203,16 @@ class EDGAR_spatial:
             # logger output
             self.ES_logger.error('input tatal emission not found.')
             return
+
+        # 检查对应年份的主要排放部门权重栅格
+        temp_main_sector_weight = 'main_emi_weight_%s' % year
+
+        if not(arcpy.Exists(temp_main_sector_weight)):
+            print 'Error: input total emission weight raster does not exist'
+
+            # logger output
+            self.ES_logger.error('input tatal emission not found.')
+            return
         
         # 将大于上界和小于下界范围的栅格设为nodata
         # Set local variables
@@ -1238,6 +1248,15 @@ class EDGAR_spatial:
 
         # 防止BUG删除outCon
         del outMain
+
+        # 生成中心主要排放部门比重栅格
+        outMainWeight = arcpy.Raster(temp_center_mask_path) * arcpy.Raster(temp_main_sector_weight)
+        
+        # Save the output
+        temp_center_main_weight = 'center_main_sector_weight_%s_%s' % (year, temp_center)
+        outMainWeight.save(temp_center_main_weight)
+
+        del outMainWeight
 
     # 这里要求可以center_range和year_range是一个元组
     def extract_center_area(self, center_range, year_range, isLog):
@@ -1321,7 +1340,7 @@ class EDGAR_spatial:
         # logger output
         self.ES_logger.debug('Convert %s\'s statistics table to csv file:%s' % (year,temp_outPath))
 
-    def zonal_year_statistics(self, year_range, inZone, center, outPath):
+    def zonal_year_statistics(self, year_range, inZone, center_range, outPath):
         # 获得保存路径
         temp_out_csv_path = os.path.abspath(outPath) 
 
@@ -1334,11 +1353,14 @@ class EDGAR_spatial:
 
             return
 
+        # 生成中心点
+        temp_center = str((min(center_range)+max(center_range))/2).replace('.', '')
+
         for yr in tqdm(range(min(year_range),max(year_range)+1)):
             # 生成中心的栅格名称
-            temp_inRaster = 'center_main_sector_%s_%s' % (center, yr)
+            temp_main_inRaster = 'center_main_sector_%s_%s' % (yr, temp_center)
             # 检查输入的待统计值
-            if not(arcpy.Exists(temp_inRaster)):
+            if not(arcpy.Exists(temp_main_inRaster)):
                 print 'Error: inRaster not found.'
 
                 # logger output
@@ -1346,16 +1368,46 @@ class EDGAR_spatial:
 
                 return
 
-            temp_outTable = 'table_' + temp_inRaster 
+            temp_outTable = 'table_' + temp_main_inRaster 
 
-            self.do_zonal_statistic_to_table(inZoneData=inZone,
+            self.do_zonal_statistic_to_table(year=yr,
+                                            inZoneData=inZone,
                                             zoneField='ISO_A3',
-                                            inValueRaster=temp_inRaster,
+                                            inValueRaster=temp_main_inRaster,
                                             outTable= temp_outTable)
             # logger output
-            self.ES_logger.debug('Zonal statistics finished:%s' % temp_inRaster)
+            self.ES_logger.debug('Zonal statistics finished:%s' % temp_main_inRaster)
 
-            temp_outCsv = os.path.join(temp_out_csv_path,temp_inRaster,'.csv')
+            temp_outCsv = os.path.join(temp_out_csv_path,temp_main_inRaster+'.csv')
+            self.do_zonal_table_to_csv(table=temp_outTable,
+                                        year=yr,
+                                        outPath=temp_outCsv)
+            
+            # logger output
+            self.ES_logger.debug('Zonal statitics convert to csv.')
+            
+            # 生成中心权重的栅格名称
+            temp_main_weight_inRaster = 'center_main_sector_weight_%s_%s' % (yr, temp_center)
+            # 检查输入的待统计值
+            if not(arcpy.Exists(temp_main_weight_inRaster)):
+                print 'Error: inRaster not found.'
+
+                # logger output
+                self.ES_logger.error('inRaster does not exist.')
+
+                return
+
+            temp_outTable = 'table_' + temp_main_weight_inRaster 
+
+            self.do_zonal_statistic_to_table(year=yr,
+                                            inZoneData=inZone,
+                                            zoneField='ISO_A3',
+                                            inValueRaster=temp_main_weight_inRaster,
+                                            outTable= temp_outTable)
+            # logger output
+            self.ES_logger.debug('Zonal statistics finished:%s' % temp_main_weight_inRaster)
+
+            temp_outCsv = os.path.join(temp_out_csv_path,temp_main_weight_inRaster+'.csv')
             self.do_zonal_table_to_csv(table=temp_outTable,
                                         year=yr,
                                         outPath=temp_outCsv)
