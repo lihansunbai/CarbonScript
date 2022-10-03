@@ -1175,9 +1175,18 @@ class EDGAR_spatial:
 
         # 变量检查
         if type(center_range) == tuple:
-            temp_center_upper_bound = max(center_range)
-            temp_center_lower_bound = min(center_range)
-            temp_center = str((temp_center_lower_bound+temp_center_upper_bound)/2).replace('.', '')
+            if len(center_range) == 2:
+
+                temp_center_upper_bound = max(center_range)
+                temp_center_lower_bound = min(center_range)
+                temp_center = str((temp_center_lower_bound+temp_center_upper_bound)/2).replace('.', '')
+            else:
+
+                print "Error: center range require a start year and a end year."
+
+                # logger output
+                self.ES_logger.error('Center range year error.')
+                return
         else:
             print "Error: center range require a tuple. Please check the input."
 
@@ -1222,7 +1231,7 @@ class EDGAR_spatial:
         outSetNull = SetNull(total_emission_raster, total_emission_raster, whereClause)
 
         # Save the output 
-        temp_center_path = 'center_%s_%s' % (year, temp_center)
+        temp_center_path = 'center_%s_%s' % (temp_center, year)
         outSetNull.save(temp_center_path)
 
         # 防止BUG删除outSetNull
@@ -1233,7 +1242,7 @@ class EDGAR_spatial:
         outCon = Con(temp_center_path, 1, '')
 
         # Save the outputs 
-        temp_center_mask_path = 'center_mask_%s_%s' % (year, temp_center)
+        temp_center_mask_path = 'center_mask_%s_%s' % (temp_center, year)
         outCon.save(temp_center_mask_path)
 
         # 防止BUG删除outCon
@@ -1243,7 +1252,7 @@ class EDGAR_spatial:
         outMain = arcpy.Raster(temp_center_mask_path) * arcpy.Raster(temp_main_sector)
 
         # Save the output
-        temp_center_main = 'center_main_sector_%s_%s' % (year, temp_center)
+        temp_center_main = 'center_main_sector_%s_%s' % (temp_center, year)
         outMain.save(temp_center_main)
 
         # 防止BUG删除outCon
@@ -1253,7 +1262,7 @@ class EDGAR_spatial:
         outMainWeight = arcpy.Raster(temp_center_mask_path) * arcpy.Raster(temp_main_sector_weight)
         
         # Save the output
-        temp_center_main_weight = 'center_main_sector_weight_%s_%s' % (year, temp_center)
+        temp_center_main_weight = 'center_main_sector_weight_%s_%s' % (temp_center, year)
         outMainWeight.save(temp_center_main_weight)
 
         del outMainWeight
@@ -1294,7 +1303,6 @@ class EDGAR_spatial:
         # 列出需要的total emission 栅格
         self.do_arcpy_list_raster_list(temp_wild_card)
 
-
         # 逐年处理
         for yr in tqdm(range(temp_start_year,temp_end_year+1)):
             temp_total_emission = [s for s in self.working_rasters if str(yr) in s].pop()
@@ -1303,8 +1311,10 @@ class EDGAR_spatial:
                                         total_emission_raster=temp_total_emission,
                                         year=yr)
 
+        # 清空使用的working_rasters变量
         self.working_rasters = []
 
+    # 实际执行zonal statistic
     def do_zonal_statistic_to_table(self, year, inZoneData, zoneField, inValueRaster, outTable):
         # Execute ZonalStatisticsAsTable
         outZSaT = ZonalStatisticsAsTable(inZoneData, zoneField, inValueRaster, 
@@ -1313,6 +1323,7 @@ class EDGAR_spatial:
         # logger output
         self.ES_logger.debug('Sataistics finished.')
     
+    # 实际执行将统计的结果转化为csv输出
     def do_zonal_table_to_csv(self, table, year, outPath):
         temp_table = table
 
@@ -1340,6 +1351,7 @@ class EDGAR_spatial:
         # logger output
         self.ES_logger.debug('Convert %s\'s statistics table to csv file:%s' % (year,temp_outPath))
 
+    # 这里的year_range和center_range都是一个二元元组
     def zonal_year_statistics(self, year_range, inZone, center_range, outPath):
         # 获得保存路径
         temp_out_csv_path = os.path.abspath(outPath) 
@@ -1358,7 +1370,7 @@ class EDGAR_spatial:
 
         for yr in tqdm(range(min(year_range),max(year_range)+1)):
             # 生成中心的栅格名称
-            temp_main_inRaster = 'center_main_sector_%s_%s' % (yr, temp_center)
+            temp_main_inRaster = 'center_main_sector_%s_%s' % (temp_center,yr)
             # 检查输入的待统计值
             if not(arcpy.Exists(temp_main_inRaster)):
                 print 'Error: inRaster not found.'
@@ -1387,7 +1399,7 @@ class EDGAR_spatial:
             self.ES_logger.debug('Zonal statitics convert to csv.')
             
             # 生成中心权重的栅格名称
-            temp_main_weight_inRaster = 'center_main_sector_weight_%s_%s' % (yr, temp_center)
+            temp_main_weight_inRaster = 'center_main_sector_weight_%s_%s' % (temp_center,yr)
             # 检查输入的待统计值
             if not(arcpy.Exists(temp_main_weight_inRaster)):
                 print 'Error: inRaster not found.'
@@ -1415,9 +1427,6 @@ class EDGAR_spatial:
             # logger output
             self.ES_logger.debug('Zonal statitics convert to csv.')
                                             
-
-
-
 # ======================================================================
 # ======================================================================
 # TEST SCRIPT

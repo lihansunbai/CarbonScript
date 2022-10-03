@@ -10,3 +10,5 @@ EDGAR/test_center_extract.py
 year_00_18_center_34_45
 .gitignore
 year_70_75_center_30_35
+EDGAR/test_center_extract_1.py
+year_70_18_center_50_80
