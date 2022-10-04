@@ -3,7 +3,6 @@
 # 路径处理模块
 # Systerm path proccessing module
 import os
-from typing import Tuple
 
 # Arcpy 相关模块
 # Arcpy module
@@ -19,7 +18,6 @@ import tqdm
 from tqdm import tqdm
 import logging
 import csv
-import pandas
 
 __metaclass__ = type
 
@@ -1096,6 +1094,11 @@ class EDGAR_spatial:
         # 构造需要操作的字段
         # 神奇的python赋值解包
         temp_cursor_fileds = [i for i in temp_sector]
+
+        ## 注意：
+        # 根据arcpy文档给出的说明：
+        # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
+        # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
 
         # 按照calculate_fields 参数追加需要进行计算的字段
         # 输出结果的四个字段：最大值、最大值部门、colormap、部门数量
