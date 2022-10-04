@@ -1110,18 +1110,31 @@ class EDGAR_spatial:
         # 构造游标，开始逐行操作
         with arcpy.da.UpdateCursor(temp_working_sector, temp_cursor_fileds) as cursor:
             for row in tqdm(cursor):
-                max_weight = max(row[0:-calculate_fields_counts])
-                max_id = temp_cursor_fileds[row.index(max_weight)]
-                max_colormap = temp_sector_colormap[max_id]
+               # 统计栅格中的排放部门数量。
+               # 如果没有排放，即排放部门数量为0。
+               # 则将排放部门设为空。
                 emitted_sectors = len(
                     [i for i in row[0:-calculate_fields_counts] if i != 0])
+                
+                if emitted_sectors == 0:
+                    row[-1] = emitted_sectors
+                    row[-2] = 0
+                    row[-3] = 'NULL'
+                    row[-4] = 0
+                # 如果存在排放则找出最大的排放部门
+                else:
+                    max_weight = max(row[0:-calculate_fields_counts])
+                    max_id = temp_cursor_fileds[row.index(max_weight)]
+                    max_colormap = temp_sector_colormap[max_id]
 
-                row[-1] = emitted_sectors
-                row[-2] = max_colormap
-                row[-3] = max_id
-                row[-4] = max_weight
-
+                    row[-1] = emitted_sectors
+                    row[-2] = max_colormap
+                    row[-3] = max_id
+                    row[-4] = max_weight
+                
+                # 更新行信息
                 cursor.updateRow(row)
+
 
     # 处理给定年份范围内的工作
     # 批量处理可以使用这个函数
