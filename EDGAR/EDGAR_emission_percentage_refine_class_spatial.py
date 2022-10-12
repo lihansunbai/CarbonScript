@@ -26,8 +26,7 @@ __metaclass__ = type
 # Memorandum:
 # 备忘录：
 #   1. 考虑是否需要在构造函数中包含 arcpy 的几个环境变量的引入；
-#   2. 所有涉及数据的操作都需要采用绝对路径，防止arcpy出现识别数据错误。
-#   3. 计算字段的构造方法
+#   2. 计算字段的构造方法
 # ======================================================================
 # ======================================================================
 
@@ -60,6 +59,36 @@ class EDGAR_spatial:
         self.ES_logger.addHandler(ES_logger_file)
 
         self.ES_logger.info('==========EDGAR_Spatial start==========')
+
+        # 初始化累需要使用的实例变量
+        # 使用“实例变量”而不是“类变量”的原因请参见：以下链接的9.3.5节内容
+        # https://docs.python.org/zh-cn/3/tutorial/classes.html
+
+        # EDGAR sector dicts & colormap dicts
+        self.EDGAR_sector = {}
+        self.EDGAR_sector_colormap = {}
+
+        # 时间范围
+        self.start_year = 0
+        self.end_year = 0
+
+        # 栅格数据背景零值标识和区分标签
+        self.background_flag = True
+        self.background_label = ''
+        self.background_raster = ''
+
+        # 过滤标签
+        self.filter_label_dict = {}
+
+        # 数据库过滤标签
+        self.raster_filter_wildcard = []
+
+        # 准备时间范围内的所有部门的栅格
+        self.all_prepare_working_rasters = []
+
+        # 需要操作的栅格
+        self.working_rasters = []
+
 
         # arcgis 工作空间初始化
         # 必须明确一个arcgis工作空间！
@@ -198,10 +227,6 @@ class EDGAR_spatial:
     # Default values
     ############################################################################
     ############################################################################
-
-    # Class logger
-    ES_logger = logging.getLogger()
-
     # Arcgis workspace
     __workspace = ''
 
@@ -226,7 +251,6 @@ class EDGAR_spatial:
                               'AGS': 'AGS',
                               'SWD_INC': 'SWD_INC',
                               'FFF': 'FFF'}
-    EDGAR_sector = {}
     __default_EDGAR_sector_colormap = {'ENE': 1,
                                        'REF_TRF': 2,
                                        'IND': 3,
@@ -247,45 +271,26 @@ class EDGAR_spatial:
                                        'AGS': 18,
                                        'SWD_INC': 19,
                                        'FFF': 20}
-    EDGAR_sector_colormap = {}
 
     # 默认时间范围
     __default_start_year = 1970
     __default_end_year = 2018
 
-    # 时间范围
-    start_year = 0
-    end_year = 0
 
     # 默认栅格数据背景零值标识和区分标签
     __background_flag = True
     __background_label = 'BA'
     __background_raster = 'background'
 
-    # 栅格数据背景零值标识和区分标签
-    background_flag = __background_flag
-    background_label = __background_label
-    background_raster = __background_raster
-
     # 默认过滤标签
     __default_filter_label_dict = {'default': True, 'label': {'background_label': __background_label,
                                                               'sector': __default_EDGAR_sector,
                                                               'start_year': __default_start_year,
                                                               'end_year': __default_end_year}}
-    # 过滤标签
-    filter_label_dict = __default_filter_label_dict
 
     # 数据库栅格数据筛选过滤标签
     # 默认数据库过滤标签
     __default_raster_filter_wildcard = []
-    # 数据库过滤标签
-    raster_filter_wildcard = __default_raster_filter_wildcard
-
-    # 准备时间范围内的所有部门的栅格
-    all_prepare_working_rasters = []
-
-    # 需要操作的栅格
-    working_rasters = []
 
     ############################################################################
     ############################################################################
