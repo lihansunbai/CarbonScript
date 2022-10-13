@@ -221,10 +221,18 @@ class EDGAR_spatial(object):
             'Raster filter parameters was set to:%s' % self.filter_label)
         self.ES_logger.debug('==========DEGUG INFORMATIONS==========')
 
+    @classmethod
+    def merge_sectors(cls):
+        pass
+
+    @classmethod
+    def extract_center(cls):
+        pass
+
     ############################################################################
     ############################################################################
-    # 默认参数
-    # Default values
+    # 默认类变量
+    # Default class variances
     ############################################################################
     ############################################################################
     # Arcgis workspace
@@ -297,8 +305,13 @@ class EDGAR_spatial(object):
     # 参数设定部分
     ############################################################################
     ############################################################################
-    # 想要自定义或者修改处理的部门排放需要使用特殊的set函数
-    def set_EDGAR_sector(self, sector):
+    # 想要自定义或者修改处理的部门排放需要使用特殊的property函数
+    @property
+    def sector(self):
+        print self.EDGAR_sector
+
+    @sector.setter
+    def sector(self, sector):
         if type(sector) != dict:
             print 'Error type! EDGAR sectors should be dictionary!'
             self.ES_logger.error(
@@ -310,12 +323,13 @@ class EDGAR_spatial(object):
         # logger output
         self.ES_logger.debug('EDGAR_sector changed to:%s' % sector)
 
-    def get_EDGAR_sector(self):
-        print self.EDGAR_sector
-
-    sector = property(get_EDGAR_sector, set_EDGAR_sector)
-
-    def set_EDGAR_sector_colormap(self, sector_colormap):
+    # 想要自定义或者修改处理的部门对应栅格值需要使用特殊的property函数
+    @property
+    def sector_colormap(self):
+        print self.EDGAR_sector_colormap
+    
+    @sector_colormap.setter
+    def sector_colormap(self, sector_colormap):
         if type(sector_colormap) != dict:
             print 'Error type! EDGAR sectors colormap should be diectionary!'
             self.ES_logger.error(
@@ -328,25 +342,26 @@ class EDGAR_spatial(object):
         self.ES_logger.debug(
             'EDGAR_sector_colormap changed to:%s' % sector_colormap)
 
-    def get_EDGAR_sector_colormap(self):
-        print self.EDGAR_sector_colormap
-
-    sector_colormap = property(
-        get_EDGAR_sector_colormap, set_EDGAR_sector_colormap)
-
-    def set_year_range(self, start_end=(1970, 2018)):
+    # 想要自定义或者修改数据处理的年份时间范围的特殊property函数
+    @property
+    def year_range(self):
+        print 'Start year: %s\nEnd year: %s' % (self.start_year, self.end_year)
+    
+    @year_range.setter
+    def year_range(self, start_end=(1970, 2018)):
         self.start_year, self.end_year = start_end
 
         # logger output
         self.ES_logger.debug('year range changed to:%s' % start_end)
 
-    def get_year_range(self):
-        print 'Start year: %s\nEnd year: %s' % (self.start_year, self.end_year)
-
-    year_range = property(get_year_range, set_year_range)
-
     # 栅格图像背景值设置和查看属性/函数
-    def set_background(self, flag_label_raster_dict):
+    @property
+    def background(self):
+        # 这里直接返回一个元组，包括背景栅格的三个信息，开启，标签，空白栅格名称
+        return (self.background_flag, self.background_label, self.background_raster)
+    
+    @background.setter
+    def background(self, flag_label_raster_dict):
         # 检查flag参数并赋值
         # 关闭background，即栅格不包含背景0值
         if bool(flag_label_raster_dict['flag']) == False:
@@ -374,7 +389,7 @@ class EDGAR_spatial(object):
                 self.ES_logger.error(
                     'Background flag set failed! Please check the flag argument input.')
 
-            # 检查flag_label参数并
+            # 检查flag_label参数并赋值
             if type(flag_label_raster_dict['label']) == str:
                 self.background_label = flag_label_raster_dict['label']
 
@@ -386,7 +401,7 @@ class EDGAR_spatial(object):
                 self.ES_logger.error(
                     'Background flag set failed! Please check the flag argument input.')
 
-            # 检查raster参数并
+            # 检查raster参数并赋值
             if type(flag_label_raster_dict['raster']) == str:
                 if arcpy.Exists(flag_label_raster_dict['raster']):
                     self.background_raster = flag_label_raster_dict['raster']
@@ -403,54 +418,6 @@ class EDGAR_spatial(object):
                 self.ES_logger.error(
                     'Background flag set failed! Please check the flag argument input.')
 
-    def get_background(self):
-        # 这里直接返回一个元组，包括背景栅格的三个信息，开启，标签，空白栅格名称
-        return (self.background_flag, self.background_label, self.background_raster)
-
-    background = property(get_background, set_background)
-
-    # 类中提供了两个过滤标签的构造方法
-    # 1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
-    #    字符串为‘部门_年份’。
-    # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
-    def build_raster_filter_default(self, background_label, sector, start_year, end_year):
-        # 检查年份设定是否为整数。（其他参数可以暂时忽略，因为默认格式下基本不会改变）
-        if (type(start_year) != int) or (type(end_year) != int):
-            print 'Error: Year setting error!'
-            self.ES_logger.error(
-                'Year setting error. Year settings must be integer and between 1970 to 2018.')
-            return
-
-        temp_time_range = range(start_year, end_year+1)
-
-        # 这里使用了python列表解析的方法来生成部门和年份逐一配的元组。
-        # 生成的元组个数应该为‘部门数量’*‘年份数量’
-        # 注意！！！
-        # 这里生成的列表中的元素是元组，该元组中包含[0]号元素为部门，[1]号元素为年份
-        temp_sector_year_tupe_list = [(se, yr)
-                                      for se in sector for yr in temp_time_range]
-
-        # 逐年逐部门生成筛选条件语句，并保存到raster_filter_wildcard中
-        for i in temp_sector_year_tupe_list:
-            temp_raster_filter_wildcard = '%s*%s_%s' % (
-                background_label, i[0], i[1])
-            self.raster_filter_wildcard.append(temp_raster_filter_wildcard),
-
-        # logger output
-        self.ES_logger.debug('raster_filter set by default.')
-
-    def build_raster_filter_costum(self, custom_label):
-        # 对于自定义筛选条件，只需要检查是否为字符串
-        if type(custom_label) != str:
-            print "arcpy.ListRasters() need a string for 'wild_card'."
-            self.ES_logger.error(
-                'Wild_card set faild. The wild_card string must follow the standard of arcgis wild_card rules.')
-            return
-        self.raster_filter_wildcard = custom_label
-
-        # logger output
-        self.ES_logger.debug('raster_filter set by costum.')
-
     # filter_label 构造方法：
     # filter_label字典组的构造如下：
     # 'default':接受一个符合布尔型数据的值，其中True表示使用
@@ -463,7 +430,12 @@ class EDGAR_spatial(object):
     # 'sector'：部门标签列表list或者str
     # 'start_year'：起始年份
     # 'end_year'：结束年份
-    def set_filter_label(self, filter_label):
+    @property
+    def filter_label(self):
+        return self.filter_label_dict
+    
+    @filter_label.setter
+    def filter_label(self, filter_label):
         # 检查default set，并赋值
         if bool(filter_label['default_set']) == True:
             self.filter_label_dict['default'] = True
@@ -524,13 +496,13 @@ class EDGAR_spatial(object):
             self.ES_logger.debug('filter_label year range changed to:%s to %s' % (
                 filter_label['start_year_set'], filter_label['end_year_set']))
 
-    def get_filter_label(self):
-        return self.filter_label_dict
-
-    filter_label = property(get_filter_label, set_filter_label)
-
     # 注意：这里需要为set函数传入一个filter_label字典
-    def set_raster_filter(self, filter_label):
+    @property
+    def raster_filter(self):
+        return self.raster_filter_wildcard
+
+    @raster_filter.setter
+    def raster_filter(self, filter_label):
         # 判断是否为默认标签，是则调用默认的构造
         if filter_label['default'] == True:
             # 这里使用python的**kwags特性，**操作符解包字典并提取字典的值。
@@ -547,10 +519,47 @@ class EDGAR_spatial(object):
         else:
             print 'Error: raster filter arguments error.'
 
-    def get_raster_filter(self):
-        return self.raster_filter_wildcard
+    # 类中提供了两个过滤标签的构造方法
+    # 1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
+    #    字符串为‘部门_年份’。
+    # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
+    def build_raster_filter_default(self, background_label, sector, start_year, end_year):
+        # 检查年份设定是否为整数。（其他参数可以暂时忽略，因为默认格式下基本不会改变）
+        if (type(start_year) != int) or (type(end_year) != int):
+            print 'Error: Year setting error!'
+            self.ES_logger.error(
+                'Year setting error. Year settings must be integer and between 1970 to 2018.')
+            return
 
-    raster_filter = property(get_raster_filter, set_raster_filter)
+        temp_time_range = range(start_year, end_year+1)
+
+        # 这里使用了python列表解析的方法来生成部门和年份逐一配的元组。
+        # 生成的元组个数应该为‘部门数量’*‘年份数量’
+        # 注意！！！
+        # 这里生成的列表中的元素是元组，该元组中包含[0]号元素为部门，[1]号元素为年份
+        temp_sector_year_tupe_list = [(se, yr)
+                                      for se in sector for yr in temp_time_range]
+
+        # 逐年逐部门生成筛选条件语句，并保存到raster_filter_wildcard中
+        for i in temp_sector_year_tupe_list:
+            temp_raster_filter_wildcard = '%s*%s_%s' % (
+                background_label, i[0], i[1])
+            self.raster_filter_wildcard.append(temp_raster_filter_wildcard),
+
+        # logger output
+        self.ES_logger.debug('raster_filter set by default.')
+
+    def build_raster_filter_costum(self, custom_label):
+        # 对于自定义筛选条件，只需要检查是否为字符串
+        if type(custom_label) != str:
+            print "arcpy.ListRasters() need a string for 'wild_card'."
+            self.ES_logger.error(
+                'Wild_card set faild. The wild_card string must follow the standard of arcgis wild_card rules.')
+            return
+        self.raster_filter_wildcard = custom_label
+
+        # logger output
+        self.ES_logger.debug('raster_filter set by costum.')
 
     # 生成需要处理数据列表
     def prepare_working_rasters(self, raster_filter_wildcard):
