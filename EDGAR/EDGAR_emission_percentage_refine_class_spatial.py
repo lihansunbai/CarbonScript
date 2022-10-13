@@ -42,15 +42,14 @@ class EDGAR_spatial(object):
     ############################################################################
     # 构造函数部分
     # 注意：这里需要两类构造函数：
-    # 1.默认构造函数：不需要传入任何参数。所有计算用到的参数均
-    # 为默认值。
-    # 2.带有数据位置的构造函数：需要传入一个
+    # 1.默认构造函数：不需要传入任何参数。所有计算用到的参数均为默认值。
+    # 2.专门构造函数：包括只处理进行合并栅格数据的构造函数和只进行中心提取和
+    #   统计的构造函数。
     ############################################################################
     ############################################################################
     def __init__(self, workspace, background_flag=True, background_flag_label='BA', background_raster='background', sector={}, colormap={}, st_year=1970, en_year=2018, log_path='EDGAR.log'):
         # 初始化logger记录类的全体工作
         # ES_logger为可使用的logging实例
-        self.ES_logger = logging.getLogger()
         self.ES_logger.setLevel(level=logging.DEBUG)
         ES_logger_file = logging.FileHandler(log_path)
         ES_logger_formatter = logging.Formatter(
@@ -65,12 +64,12 @@ class EDGAR_spatial(object):
         # https://docs.python.org/zh-cn/3/tutorial/classes.html
 
         # EDGAR sector dicts & colormap dicts
-        self.EDGAR_sector = {}
-        self.EDGAR_sector_colormap = {}
+        self.EDGAR_sectors = self.__default_EDGAR_sectors
+        self.EDGAR_sectors_colormap = self.__default_EDGAR_sectors_colormap
 
         # 时间范围
-        self.start_year = 0
-        self.end_year = 0
+        self.start_year = self.__default_start_year
+        self.end_year = self.__default_end_year
 
         # 栅格数据背景零值标识和区分标签
         self.background_flag = True
@@ -88,7 +87,6 @@ class EDGAR_spatial(object):
 
         # 需要操作的栅格
         self.working_rasters = []
-
 
         # arcgis 工作空间初始化
         # 必须明确一个arcgis工作空间！
@@ -114,120 +112,119 @@ class EDGAR_spatial(object):
         arcpy.env.parallelProcessingFactor = "100%"
         self.ES_logger.info('arcpy parallelProcessingFactor set to 100%.')
 
-        # EDGAR_sector 参数初始化部分
+        print 'More debug information please check the log file.'
+        self.ES_logger.info('Root initialization finished.')
+
+    # 只进行合并分部门栅格为点数据时的构造函数
+    @classmethod
+    def merge_sectors(cls, workspace, background_flag=True, background_flag_label='BA', background_raster='background', sectors={}, colormap={}, st_year=1970, en_year=2018, log_path='EDGAR.log'):
+        # 先调用init构造函数初始化类
+        root_init = cls(workspace=workspace, log_path=log_path)
+
+        # EDGAR_sectors 参数初始化部分
         # 检查输入参数类型
         # 默认情况下使用默认参数初始化
-        # 为EDGAR_sector参数赋值
-        if type(sector) != dict:
-            print 'Error! EDGAR_sector only accept a dictionary type input.'
-            self.ES_logger.info(
-                'EDGAR_sector only accept a dictionary type input.')
-            self.ES_logger.error('EDGAR_sector type error.')
+        # 为EDGAR_sectors参数赋值
+        if type(sectors) != dict:
+            print 'Error! EDGAR_sectors only accept a dictionary type input.'
+            cls.ES_logger.info(
+                'EDGAR_sectors only accept a dictionary type input.')
+            cls.ES_logger.error('EDGAR_sectors type error.')
             return
-        elif sector == {}:
-            self.EDGAR_sector = copy.deepcopy(self.__default_EDGAR_sector)
-            self.ES_logger.info('This run use default EDGAR sector setting.')
-            self.ES_logger.info('EDGAR_sector has set.')
+        elif sectors == {}:
+            root_init.sectors_handle = copy.deepcopy(
+                cls.__default_EDGAR_sectors)
+            cls.ES_logger.info('This run use default EDGAR sector setting.')
+            cls.ES_logger.info('EDGAR_sectors has set.')
         else:
-            self.EDGAR_sector = copy.deepcopy(sector)
-            self.ES_logger.info('EDGAR_sector has set.')
+            root_init.sectors_handle = copy.deepcopy(sectors)
+            cls.ES_logger.info('EDGAR_sectors has set.')
 
-        # EDGAR_sector_colormap 参数初始化部分
+        # EDGAR_sectors_colormap 参数初始化部分
         # 检查参数输入类型
         # 默认情况下使用默认参数初始化
-        # 为EDGAR_sector_colormap 参数赋值
+        # 为EDGAR_sectors_colormap 参数赋值
         if type(colormap) != dict:
-            print 'Error! EDGAR_sector_colormap only accept a dictionary type input.'
-            self.ES_logger.info(
-                'EDGAR_sector_colormap only accept a dictionary type input.')
-            self.ES_logger.error('EDGAR_sector_colormap type error.')
+            print 'Error! EDGAR_sectors_colormap only accept a dictionary type input.'
+            cls.ES_logger.info(
+                'EDGAR_sectors_colormap only accept a dictionary type input.')
+            cls.ES_logger.error('EDGAR_sectors_colormap type error.')
             return
-        elif sector == {}:
-            self.EDGAR_sector_colormap = copy.deepcopy(
-                self.__default_EDGAR_sector_colormap)
-            self.ES_logger.info(
-                'This run use default EDGAR sector colormap setting.')
-            self.ES_logger.info('EDGAR_sector_colormap has set.')
+        elif colormap == {}:
+            root_init.sectors_colormap_handle = copy.deepcopy(
+                cls.__default_EDGAR_sectors_colormap)
+            cls.ES_logger.info(
+                'This run use default EDGAR sectors colormap setting.')
+            cls.ES_logger.info('EDGAR_sectors_colormap has set.')
         else:
-            self.EDGAR_sector_colormap = copy.deepcopy(colormap)
-            self.ES_logger.info('EDGAR_sector_colormap has set.')
+            root_init.sectors_colormap_handle = copy.deepcopy(colormap)
+            cls.ES_logger.info('EDGAR_sectors_colormap has set.')
 
         # year_range 参数初始化部分
         # 这里需要初始化计算的起始和结束
         if (type(st_year) != int) or (type(en_year) != int):
             print 'Error! Proccessing starting year and ending year must be int value'
-            self.ES_logger.info('Year setting type error.')
-            self.ES_logger.error('Year setting error!')
+            cls.ES_logger.info('Year setting type error.')
+            cls.ES_logger.error('Year setting error!')
             return
         elif st_year < 1970 or en_year > 2018:
             print 'Error! Proccessing year range out of data support! The year must containt in 1970 to 2018'
-            self.ES_logger.info('Year settings are out of range.')
-            self.ES_logger.error('Year setting error!')
+            cls.ES_logger.info('Year settings are out of range.')
+            cls.ES_logger.error('Year setting error!')
             return
         else:
-            self.start_year, self.end_year = st_year, en_year
-            self.ES_logger.info('Year has set.')
+            root_init.year_range = (st_year, en_year)
+            cls.ES_logger.info('Year has set.')
 
         # background 参数初始化部分
         # 这里要明确处理的数据是否包含背景0值
         # 检查并赋值label
         if bool(background_flag) == True:
             if type(background_flag_label) == str:
-                if arcpy.Exists(background_raster):
-                    self.background_flag = bool(background_flag)
-                    self.background_label = background_flag_label
-                    self.background_raster = background_raster
-                    self.ES_logger.debug('Background has set.')
+                root_init.background = {'flag': bool(background_flag),
+                                        'label': background_flag_label,
+                                        'raster': background_raster}
+                cls.ES_logger.debug('Background has set.')
             else:
                 print 'Error: Please check background flag or label or raster.'
-                self.ES_logger.error('Background setting error!')
+                cls.ES_logger.error('Background setting error!')
                 return
         elif bool(background_flag) == False:
-            self.background_flag = bool(background_flag)
-            self.background_label = ''
-            self.background_raster = ''
-            self.ES_logger.debug('Background has set.')
+            root_init.background = {'flag': bool(background_flag),
+                                    'label': '',
+                                    'raster': ''}
+            cls.ES_logger.debug('Background has set.')
         else:
-            self.ES_logger.error('Background setting error!')
+            cls.ES_logger.error('Background setting error!')
             return
 
         # raster_filter 参数初始化部分
         # 这里要将初始化传入的部门参数字典“sector”进行列表化并赋值
         # 和起始、终止时间传入
-        temp_init_filter_label = {'default_set': True, 'background_label_set': self.background_label,
-                                  'sector_set': self.EDGAR_sector,
-                                  'start_year_set': self.start_year,
-                                  'end_year_set': self.end_year}
-        self.filter_label = temp_init_filter_label
-        self.ES_logger.info('filter_label has set.')
+        temp_init_filter_label = {'default_set': root_init.background_label['flag'],
+                                  'background_label_set': root_init.background['label'],
+                                  'sector_set': root_init.sectors_handle,
+                                  'start_year_set': root_init.year_range[0],
+                                  'end_year_set': root_init.year_range[1]}
+        root_init.filter_label = temp_init_filter_label
+        cls.ES_logger.info('filter_label has set.')
 
         print 'EDGAR_Spatial initialized! More debug information please check the log file.'
-        self.ES_logger.info('Initialization finished.')
-        self.ES_logger.debug('==========DEGUG INFORMATIONS==========')
-        self.ES_logger.debug('acrpy.env.workspace:%s' % arcpy.env.workspace)
-        self.ES_logger.debug('arcpy parallelProcessingFactor:%s' %
-                             arcpy.env.parallelProcessingFactor)
-        self.ES_logger.debug('EDGAR_sector was set to:%s' % self.EDGAR_sector)
-        self.ES_logger.debug(
-            'EDGAR_sector_colormap was set to:%s' % self.EDGAR_sector_colormap)
-        self.ES_logger.debug('Processing begains in year:%s' % self.start_year)
-        self.ES_logger.debug('Processing ends in year:%s' % self.end_year)
-        self.ES_logger.debug('Raster has background:%s' % self.background_flag)
-        self.ES_logger.debug(
-            'Raster name\'s background label is:%s' % self.background_label)
-        self.ES_logger.debug('Background raster is:%s' %
-                             self.background_raster)
-        self.ES_logger.debug(
-            'Raster filter parameters was set to:%s' % self.filter_label)
-        self.ES_logger.debug('==========DEGUG INFORMATIONS==========')
+        cls.ES_logger.info('Initialization finished.')
 
-    @classmethod
-    def merge_sectors(cls):
-        pass
+        # 返回初始化之后的类
+        return root_init
 
+    # 只进行排放量栅格数量峰值中心提取时的构造函数
     @classmethod
-    def extract_center(cls):
-        pass
+    def extract_center(cls, workspace, st_year=1970, en_year=2018, log_path='EDGAR.log'):
+        # 先调用init构造函数初始化类
+        root_init = cls(workspace=workspace,st_year=1970, en_year=2018, log_path=log_path)
+
+        print 'EDGAR_Spatial initialized! More debug information please check the log file.'
+        cls.ES_logger.info('Initialization finished.')
+        # 返回初始化之后的类
+        return root_init
 
     ############################################################################
     ############################################################################
@@ -235,55 +232,57 @@ class EDGAR_spatial(object):
     # Default class variances
     ############################################################################
     ############################################################################
+    # 类使用的logger
+    ES_logger = logging.getLogger()
+
     # Arcgis workspace
     __workspace = ''
 
     # EDGAR sector dicts & colormap dicts
-    __default_EDGAR_sector = {'ENE': 'ENE',
-                              'REF_TRF': 'REF_TRF',
-                              'IND': 'IND',
-                              'TNR_Aviation_CDS': 'TNR_Aviation_CDS',
-                              'TNR_Aviation_CRS': 'TNR_Aviation_CRS',
-                              'TNR_Aviation_LTO': 'TNR_Aviation_LTO',
-                              'TRO_noRES': 'TRO_noRES',
-                              'TNR_Other': 'TNR_Other',
-                              'TNR_Ship': 'TNR_Ship',
-                              'RCO': 'RCO',
-                              'PRO': 'PRO',
-                              'NMM': 'NMM',
-                              'CHE': 'CHE',
-                              'IRO': 'IRO',
-                              'NFE': 'NFE',
-                              'NEU': 'NEU',
-                              'PRU_SOL': 'PRU_SOL',
-                              'AGS': 'AGS',
-                              'SWD_INC': 'SWD_INC',
-                              'FFF': 'FFF'}
-    __default_EDGAR_sector_colormap = {'ENE': 1,
-                                       'REF_TRF': 2,
-                                       'IND': 3,
-                                       'TNR_Aviation_CDS': 4,
-                                       'TNR_Aviation_CRS': 5,
-                                       'TNR_Aviation_LTO': 6,
-                                       'TRO_noRES': 7,
-                                       'TNR_Other': 8,
-                                       'TNR_Ship': 9,
-                                       'RCO': 10,
-                                       'PRO': 11,
-                                       'NMM': 12,
-                                       'CHE': 13,
-                                       'IRO': 14,
-                                       'NFE': 15,
-                                       'NEU': 16,
-                                       'PRU_SOL': 17,
-                                       'AGS': 18,
-                                       'SWD_INC': 19,
-                                       'FFF': 20}
+    __default_EDGAR_sectors = {'ENE': 'ENE',
+                               'REF_TRF': 'REF_TRF',
+                               'IND': 'IND',
+                               'TNR_Aviation_CDS': 'TNR_Aviation_CDS',
+                               'TNR_Aviation_CRS': 'TNR_Aviation_CRS',
+                               'TNR_Aviation_LTO': 'TNR_Aviation_LTO',
+                               'TRO_noRES': 'TRO_noRES',
+                               'TNR_Other': 'TNR_Other',
+                               'TNR_Ship': 'TNR_Ship',
+                               'RCO': 'RCO',
+                               'PRO': 'PRO',
+                               'NMM': 'NMM',
+                               'CHE': 'CHE',
+                               'IRO': 'IRO',
+                               'NFE': 'NFE',
+                               'NEU': 'NEU',
+                               'PRU_SOL': 'PRU_SOL',
+                               'AGS': 'AGS',
+                               'SWD_INC': 'SWD_INC',
+                               'FFF': 'FFF'}
+    __default_EDGAR_sectors_colormap = {'ENE': 1,
+                                        'REF_TRF': 2,
+                                        'IND': 3,
+                                        'TNR_Aviation_CDS': 4,
+                                        'TNR_Aviation_CRS': 5,
+                                        'TNR_Aviation_LTO': 6,
+                                        'TRO_noRES': 7,
+                                        'TNR_Other': 8,
+                                        'TNR_Ship': 9,
+                                        'RCO': 10,
+                                        'PRO': 11,
+                                        'NMM': 12,
+                                        'CHE': 13,
+                                        'IRO': 14,
+                                        'NFE': 15,
+                                        'NEU': 16,
+                                        'PRU_SOL': 17,
+                                        'AGS': 18,
+                                        'SWD_INC': 19,
+                                        'FFF': 20}
 
     # 默认时间范围
     __default_start_year = 1970
     __default_end_year = 2018
-
 
     # 默认栅格数据背景零值标识和区分标签
     __background_flag = True
@@ -292,7 +291,7 @@ class EDGAR_spatial(object):
 
     # 默认过滤标签
     __default_filter_label_dict = {'default': True, 'label': {'background_label': __background_label,
-                                                              'sector': __default_EDGAR_sector,
+                                                              'sector': __default_EDGAR_sectors,
                                                               'start_year': __default_start_year,
                                                               'end_year': __default_end_year}}
 
@@ -307,46 +306,46 @@ class EDGAR_spatial(object):
     ############################################################################
     # 想要自定义或者修改处理的部门排放需要使用特殊的property函数
     @property
-    def sector(self):
-        print self.EDGAR_sector
+    def sectors_handle(self):
+        print self.EDGAR_sectors
 
-    @sector.setter
-    def sector(self, sector):
+    @sectors_handle.setter
+    def sectors_handle(self, sector):
         if type(sector) != dict:
             print 'Error type! EDGAR sectors should be dictionary!'
             self.ES_logger.error(
                 'Error type! EDGAR sectors should be dictionary.')
             return
 
-        self.EDGAR_sector = sector
+        self.EDGAR_sectors = sector
 
         # logger output
-        self.ES_logger.debug('EDGAR_sector changed to:%s' % sector)
+        self.ES_logger.debug('EDGAR_sectors changed to:%s' % sector)
 
     # 想要自定义或者修改处理的部门对应栅格值需要使用特殊的property函数
     @property
-    def sector_colormap(self):
-        print self.EDGAR_sector_colormap
-    
-    @sector_colormap.setter
-    def sector_colormap(self, sector_colormap):
+    def sectors_colormap_handle(self):
+        print self.EDGAR_sectors_colormap
+
+    @sectors_colormap_handle.setter
+    def sectors_colormap_handle(self, sector_colormap):
         if type(sector_colormap) != dict:
             print 'Error type! EDGAR sectors colormap should be diectionary!'
             self.ES_logger.error(
                 'Error type! EDGAR sectors colormap should be diectionary.')
             return
 
-        self.EDGAR_sector_colormap = sector_colormap
+        self.EDGAR_sectors_colormap = sector_colormap
 
         # logger output
         self.ES_logger.debug(
-            'EDGAR_sector_colormap changed to:%s' % sector_colormap)
+            'EDGAR_sectors_colormap changed to:%s' % sector_colormap)
 
     # 想要自定义或者修改数据处理的年份时间范围的特殊property函数
     @property
     def year_range(self):
-        print 'Start year: %s\nEnd year: %s' % (self.start_year, self.end_year)
-    
+        return (self.start_year, self.end_year)
+
     @year_range.setter
     def year_range(self, start_end=(1970, 2018)):
         self.start_year, self.end_year = start_end
@@ -359,7 +358,7 @@ class EDGAR_spatial(object):
     def background(self):
         # 这里直接返回一个元组，包括背景栅格的三个信息，开启，标签，空白栅格名称
         return (self.background_flag, self.background_label, self.background_raster)
-    
+
     @background.setter
     def background(self, flag_label_raster_dict):
         # 检查flag参数并赋值
@@ -433,7 +432,7 @@ class EDGAR_spatial(object):
     @property
     def filter_label(self):
         return self.filter_label_dict
-    
+
     @filter_label.setter
     def filter_label(self, filter_label):
         # 检查default set，并赋值
@@ -739,7 +738,7 @@ class EDGAR_spatial(object):
     # 实用（暴力）计算全年部门排放总和的函数
     def year_total_sectors_merge(self, year):
         # 列出全部门名称
-        temp_sector = list(self.EDGAR_sector.values())
+        temp_sector = list(self.EDGAR_sectors.values())
 
         # 执行部门累加
         self.year_sectors_merge(
@@ -875,7 +874,7 @@ class EDGAR_spatial(object):
 
     # 计算一年中所有部门的比例
     def year_sector_emission_percentage(self, year):
-        for s in tqdm(self.EDGAR_sector):
+        for s in tqdm(self.EDGAR_sectors):
             # 设定输出点数据的格式
             output = '%s_weight_%s' % (s, year)
             self.sector_emission_percentage(s, year, output)
@@ -1101,15 +1100,15 @@ class EDGAR_spatial(object):
     # 用arcpy.da.cursor类进行操作
     # 在一行中同时实现找到最大值，最大值对应的id，最大值对应的colormap
     def do_sector_max_extract(self, sector_points, calculate_fields):
-        temp_sector = copy.deepcopy(self.EDGAR_sector)
-        temp_sector_colormap = copy.deepcopy(self.EDGAR_sector_colormap)
+        temp_sector = copy.deepcopy(self.EDGAR_sectors)
+        temp_sector_colormap = copy.deepcopy(self.EDGAR_sectors_colormap)
         temp_working_sector = sector_points
 
         # 构造需要操作的字段
         # 神奇的python赋值解包
         temp_cursor_fileds = [i for i in temp_sector]
 
-        ## 注意：
+        # 注意：
         # 根据arcpy文档给出的说明：
         # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
         # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
@@ -1132,7 +1131,7 @@ class EDGAR_spatial(object):
                # 则将排放部门设为空。
                 emitted_sectors = len(
                     [i for i in row[0:-calculate_fields_counts] if i != 0])
-                
+
                 if emitted_sectors == 0:
                     row[-1] = emitted_sectors
                     row[-2] = 0
@@ -1148,13 +1147,13 @@ class EDGAR_spatial(object):
                     row[-2] = max_colormap
                     row[-3] = max_id
                     row[-4] = max_weight
-                
+
                 # 更新行信息
                 cursor.updateRow(row)
 
-
     # 处理给定年份范围内的工作
     # 批量处理可以使用这个函数
+
     def proccess_year(self, start_year, end_year):
         # 首先需要列出所有需要使用到的栅格
         self.prepare_raster()
@@ -1164,7 +1163,7 @@ class EDGAR_spatial(object):
             self.print_start_year(yr)
             self.year_total_sectors_merge(yr)
             self.year_sector_emission_percentage(yr)
-            self.year_weight_joint(yr, self.EDGAR_sector)
+            self.year_weight_joint(yr, self.EDGAR_sectors)
             self.max_weight_rasterize(yr)
             self.print_finish_year(yr)
 
@@ -1197,7 +1196,7 @@ class EDGAR_spatial(object):
 
     # 这个函数实际执行从一个年份中提取中心操作
     # 这里要求可以center_range是一个元组
-    def do_extract_center_area(self,center_range, total_emission_raster, year):
+    def do_extract_center_area(self, center_range, total_emission_raster, year):
         # 临时变量
         temp_center_upper_bound = 0
         temp_center_lower_bound = 0
@@ -1209,7 +1208,8 @@ class EDGAR_spatial(object):
 
                 temp_center_upper_bound = max(center_range)
                 temp_center_lower_bound = min(center_range)
-                temp_center = str((temp_center_lower_bound+temp_center_upper_bound)/2).replace('.', '')
+                temp_center = str(
+                    (temp_center_lower_bound+temp_center_upper_bound)/2).replace('.', '')
             else:
 
                 print "Error: center range require a start year and a end year."
@@ -1223,10 +1223,10 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.error('Center range type error.')
             return
-        
+
         # 检查两个输入的栅格是否存在
         # 检查total_emission
-        if not(arcpy.Exists(total_emission_raster)):
+        if not (arcpy.Exists(total_emission_raster)):
             print 'Error: input total emission raster does not exist'
 
             # logger output
@@ -1236,7 +1236,7 @@ class EDGAR_spatial(object):
         # 检查对应年份的主要排放部门栅格
         temp_main_sector = 'main_emi_%s' % year
 
-        if not(arcpy.Exists(temp_main_sector)):
+        if not (arcpy.Exists(temp_main_sector)):
             print 'Error: input total emission raster does not exist'
 
             # logger output
@@ -1246,21 +1246,23 @@ class EDGAR_spatial(object):
         # 检查对应年份的主要排放部门权重栅格
         temp_main_sector_weight = 'main_emi_weight_%s' % year
 
-        if not(arcpy.Exists(temp_main_sector_weight)):
+        if not (arcpy.Exists(temp_main_sector_weight)):
             print 'Error: input total emission weight raster does not exist'
 
             # logger output
             self.ES_logger.error('input tatal emission not found.')
             return
-        
+
         # 将大于上界和小于下界范围的栅格设为nodata
         # Set local variables
-        whereClause = "VALUE < %s OR VALUE > %s" % (temp_center_lower_bound, temp_center_upper_bound)
+        whereClause = "VALUE < %s OR VALUE > %s" % (
+            temp_center_lower_bound, temp_center_upper_bound)
 
         # Execute SetNull
-        outSetNull = SetNull(total_emission_raster, total_emission_raster, whereClause)
+        outSetNull = SetNull(total_emission_raster,
+                             total_emission_raster, whereClause)
 
-        # Save the output 
+        # Save the output
         temp_center_path = 'center_%s_%s' % (temp_center, year)
         outSetNull.save(temp_center_path)
 
@@ -1271,7 +1273,7 @@ class EDGAR_spatial(object):
         # Execute Con
         outCon = Con(temp_center_path, 1, '')
 
-        # Save the outputs 
+        # Save the outputs
         temp_center_mask_path = 'center_mask_%s_%s' % (temp_center, year)
         outCon.save(temp_center_mask_path)
 
@@ -1279,7 +1281,8 @@ class EDGAR_spatial(object):
         del outCon
 
         # 生成中心主要排放部门栅格
-        outMain = arcpy.Raster(temp_center_mask_path) * arcpy.Raster(temp_main_sector)
+        outMain = arcpy.Raster(temp_center_mask_path) * \
+            arcpy.Raster(temp_main_sector)
 
         # Save the output
         temp_center_main = 'center_main_sector_%s_%s' % (temp_center, year)
@@ -1289,10 +1292,12 @@ class EDGAR_spatial(object):
         del outMain
 
         # 生成中心主要排放部门比重栅格
-        outMainWeight = arcpy.Raster(temp_center_mask_path) * arcpy.Raster(temp_main_sector_weight)
-        
+        outMainWeight = arcpy.Raster(
+            temp_center_mask_path) * arcpy.Raster(temp_main_sector_weight)
+
         # Save the output
-        temp_center_main_weight = 'center_main_sector_weight_%s_%s' % (temp_center, year)
+        temp_center_main_weight = 'center_main_sector_weight_%s_%s' % (
+            temp_center, year)
         outMainWeight.save(temp_center_main_weight)
 
         del outMainWeight
@@ -1315,14 +1320,16 @@ class EDGAR_spatial(object):
             self.ES_logger.error('Year setting error!')
             return
         else:
-            temp_start_year, temp_end_year = min(year_range),max(year_range)
+            temp_start_year, temp_end_year = min(year_range), max(year_range)
             self.ES_logger.info('Year has set.')
-        
+
         # 列出总排放量栅格
         if bool(isLog) == True:
-            temp_wild_card = ['total_emission_%s_log' % s for s in range(temp_start_year,temp_end_year+1)]
+            temp_wild_card = ['total_emission_%s_log' %
+                              s for s in range(temp_start_year, temp_end_year+1)]
         elif bool(isLog) == False:
-            temp_wild_card = ['total_emission_%s' % s for s in range(temp_start_year,temp_end_year+1)]
+            temp_wild_card = ['total_emission_%s' %
+                              s for s in range(temp_start_year, temp_end_year+1)]
         else:
             print 'Error: Please set the isLog flag.'
 
@@ -1334,8 +1341,9 @@ class EDGAR_spatial(object):
         self.do_arcpy_list_raster_list(temp_wild_card)
 
         # 逐年处理
-        for yr in tqdm(range(temp_start_year,temp_end_year+1)):
-            temp_total_emission = [s for s in self.working_rasters if str(yr) in s].pop()
+        for yr in tqdm(range(temp_start_year, temp_end_year+1)):
+            temp_total_emission = [
+                s for s in self.working_rasters if str(yr) in s].pop()
 
             self.do_extract_center_area(center_range=center_range,
                                         total_emission_raster=temp_total_emission,
@@ -1347,17 +1355,17 @@ class EDGAR_spatial(object):
     # 实际执行zonal statistic
     def do_zonal_statistic_to_table(self, year, inZoneData, zoneField, inValueRaster, outTable):
         # Execute ZonalStatisticsAsTable
-        outZSaT = ZonalStatisticsAsTable(inZoneData, zoneField, inValueRaster, 
-                                        outTable, "DATA", "ALL")
-        
+        outZSaT = ZonalStatisticsAsTable(inZoneData, zoneField, inValueRaster,
+                                         outTable, "DATA", "ALL")
+
         # logger output
         self.ES_logger.debug('Sataistics finished.')
-    
+
     # 实际执行将统计的结果转化为csv输出
     def do_zonal_table_to_csv(self, table, year, outPath):
         temp_table = table
 
-        #--first lets make a list of all of the fields in the table
+        # --first lets make a list of all of the fields in the table
         fields = arcpy.ListFields(table)
         field_names = [field.name for field in fields]
         # 追加年份在最后一列
@@ -1366,28 +1374,29 @@ class EDGAR_spatial(object):
         # 获得输出文件的绝对路径
         temp_outPath = os.path.abspath(outPath)
 
-        with open(temp_outPath,'wt') as f:
+        with open(temp_outPath, 'wt') as f:
             w = csv.writer(f)
-            #--write all field names to the output file
+            # --write all field names to the output file
             w.writerow(field_names)
 
-            #--now we make the search cursor that will iterate through the rows of the table
+            # --now we make the search cursor that will iterate through the rows of the table
             for row in arcpy.SearchCursor(temp_table):
                 field_vals = [row.getValue(field.name) for field in fields]
                 field_vals.append(str(year))
                 w.writerow(field_vals)
             del row
-        
+
         # logger output
-        self.ES_logger.debug('Convert %s\'s statistics table to csv file:%s' % (year,temp_outPath))
+        self.ES_logger.debug(
+            'Convert %s\'s statistics table to csv file:%s' % (year, temp_outPath))
 
     # 这里的year_range和center_range都是一个二元元组
     def zonal_year_statistics(self, year_range, inZone, center_range, outPath):
         # 获得保存路径
-        temp_out_csv_path = os.path.abspath(outPath) 
+        temp_out_csv_path = os.path.abspath(outPath)
 
         # 检查输入的分区是否存在
-        if not(arcpy.Exists(inZone)):
+        if not (arcpy.Exists(inZone)):
             print 'Error: inZone not found.'
 
             # logger output
@@ -1396,13 +1405,14 @@ class EDGAR_spatial(object):
             return
 
         # 生成中心点
-        temp_center = str((min(center_range)+max(center_range))/2).replace('.', '')
+        temp_center = str(
+            (min(center_range)+max(center_range))/2).replace('.', '')
 
-        for yr in tqdm(range(min(year_range),max(year_range)+1)):
+        for yr in tqdm(range(min(year_range), max(year_range)+1)):
             # 生成中心的栅格名称
-            temp_main_inRaster = 'center_main_sector_%s_%s' % (temp_center,yr)
+            temp_main_inRaster = 'center_main_sector_%s_%s' % (temp_center, yr)
             # 检查输入的待统计值
-            if not(arcpy.Exists(temp_main_inRaster)):
+            if not (arcpy.Exists(temp_main_inRaster)):
                 print 'Error: inRaster not found.'
 
                 # logger output
@@ -1410,28 +1420,31 @@ class EDGAR_spatial(object):
 
                 return
 
-            temp_outTable = 'table_' + temp_main_inRaster 
+            temp_outTable = 'table_' + temp_main_inRaster
 
             self.do_zonal_statistic_to_table(year=yr,
-                                            inZoneData=inZone,
-                                            zoneField='ISO_A3',
-                                            inValueRaster=temp_main_inRaster,
-                                            outTable= temp_outTable)
+                                             inZoneData=inZone,
+                                             zoneField='ISO_A3',
+                                             inValueRaster=temp_main_inRaster,
+                                             outTable=temp_outTable)
             # logger output
-            self.ES_logger.debug('Zonal statistics finished:%s' % temp_main_inRaster)
+            self.ES_logger.debug(
+                'Zonal statistics finished:%s' % temp_main_inRaster)
 
-            temp_outCsv = os.path.join(temp_out_csv_path,temp_main_inRaster+'.csv')
+            temp_outCsv = os.path.join(
+                temp_out_csv_path, temp_main_inRaster+'.csv')
             self.do_zonal_table_to_csv(table=temp_outTable,
-                                        year=yr,
-                                        outPath=temp_outCsv)
-            
+                                       year=yr,
+                                       outPath=temp_outCsv)
+
             # logger output
             self.ES_logger.debug('Zonal statitics convert to csv.')
-            
+
             # 生成中心权重的栅格名称
-            temp_main_weight_inRaster = 'center_main_sector_weight_%s_%s' % (temp_center,yr)
+            temp_main_weight_inRaster = 'center_main_sector_weight_%s_%s' % (
+                temp_center, yr)
             # 检查输入的待统计值
-            if not(arcpy.Exists(temp_main_weight_inRaster)):
+            if not (arcpy.Exists(temp_main_weight_inRaster)):
                 print 'Error: inRaster not found.'
 
                 # logger output
@@ -1439,24 +1452,27 @@ class EDGAR_spatial(object):
 
                 return
 
-            temp_outTable = 'table_' + temp_main_weight_inRaster 
+            temp_outTable = 'table_' + temp_main_weight_inRaster
 
             self.do_zonal_statistic_to_table(year=yr,
-                                            inZoneData=inZone,
-                                            zoneField='ISO_A3',
-                                            inValueRaster=temp_main_weight_inRaster,
-                                            outTable= temp_outTable)
+                                             inZoneData=inZone,
+                                             zoneField='ISO_A3',
+                                             inValueRaster=temp_main_weight_inRaster,
+                                             outTable=temp_outTable)
             # logger output
-            self.ES_logger.debug('Zonal statistics finished:%s' % temp_main_weight_inRaster)
+            self.ES_logger.debug('Zonal statistics finished:%s' %
+                                 temp_main_weight_inRaster)
 
-            temp_outCsv = os.path.join(temp_out_csv_path,temp_main_weight_inRaster+'.csv')
+            temp_outCsv = os.path.join(
+                temp_out_csv_path, temp_main_weight_inRaster+'.csv')
             self.do_zonal_table_to_csv(table=temp_outTable,
-                                        year=yr,
-                                        outPath=temp_outCsv)
-            
+                                       year=yr,
+                                       outPath=temp_outCsv)
+
             # logger output
             self.ES_logger.debug('Zonal statitics convert to csv.')
-                                            
+
+
 # ======================================================================
 # ======================================================================
 # TEST SCRIPT
@@ -1491,4 +1507,5 @@ if __name__ == '__main__':
     # aaa.year_weight_joint(2018, list(test_es.values()))
     # aaa.max_weight_rasterize(2018)
     # aaa.proccess_year(start_year=1980, end_year=1989)
-    aaa.extract_center_area(center_range=(3.5,4.5),year_range=(2010,2018),isLog=True)
+    aaa.extract_center_area(center_range=(3.5, 4.5),
+                            year_range=(2010, 2018), isLog=True)
