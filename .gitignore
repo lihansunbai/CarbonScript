@@ -4,3 +4,4 @@ EDGAR/test_center_extract.py
 .gitignore
 EDGAR/test_center_extract_1.py
 test/*
+EDGAR.log
