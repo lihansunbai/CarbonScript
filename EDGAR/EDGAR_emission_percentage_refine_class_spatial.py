@@ -21,7 +21,7 @@ import logging
 import csv
 
 # 性能测试相关模块
-import cProfile
+# import cProfile
 
 __metaclass__ = type
 
@@ -675,16 +675,6 @@ class EDGAR_spatial(object):
     # 实际数据计算相关函数/方法
     ############################################################################
     ############################################################################
-
-    # 生成arcgis需要的工作环境
-    def generate_working_environment(self):
-        pass
-
-    # 检查arcgis工作环境是否完整
-    def check_working_environment(self):
-        # 利用栅格计算器进行栅格代数计算时需要先检查是否开启了空间扩展
-        arcpy.CheckOutExtension('Spatial')
-
     # 生成需要计算的栅格列表
     def prepare_raster(self):
         # 首先构造用于筛选raster用的wildcard
@@ -890,6 +880,36 @@ class EDGAR_spatial(object):
             output = '%s_weight_%s' % (s, year)
             self.sector_emission_percentage(s, year, output)
 
+    # 实际执行用点提取栅格中数据的函数
+    # 这里的NewFieldName应该传入一个元组。
+    # 元组中的第一个元素是需要修改的栅格名称，第二个元素是修改后名称。
+    def do_ETP(self, ExtractPoint, ValueRaster,outPoint,NewFieldName=None):
+        try:
+            arcpy.sa.ExtractValuesToPoints(in_point_features=ExtractPoint,
+                                        in_raster=ValueRaster,
+                                        out_point_features=outPoint,
+                                        interpolate_values='NONE',
+                                        add_attributes='VALUE_ONLY')
+            # logger output
+            self.ES_logger.debug('Extract value in %s by %s' % (ExtractPoint, ValueRaster))
+
+            # 如果需要改名提取后的字段则执行改名操作
+            if NewFieldName != None:
+                if len(NewFieldName) == 2:
+                    # 提取成功以后需要将RASTERVALU字段改为部门名称
+                    arcpy.AlterField_management(in_table=outPoint,
+                                                field=NewFieldName[0],
+                                                new_field_name=NewFieldName[1])
+                # logger output
+                self.ES_logger.debug('Rename field %s to %s' % (NewFieldName[0], NewFieldName[1]))
+        except:
+            print 'Error: Extract value to point failed!'
+
+            # logger output
+            self.ES_logger.error('The trigger building failed.')
+
+            print arcpy.GetMessages()
+
     # 将同一年份的部门整合到同一个点数据图层中
     def year_weight_joint(self, year, sectors_list):
         #######################################################################
@@ -946,75 +966,52 @@ class EDGAR_spatial(object):
 
         # 需要先进行一次提取操作，输入到EPT_iter中
         # 这里需要开启覆盖操作，或者执行一个del工作
-        try:
-            # 构建启动循环的第一次提取
-            # 从字典中pop出一部门，保存部门名称和对应的待提取值栅格
-            temp_ETP_1_sector, temp_ETP_1_raster = temp_extract_raster.popitem()
-            arcpy.sa.ExtractValuesToPoints(in_point_features=temp_point_start,
-                                           in_raster=temp_ETP_1_raster,
-                                           out_point_features=temp_point_trigger,
-                                           interpolate_values='NONE',
-                                           add_attributes='VALUE_ONLY')
-
-            # 提取成功以后需要将RASTERVALU字段改为部门名称
-            arcpy.AlterField_management(in_table=temp_point_trigger,
-                                        field='RASTERVALU',
-                                        new_field_name=temp_ETP_1_sector)
-            # logger output
-            self.ES_logger.debug('Extract trigger built:%s' %
-                                 temp_ETP_1_raster)
-        except:
-            print 'Error: Extract value to point failed! The trigger building failed.'
-
-            # logger output
-            self.ES_logger.error('The trigger building failed.')
-
-            print arcpy.GetMessages()
-
+        temp_ETP_1_sector, temp_ETP_1_raster = temp_extract_raster.popitem()
+        self.do_ETP(ExtractPoint=temp_point_start,
+                    ValueRaster=temp_ETP_1_raster,
+                    outPoint=temp_point_trigger,
+                    NewFieldName=('RASTERVALU',temp_ETP_1_sector))
+        
+        # 逐个处理剩下的部门
         for sect in tqdm(temp_extract_raster):
-            try:
-                # 从字典中获得部门和对应的待提取值栅格
-                temp_ETP_raster = temp_extract_raster[sect]
-                temp_point_output = temp_point_iter_root + sect
+            # 从字典中获得部门和对应的待提取值栅格
+            temp_ETP_raster = temp_extract_raster[sect]
+            temp_point_output = temp_point_iter_root + sect
 
-                arcpy.sa.ExtractValuesToPoints(in_point_features=temp_point_trigger,
-                                               in_raster=temp_ETP_raster,
-                                               out_point_features=temp_point_output,
-                                               interpolate_values='NONE',
-                                               add_attributes='VALUE_ONLY')
+            self.do_ETP(ExtractPoint=temp_point_trigger,
+                        ValueRaster=temp_ETP_raster,
+                        outPoint=temp_point_output,
+                        NewFieldName=('RASTERVALU',sect))
 
-                # 提取成功以后需要将RASTERVALU字段改为部门名称
-                arcpy.AlterField_management(in_table=temp_point_output,
-                                            field='RASTERVALU',
-                                            new_field_name=sect)
-                # logger output
-                self.ES_logger.debug('Extract raster:%s' %
-                                     temp_extract_raster[sect])
+            # 交换temp_point_iter和temp_point_output指针
+            temp_point_trigger = temp_point_output
 
-                # 交换temp_point_iter和temp_point_output指针
-                temp_point_trigger = temp_point_output
-
-                # 添加到删除名单
-                delete_temporary.append(temp_point_output)
-
-            except:
-                print 'Error: Extract value to point failed!'
-
-                # logger output
-                self.ES_logger.error('Extract raster failed:%s' %
-                                     temp_extract_raster[sect])
-
-                print arcpy.GetMessages()
-
+            # 添加到删除名单
+            delete_temporary.append(temp_point_output)
+            
+        # TODO
+        # 这里应该加入合并单元格排放量的ETP过程。
         # 保存最后的输出结果
-        print 'Saving sectoral weights...'
-        arcpy.CopyFeatures_management(
-            temp_point_output, output_sectoral_weights)
-        print 'Sectoral weights finished:%s' % year
+        # 应该用temp_point_output去提取total_emission_xxxx，生成结果。
+        temp_total_emission = 'total_emission_%s' % year
+        if arcpy.Exists(temp_total_emission):
+            print 'Saving sectoral weights and total emission...'
+            self.do_ETP(ExtractPoint=temp_point_output,
+                        ValueRaster=temp_total_emission,
+                        outPoint=output_sectoral_weights,
+                        NewFieldName=('RASTERVALU','grid_total_emission'))
 
-        # logger output
-        self.ES_logger.debug('Sectoral weights saved:%s' %
-                             output_sectoral_weights)
+            # logger output
+            self.ES_logger.debug('Sectoral weights saved:%s' %
+                                output_sectoral_weights)
+        else:
+            print 'Saving sectoral weights and total emission failed!'
+
+            # logger output
+            self.ES_logger.error('Saving sectoral weights and total emission failed! Please check year total emission input.')
+            return
+
+        print 'Sectoral weights finished:%s' % year
 
         # 删除临时生成的迭代变量
         self.delete_temporary_feature_classes(delete_temporary)
@@ -1026,7 +1023,6 @@ class EDGAR_spatial(object):
         self.ES_logger.debug('working_rasters cleaned!')
 
     # 导出不同年份最大权重栅格
-
     def max_weight_rasterize(self, year):
         temp_point = 'sectoral_weights_%s' % year
         save_raster_categories = 'main_emi_%s' % year
@@ -1530,5 +1526,4 @@ if __name__ == '__main__':
     # aaa.proccess_year(start_year=2018, end_year=2018)
 
     ## extract_center test
-    aaa.extract_center_area(center_range=(3.5, 4.5),
-                            year_range=(2018, 2018), isLog=False)
+    aaa.extract_center_area(center_range=(3.5, 4.5),year_range=(2018, 2018), isLog=False)
