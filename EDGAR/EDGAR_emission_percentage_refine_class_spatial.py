@@ -21,7 +21,7 @@ import logging
 import csv
 
 # 性能测试相关模块
-# import cProfile
+import cProfile
 
 __metaclass__ = type
 
@@ -906,7 +906,7 @@ class EDGAR_spatial(object):
             print 'Error: Extract value to point failed!'
 
             # logger output
-            self.ES_logger.error('The trigger building failed.')
+            self.ES_logger.error('Extract value to point failed!')
 
             print arcpy.GetMessages()
 
@@ -989,7 +989,6 @@ class EDGAR_spatial(object):
             # 添加到删除名单
             delete_temporary.append(temp_point_output)
             
-        # TODO
         # 这里应该加入合并单元格排放量的ETP过程。
         # 保存最后的输出结果
         # 应该用temp_point_output去提取total_emission_xxxx，生成结果。
@@ -1500,17 +1499,17 @@ if __name__ == '__main__':
     #            'REF_TRF': 'REF_TRF', 'SWD_INC': 'SWD_INC', 'TNR_Ship': 'TNR_Ship'}
     # test_esc = {'AGS': 1, 'ENE': 2, 'RCO': 3, 'IND': 4,
     #             'REF_TRF': 5, 'SWD_INC': 6, 'TNR_Ship': 7}
-    # test_es = {'AGS': 'AGS', 'ENE': 'ENE', 'RCO': 'RCO'}
-    # test_esc = {'AGS': 1, 'ENE': 2, 'RCO': 3}
+    test_es = {'AGS': 'AGS', 'ENE': 'ENE', 'RCO': 'RCO'}
+    test_esc = {'AGS': 1, 'ENE': 2, 'RCO': 3}
 
     #calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
     ## merge_sectors test
-    # aaa = EDGAR_spatial.merge_sectors('D:\\workplace\\geodatabase\\EDGAR_test.gdb',
-    #                    st_year=2018, en_year=2018, sectors=test_es, colormap=test_esc)
+    aaa = EDGAR_spatial.merge_sectors('D:\\workplace\\geodatabase\\EDGAR_test.gdb',
+                       st_year=2018, en_year=2018, sectors=test_es, colormap=test_esc)
     # cProfile.run('aaa = EDGAR_spatial.merge_sectors(\'D:\\workplace\\geodatabase\\EDGAR_test.gdb\',st_year=2018, en_year=2018, sectors=test_es, colormap=test_esc)', 'merge_sector_init_profile.prof')
 
     ## extract_center test
-    aaa = EDGAR_spatial.extract_center(workspace='D:\\workplace\\geodatabase\\EDGAR_test.gdb',st_year=2010, en_year=2018)
+    # aaa = EDGAR_spatial.extract_center(workspace='D:\\workplace\\geodatabase\\EDGAR_test.gdb',st_year=2010, en_year=2018)
     # cProfile.run('aaa = EDGAR_spatial.extract_center(workspace=\'D:\\workplace\\geodatabase\\EDGAR_test.gdb\',st_year=2010, en_year=2018)','extract_center_init_profilel.prof')
 
     # aaa.prepare_raster()
@@ -1523,7 +1522,8 @@ if __name__ == '__main__':
     # aaa.extract_center_area(center_range=(3.5, 4.5),
     #                         year_range=(2010, 2018), isLog=True)
     ## merge_sectors test
-    # aaa.proccess_year(start_year=2018, end_year=2018)
+    aaa.proccess_year(start_year=2018, end_year=2018)
+    # cProfile.run('aaa.proccess_year(start_year=2018, end_year=2018)','merge_sector_init_profile.prof')
 
     ## extract_center test
-    aaa.extract_center_area(center_range=(3.5, 4.5),year_range=(2018, 2018), isLog=False)
+    # aaa.extract_center_area(center_range=(3.5, 4.5),year_range=(2018, 2018), isLog=False)
