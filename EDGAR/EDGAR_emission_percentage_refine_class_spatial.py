@@ -2,6 +2,7 @@
 
 # 路径处理模块
 # Systerm path proccessing module
+from operator import ge, index
 import os
 from typing import Tuple
 
@@ -91,6 +92,14 @@ class EDGAR_spatial(object):
 
         # 需要操作的栅格
         self.working_rasters = []
+
+        # 整合部门到分类的整合方式
+        # 这个参数需要用property属性提供的方法构造
+        self.gen_handle = self.__default_gen_handle
+
+        # 整合部门方法中执行数据库游标操作需要返回的字段名称
+        # 这个参数需要用property属性提供的方法构造
+        self.gen_field = []
 
         # arcgis 工作空间初始化
         # 必须明确一个arcgis工作空间！
@@ -221,7 +230,7 @@ class EDGAR_spatial(object):
 
     # 只进行排放量栅格数量峰值中心提取时的构造函数
     @classmethod
-    def extract_center(cls, workspace, st_year=1970, en_year=2018, log_path='EDGAR.log'):
+    def data_analyze(cls, workspace, st_year=1970, en_year=2018, log_path='EDGAR.log'):
         # 先调用init构造函数初始化类
         root_init = cls(workspace=workspace,st_year=1970, en_year=2018, log_path=log_path)
 
@@ -302,6 +311,29 @@ class EDGAR_spatial(object):
     # 数据库栅格数据筛选过滤标签
     # 默认数据库过滤标签
     __default_raster_filter_wildcard = []
+    
+    # 默认部门分类字典：gen_handle
+    __default_gen_handle = {'ENE': 'G_ENE',
+                               'REF_TRF': 'G_IND',
+                               'IND': 'G_IND',
+                               'TNR_Aviation_CDS': 'G_TRA',
+                               'TNR_Aviation_CRS': 'G_TRA',
+                               'TNR_Aviation_LTO': 'G_TRA',
+                               'TRO_noRES': 'G_TRA',
+                               'TNR_Other': 'G_TRA',
+                               'TNR_Ship': 'G_TRA',
+                               'RCO': 'G_RCO',
+                               'PRO': 'G_ENE',
+                               'NMM': 'G_IND',
+                               'CHE': 'G_IND',
+                               'IRO': 'G_IND',
+                               'NFE': 'G_IND',
+                               'NEU': 'G_IND',
+                               'PRU_SOL': 'G_IND',
+                               'AGS': 'G_AGS',
+                               'SWD_INC': 'G_WST',
+                               'FFF': 'G_ENE'}
+
 
     ############################################################################
     ############################################################################
@@ -1478,6 +1510,112 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.debug('Zonal statitics convert to csv.')
 
+    @property
+    def generalization_handle(self):
+        return self.gen_handle
+    
+    @generalization_handle.setter
+    def generalization_handle(self, gen_handle):
+        # 检查输入参数gen_handle的类型是否为dict
+        if type(gen_handle) not dict:
+            print 'Genralizing sectors need input a dict gen_handle.'
+            
+            # logger output
+            self.ES_logger.error('Input gen_handle type error.')
+            return
+
+        self.gen_handle = gen_handle
+        return self.gen_handle
+
+    @property
+    def generalization_field(self):
+        return self.gen_field
+    
+    @generalization_field.setter
+    def generalization_field(self, gen_handle):
+        # TODO
+        # 生成需要统计的部门分类字段和排序后字段的名称
+        handle_fields = list(set(gen_handle.values()))
+        generalize_field = ['sorted_sectors'].extend(handle_fields)
+
+    # 实际执行单个栅格的部门类型归类
+    def do_sectors_generalize(self, inPoint, genField, gen_handle):
+            # 生成需要统计的部门分类字段和排序后字段的名称
+            handle_fields = list(set(gen_handle.values()))
+            generalize_field = ['sorted_sectors'].extend(handle_fields)
+            # 首先列出点数据中的所有字段并提取出也在gen_handle存在的字段
+            # 注意：
+            # 根据arcpy文档给出的说明：
+            # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
+            # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
+            raw_fields = arcpy.ListFields(inPoint)
+            raw_field_names = [field.name for field in raw_fields]
+
+            field_names = raw_field_names.extend(genField)
+            field_dict = dict(zip(field_names,range(0,len(field_names))))
+            field_dict_generalize = 0
+
+            # 构造游标，开始逐行操作
+            with arcpy.da.UpdateCursor(inPoint, field_names) as cursor:
+                for row in tqdm(cursor):
+                    # 检查栅格排放值是否为0，为0则直接将所有值赋值为0
+                    if row[field_dict['sector_counts']] == 0:
+                        # 检查最大部门排放是否为0
+                        # 二次确认
+                        if row['wmax'] == 0:
+                            # 对genField给出的所有位置都赋值
+                            pass
+
+
+
+
+        for pt in working_point_feature:
+            print 'start revise %s' % pt
+
+            # --first lets make a list of all of the fields in the table
+            fields = arcpy.ListFields(pt)
+            field_names = [field.name for field in fields]
+            # 注意：
+            # 根据arcpy文档给出的说明：
+            # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
+            # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
+
+            # 这里要找到四个需要修改的数据的位置
+            index_wmax = field_names.index('wmax')
+            index_wmaxid = field_names.index('wmaxid')
+            index_wraster = field_names.index('wraster')
+            index_sector_counts = field_names.index('sector_counts')
+
+            # 构造游标，开始逐行操作
+            with arcpy.da.UpdateCursor(pt, field_names) as cursor:
+                for row in tqdm(cursor):
+                    # 检查部门数量是否为0
+                    if row[index_sector_counts] == 0:
+                        # 检查最大部门排放是否为0
+                        # 二次确认
+                        if row[index_wmax] == 0:
+                            row[index_wraster] = 0
+                            row[index_wmaxid] = 'NULL'
+
+                    # 更新数据
+                    cursor.updateRow(row)
+
+            save_raster_categories = 'main_emi_%s' % pt[-4:]
+            save_raster_weight = 'main_emi_weight_%s' % pt[-4:]
+
+
+    # 对点数据中的栅格执行部门类型归类
+    def sectors_generalize(self, inPoint, gen_handle):
+        # 生成需要统计的部门分类字段和排序后字段的名称
+        handle_fields = list(set(gen_handle.values()))
+        generalize_field = ['sorted_sectors'].extend(handle_fields)
+
+        # 调用实际执行函数进行归类
+        self.do_sectors_generalize(inPoint=inPoint, genField=generalize_field, gen_handle=gen_handle)
+
+    # 对给定区域内的栅格进行部门类型归类
+    def zonal_sectors_generalize(self, inPoint, zonal_mask):
+        pass
 
 # ======================================================================
 # ======================================================================
@@ -1509,8 +1647,8 @@ if __name__ == '__main__':
     # cProfile.run('aaa = EDGAR_spatial.merge_sectors(\'D:\\workplace\\geodatabase\\EDGAR_test.gdb\',st_year=2018, en_year=2018, sectors=test_es, colormap=test_esc)', 'merge_sector_init_profile.prof')
 
     ## extract_center test
-    # aaa = EDGAR_spatial.extract_center(workspace='D:\\workplace\\geodatabase\\EDGAR_test.gdb',st_year=2010, en_year=2018)
-    # cProfile.run('aaa = EDGAR_spatial.extract_center(workspace=\'D:\\workplace\\geodatabase\\EDGAR_test.gdb\',st_year=2010, en_year=2018)','extract_center_init_profilel.prof')
+    # aaa = EDGAR_spatial.data_analyze(workspace='D:\\workplace\\geodatabase\\EDGAR_test.gdb',st_year=2010, en_year=2018)
+    # cProfile.run('aaa = EDGAR_spatial.data_analyze(workspace=\'D:\\workplace\\geodatabase\\EDGAR_test.gdb\',st_year=2010, en_year=2018)','extract_center_init_profilel.prof')
 
     # aaa.prepare_raster()
     # print aaa.working_rasters
