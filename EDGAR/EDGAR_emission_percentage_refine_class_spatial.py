@@ -1538,36 +1538,113 @@ class EDGAR_spatial(object):
         handle_fields = list(set(gen_handle.values()))
         generalize_field = ['sorted_sectors'].extend(handle_fields)
 
+    @property
+    def field_attributes(self):
+        return
+    
+    @field_attributes.setter
+    def fiel_attributes(self, field_name, field_type, field_precision=32, field_scale=32, field_length=32, field_alias='', field_is_nullable='NULLABLE', field_is_required='NON_REQUIRED', field_domain=''):
+        # 一系列类型检查，检查的标准基于arcpy中的定义
+        # field name check
+        if field_name == '' or type(field_name) != str:
+            print 'ERROR: field name should be string type.'
+            
+            # logger output
+            self.ES_logger.error('Field name type error.')
+            return
+        
+        # field type check
+        if field_type == '' or type(field_type) != str:
+            print 'ERROR: field type should be string type.'
+            
+            # logger output
+            self.ES_logger.error('Field type argument type error.')
+            return
+        
+        # field precision check
+        if field_precision < 0 or type(field_precision) != int:
+            print 'ERROR: field precision should be positive integer type.'
+            
+            # logger output
+            self.ES_logger.error('Field precision argument type error.')
+            return
+
+        # field scale check
+        if field_scale < 0 or type(field_scale) != int:
+            print 'ERROR: field scale should be positive integer type.'
+            
+            # logger output
+            self.ES_logger.error('Field scale argument type error.')
+            return
+
+        # field length check
+        if field_length < 0 or type(field_length) != int:
+            print 'ERROR: field length should be positive integer type.'
+            
+            # logger output
+            self.ES_logger.error('Field length argument type error.')
+            return
+
+        # field alias check
+        if field_alias == '' or type(field_alias) != str:
+            print 'ERROR: field alias should be string type.'
+            
+            # logger output
+            self.ES_logger.error('Field alias argument type error.')
+            return
+
+
+        # field is nullable check
+        if field_is_nullable == 'NULLABLE' or field_is_nullable == 'NON_NULLABLE':
+            pass
+        else:
+            print 'ERROR: field is nullable should be "NULLABLE" or "NON_NULLABLE".'
+            
+            # logger output
+            self.ES_logger.error('Field is nullable argument type error.')
+            return
+    @property
+    def field_attributes_list_assembler(self):
+        return 
+    
+    @field_attributes_list_assembler.setter
+    def field_attributes_list_assembler(self, fields):
+        pass
+
+    # 为点数据添加需要归类整合的字段
+    def do_add_fields(self, inPoint, addFieldDict):
+        # 检查添加的字段列表是不是空
+        if not addFieldDict:
+            print 'ERROR: add field'
+            return
+
     # 实际执行单个栅格的部门类型归类
     def do_sectors_generalize(self, inPoint, genField, gen_handle):
-            # 生成需要统计的部门分类字段和排序后字段的名称
-            handle_fields = list(set(gen_handle.values()))
-            generalize_field = ['sorted_sectors'].extend(handle_fields)
-            # 首先列出点数据中的所有字段并提取出也在gen_handle存在的字段
-            # 注意：
-            # 根据arcpy文档给出的说明：
-            # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
-            # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
-            raw_fields = arcpy.ListFields(inPoint)
-            raw_field_names = [field.name for field in raw_fields]
+        # 生成需要统计的部门分类字段和排序后字段的名称
+        handle_fields = list(set(gen_handle.values()))
+        generalize_field = ['sorted_sectors'].extend(handle_fields)
+        # 首先列出点数据中的所有字段并提取出也在gen_handle存在的字段
+        # 注意：
+        # 根据arcpy文档给出的说明：
+        # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
+        # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
+        raw_fields = arcpy.ListFields(inPoint)
+        raw_field_names = [field.name for field in raw_fields]
 
-            field_names = raw_field_names.extend(genField)
-            field_dict = dict(zip(field_names,range(0,len(field_names))))
-            field_dict_generalize = 0
+        field_names = raw_field_names.extend(genField)
+        field_dict = dict(zip(field_names,range(0,len(field_names))))
+        field_dict_generalize = 0
 
-            # 构造游标，开始逐行操作
-            with arcpy.da.UpdateCursor(inPoint, field_names) as cursor:
-                for row in tqdm(cursor):
-                    # 检查栅格排放值是否为0，为0则直接将所有值赋值为0
-                    if row[field_dict['sector_counts']] == 0:
-                        # 检查最大部门排放是否为0
-                        # 二次确认
-                        if row['wmax'] == 0:
-                            # 对genField给出的所有位置都赋值
-                            pass
-
-
-
+        # 构造游标，开始逐行操作
+        with arcpy.da.UpdateCursor(inPoint, field_names) as cursor:
+            for row in tqdm(cursor):
+                # 检查栅格排放值是否为0，为0则直接将所有值赋值为0
+                if row[field_dict['sector_counts']] == 0:
+                    # 检查最大部门排放是否为0
+                    # 二次确认
+                    if row['wmax'] == 0:
+                        # 对genField给出的所有位置都赋值
+                        pass
 
         for pt in working_point_feature:
             print 'start revise %s' % pt
