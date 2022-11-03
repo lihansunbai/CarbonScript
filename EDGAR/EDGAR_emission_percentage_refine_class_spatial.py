@@ -68,38 +68,31 @@ class EDGAR_spatial(object):
         # 使用“实例变量”而不是“类变量”的原因请参见：以下链接的9.3.5节内容
         # https://docs.python.org/zh-cn/3/tutorial/classes.html
 
-        # EDGAR sectors dicts & colormap dicts
-        self.EDGAR_sectors = self.__default_EDGAR_sectors
-        self.EDGAR_sectors_colormap = self.__default_EDGAR_sectors_colormap
+        # # EDGAR sectors dicts & colormap dicts
+        # self.EDGAR_sectors = self.__default_EDGAR_sectors
+        # self.EDGAR_sectors_colormap = self.__default_EDGAR_sectors_colormap
 
-        # 时间范围
-        self.start_year = self.__default_start_year
-        self.end_year = self.__default_end_year
+        # # 时间范围
+        # self.start_year = self.__default_start_year
+        # self.end_year = self.__default_end_year
 
-        # 栅格数据背景零值标识和区分标签
-        self.background_flag = True
-        self.background_label = ''
-        self.background_raster = ''
+        # # 栅格数据背景零值标识和区分标签
+        # self.background_flag = True
+        # self.background_label = ''
+        # self.background_raster = ''
 
-        # 过滤标签
-        self.filter_label_dict = {}
+        # # 过滤标签
+        # self.filter_label_dict = {}
 
-        # 数据库过滤标签
-        self.raster_filter_wildcard = []
+        # # 数据库过滤标签
+        # self.raster_filter_wildcard = []
 
-        # 准备时间范围内的所有部门的栅格
-        self.all_prepare_working_rasters = []
+        # # 准备时间范围内的所有部门的栅格
+        # self.all_prepare_working_rasters = []
 
         # 需要操作的栅格
         self.working_rasters = []
 
-        # 整合部门到分类的整合方式
-        # 这个参数需要用property属性提供的方法构造
-        self.gen_handle = self.__default_gen_handle
-
-        # 整合部门方法中执行数据库游标操作需要返回的字段名称
-        # 这个参数需要用property属性提供的方法构造
-        self.gen_field = []
 
         # arcgis 工作空间初始化
         # 必须明确一个arcgis工作空间！
@@ -133,6 +126,12 @@ class EDGAR_spatial(object):
     def merge_sectors(cls, workspace, background_flag=True, background_flag_label='BA', background_raster='background', sectors={}, colormap={}, st_year=1970, en_year=2018, log_path='EDGAR.log'):
         # 先调用init构造函数初始化类
         root_init = cls(workspace=workspace, log_path=log_path)
+
+        # 数据库过滤标签
+        root_init.raster_filter_wildcard = []
+
+        # 准备时间范围内的所有部门的栅格
+        root_init.all_prepare_working_rasters = []
 
         # EDGAR_sectors 参数初始化部分
         # 检查输入参数类型
@@ -233,6 +232,14 @@ class EDGAR_spatial(object):
     def data_analyze(cls, workspace, st_year=1970, en_year=2018, log_path='EDGAR.log'):
         # 先调用init构造函数初始化类
         root_init = cls(workspace=workspace,st_year=1970, en_year=2018, log_path=log_path)
+
+        # 整合部门到分类的整合方式
+        # 这个参数需要用property属性提供的方法构造
+        root_init.gen_handle = root_init.__default_gen_handle
+
+        # 整合部门方法中执行数据库游标操作需要返回的字段名称
+        # 这个参数需要用property属性提供的方法构造
+        root_init.gen_field = []
 
         print 'EDGAR_Spatial initialized! More debug information please check the log file.'
         cls.ES_logger.info('Initialization finished.')
@@ -1538,12 +1545,13 @@ class EDGAR_spatial(object):
         handle_fields = list(set(gen_handle.values()))
         generalize_field = ['sorted_sectors'].extend(handle_fields)
 
-    @property
-    def field_attributes(self):
-        return
+    # @property
+    # def field_attributes(self):
+    #     return
     
-    @field_attributes.setter
-    def fiel_attributes(self, field_name, field_type, field_precision=32, field_scale=32, field_length=32, field_alias='', field_is_nullable='NULLABLE', field_is_required='NON_REQUIRED', field_domain=''):
+    # @field_attributes.setter
+    # def field_attributes(self, field_name, field_type, field_precision=32, field_scale=32, field_length=32, field_alias='', field_is_nullable='NULLABLE', field_is_required='NON_REQUIRED', field_domain=''):
+    def field_attributes_checker(self, **fieldAttributes)
         # 一系列类型检查，检查的标准基于arcpy中的定义
         # field name check
         if field_name == '' or type(field_name) != str:
@@ -1593,7 +1601,6 @@ class EDGAR_spatial(object):
             self.ES_logger.error('Field alias argument type error.')
             return
 
-
         # field is nullable check
         if field_is_nullable == 'NULLABLE' or field_is_nullable == 'NON_NULLABLE':
             pass
@@ -1603,12 +1610,14 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.error('Field is nullable argument type error.')
             return
+        return dict()
+
     @property
-    def field_attributes_list_assembler(self):
+    def addField_list_assembler(self):
         return 
     
-    @field_attributes_list_assembler.setter
-    def field_attributes_list_assembler(self, fields):
+    @addField_list_assembler.setter
+    def addField_list_assembler(self, field_attributes_checker):
         pass
 
     # 为点数据添加需要归类整合的字段
