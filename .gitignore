@@ -7,3 +7,4 @@ test/*
 EDGAR.log
 merge_sectors_profile.prof
 output.png
+test/class_init.py
