@@ -2,9 +2,7 @@
 
 # 路径处理模块
 # Systerm path proccessing module
-from operator import ge, index
 import os
-from typing import Tuple
 
 # Arcpy 相关模块
 # Arcpy module
@@ -236,6 +234,9 @@ class EDGAR_spatial(object):
         # 整合部门到分类的整合方式
         # 这个参数需要用property属性提供的方法构造
         root_init.gen_handle = root_init.__default_gen_handle
+
+        # 为数据添加字段时使用的字段和属性的整合列表
+        root_init.addField_list = []
 
         # 整合部门方法中执行数据库游标操作需要返回的字段名称
         # 这个参数需要用property属性提供的方法构造
@@ -1545,87 +1546,160 @@ class EDGAR_spatial(object):
         handle_fields = list(set(gen_handle.values()))
         generalize_field = ['sorted_sectors'].extend(handle_fields)
 
-    # @property
-    # def field_attributes(self):
-    #     return
-    
-    # @field_attributes.setter
-    # def field_attributes(self, field_name, field_type, field_precision=32, field_scale=32, field_length=32, field_alias='', field_is_nullable='NULLABLE', field_is_required='NON_REQUIRED', field_domain=''):
-    def field_attributes_checker(self, **fieldAttributes)
+    # 添加字段时使用的字段属性检查函数
+    # 注意：
+    # 这个函数需要输入一个字典，
+    # 这个字典至少需要包含‘field_name’和‘field_type’两个参数，
+    # 其余arcpy AddField_management要求的参数为可选参数，这些可选参数需要
+    # 符合arcpy的相应规定。
+    def field_attributes_checker(self, **fieldAttributes):
+        if not fieldAttributes:
+            print 'ERROR: input field and its attributes are empty. Please check the input'
+            
+            # logger output
+            self.ES_logger.error('input field is empty.')
+            return
+        
         # 一系列类型检查，检查的标准基于arcpy中的定义
         # field name check
-        if field_name == '' or type(field_name) != str:
+        if fieldAttributes['field_name'] == '' or type(fieldAttributes['field_name']) != str:
             print 'ERROR: field name should be string type.'
             
             # logger output
             self.ES_logger.error('Field name type error.')
-            return
+            return {}
         
         # field type check
-        if field_type == '' or type(field_type) != str:
+        if fieldAttributes['field_type'] == '' or type(fieldAttributes['field_type']) != str:
             print 'ERROR: field type should be string type.'
             
             # logger output
             self.ES_logger.error('Field type argument type error.')
-            return
+            return {}
         
         # field precision check
-        if field_precision < 0 or type(field_precision) != int:
-            print 'ERROR: field precision should be positive integer type.'
-            
-            # logger output
-            self.ES_logger.error('Field precision argument type error.')
-            return
+        if fieldAttributes['field_precision']:
+            if fieldAttributes['field_precision'] < 0 or type(fieldAttributes['field_precision']) != int:
+                print 'ERROR: field precision should be positive integer type.'
+                
+                # logger output
+                self.ES_logger.error('Field precision argument type error.')
+                return {}
+        else:
+            fieldAttributes['field_precision'] = '#'
 
         # field scale check
-        if field_scale < 0 or type(field_scale) != int:
-            print 'ERROR: field scale should be positive integer type.'
-            
-            # logger output
-            self.ES_logger.error('Field scale argument type error.')
-            return
+        if fieldAttributes['field_scale']:
+            if fieldAttributes['field_scale'] < 0 or type(fieldAttributes['field_scale']) != int:
+                print 'ERROR: field scale should be positive integer type.'
+                
+                # logger output
+                self.ES_logger.error('Field scale argument type error.')
+                return {}
+        else:
+            fieldAttributes['field_scale'] = '#'
 
         # field length check
-        if field_length < 0 or type(field_length) != int:
-            print 'ERROR: field length should be positive integer type.'
-            
-            # logger output
-            self.ES_logger.error('Field length argument type error.')
-            return
+        if fieldAttributes['field_length']:
+            if fieldAttributes['field_length'] < 0 or type(fieldAttributes['field_length']) != int:
+                print 'ERROR: field length should be positive integer type.'
+                
+                # logger output
+                self.ES_logger.error('Field length argument type error.')
+                return
+        else:
+            fieldAttributes['field_length'] = '#'
 
         # field alias check
-        if field_alias == '' or type(field_alias) != str:
-            print 'ERROR: field alias should be string type.'
-            
-            # logger output
-            self.ES_logger.error('Field alias argument type error.')
-            return
+        if fieldAttributes['field_alias']:
+            if fieldAttributes['field_alias'] == '' or type(fieldAttributes['field_alias']) != str:
+                print 'ERROR: field alias should be string type.'
+                
+                # logger output
+                self.ES_logger.error('Field alias argument type error.')
+                return {}
+        else:
+            fieldAttributes['field_alias'] = '#'
 
         # field is nullable check
-        if field_is_nullable == 'NULLABLE' or field_is_nullable == 'NON_NULLABLE':
-            pass
+        if fieldAttributes['field_is_nullable']:
+            if not fieldAttributes['field_is_nullable'] == 'NULLABLE' or not fieldAttributes['field_is_nullable'] == 'NON_NULLABLE':
+                print 'ERROR: field is nullable should be "NULLABLE" or "NON_NULLABLE".'
+                
+                # logger output
+                self.ES_logger.error('Field is nullable argument type error.')
+                return {}
         else:
-            print 'ERROR: field is nullable should be "NULLABLE" or "NON_NULLABLE".'
-            
-            # logger output
-            self.ES_logger.error('Field is nullable argument type error.')
-            return
-        return dict()
+            fieldAttributes['field_is_nullable'] = '#'
+        
+        # field is required check
+        if fieldAttributes['field_is_required']:
+            if not fieldAttributes['field_is_required'] == 'NON_REQUIRED' or not fieldAttributes['field_is_required'] == 'REQUIRED':
+                print 'ERROR: field is required should be "NON_REQUIRED" or "REQUIRED"'
+                
+                # logger output
+                self.ES_logger.error('Field is required argument type error.')
+                return {}
+        else:
+            fieldAttributes['field_is_required'] = '#'
+        
+        if fieldAttributes['field_domain']:
+            if fieldAttributes['field_domain'] == '' or type(fieldAttributes['field_domain']) != str:
+                print 'ERROR: field domain should be string type.'
+                
+                # logger output
+                self.ES_logger.error('Field domain argument type error.')
+                return {}
+        else:
+            fieldAttributes['field_domain'] = '#'
 
+        return fieldAttributes
+
+    # 如果需要添加多个字段，则可以利用以下这个函数生成一个待添加字段列表
+    # 直接调用这个函数将返回现有的字段列表
+    # 生成列表时，则需要传入两个参数，第一个参数为需要添加的数据名或者表名，第二个参数是经过field_attributes_checker返回的字典
     @property
     def addField_list_assembler(self):
-        return 
+        return self.addField_list
     
     @addField_list_assembler.setter
-    def addField_list_assembler(self, field_attributes_checker):
-        pass
+    def addField_list_assembler(self, in_table, field_attributes_checker):
+        field_attributes_checker['in_table'] = in_table
+        return self.addField_list.append(field_attributes_checker)
 
     # 为点数据添加需要归类整合的字段
-    def do_add_fields(self, inPoint, addFieldDict):
+    def do_add_fields(self, addField_list):
         # 检查添加的字段列表是不是空
-        if not addFieldDict:
-            print 'ERROR: add field'
+        if not addField_list:
+            print 'ERROR: add field is empty. Please check input'
+
+            # logger output
+            self.ES_logger.error('add field is empty.')
             return
+        
+        for field in tqdm(addField_list):
+            # 开始执行添加字段
+            try:
+                arcpy.AddField_management(field['in_table'],
+                                        field['field_name'],
+                                        field['field_type'],
+                                        field['field_precision'],
+                                        field['field_scale'],
+                                        field['field_length'],
+                                        field['field_alias'],
+                                        field['field_is_nullable'],
+                                        field['field_is_required'],
+                                        field['field_domain'],)
+                # logger output
+                self.ES_logger.debug('Fields added:%s' % field['field_name'])
+            except:
+                print 'Add field faild: %s' % field['field_name']
+
+                # logger output
+                self.ES_logger.error('Add field faild: %s' % field['field_name'])
+
+                print arcpy.GetMessages()
+                return
 
     # 实际执行单个栅格的部门类型归类
     def do_sectors_generalize(self, inPoint, genField, gen_handle):
