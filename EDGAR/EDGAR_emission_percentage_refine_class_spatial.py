@@ -1518,41 +1518,14 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.debug('Zonal statitics convert to csv.')
 
-    @property
-    def generalization_handle(self):
-        return self.gen_handle
-    
-    @generalization_handle.setter
-    def generalization_handle(self, gen_handle):
-        # 检查输入参数gen_handle的类型是否为dict
-        if type(gen_handle) not dict:
-            print 'Genralizing sectors need input a dict gen_handle.'
-            
-            # logger output
-            self.ES_logger.error('Input gen_handle type error.')
-            return
-
-        self.gen_handle = gen_handle
-        return self.gen_handle
-
-    @property
-    def generalization_field(self):
-        return self.gen_field
-    
-    @generalization_field.setter
-    def generalization_field(self, gen_handle):
-        # TODO
-        # 生成需要统计的部门分类字段和排序后字段的名称
-        handle_fields = list(set(gen_handle.values()))
-        generalize_field = ['sorted_sectors'].extend(handle_fields)
-
-    # 添加字段时使用的字段属性检查函数
+    # 实际执行添加字段时使用的字段属性检查函数
     # 注意：
     # 这个函数需要输入一个字典，
     # 这个字典至少需要包含‘field_name’和‘field_type’两个参数，
     # 其余arcpy AddField_management要求的参数为可选参数，这些可选参数需要
     # 符合arcpy的相应规定。
-    def field_attributes_checker(self, **fieldAttributes):
+    # 如果不符合arcpy的规定则会返回一个空字典。
+    def do_field_attributes_check(self, **fieldAttributes):
         if not fieldAttributes:
             print 'ERROR: input field and its attributes are empty. Please check the input'
             
@@ -1655,17 +1628,51 @@ class EDGAR_spatial(object):
 
         return fieldAttributes
 
+    # 执行添加字段时使用的字段属性检查函数
+    def field_attributes_checker(self, fields):
+        if not fields:
+            print 'ERROR: fields are empty. Please check input.'
+
+            # logger output
+            self.ES_logger.error('input fields are empty.')
+            return
+        # 处理列表形式的添加字段属性的合规性
+        elif type(fields) == list:
+            for field in tqdm(fields):
+                self.do_field_attributes_check(field)
+        # 处理单个字典形式的添加字段属性的合规性
+        elif type(fields) == dict:
+            self.do_field_attributes_check(fields)
+        
+        return fields
+            
     # 如果需要添加多个字段，则可以利用以下这个函数生成一个待添加字段列表
     # 直接调用这个函数将返回现有的字段列表
-    # 生成列表时，则需要传入两个参数，第一个参数为需要添加的数据名或者表名，第二个参数是经过field_attributes_checker返回的字典
+    # 生成列表时，则需要传入两个参数，第一个参数为需要添加的数据名或者表名；
+    # 第二个参数是经过field_attributes_checker返回的字典或者字典的列表，
+    # 如果传入参数是一个字典的列表则会向同一张表中一次性添加多个字段。
+    # 注意：
+    # 这里可以一次性向一张表中添加多个字段，也就是一个表名，添加字段的列表含有多个字典。
+    # 如果需要向多张表中添加字段则需要多次调用setter函数
     @property
     def addField_list_assembler(self):
         return self.addField_list
     
     @addField_list_assembler.setter
     def addField_list_assembler(self, in_table, field_attributes_checker):
-        field_attributes_checker['in_table'] = in_table
-        return self.addField_list.append(field_attributes_checker)
+        if not field_attributes_checker:
+            print 'ERROR: fields are empty. Please check input.'
+
+            # logger output
+            self.ES_logger.error('input fields are empty.')
+            return
+        elif type(field_attributes_checker) == list:
+            for field in tqdm(field_attributes_checker):
+                field['in_table'] = in_table
+                self.addField_list.append(field)
+        elif type(field_attributes_checker) == dict:
+            field_attributes_checker['in_table'] = in_table
+            self.addField_list.append(field_attributes_checker)
 
     # 为点数据添加需要归类整合的字段
     def do_add_fields(self, addField_list):
@@ -1701,8 +1708,56 @@ class EDGAR_spatial(object):
                 print arcpy.GetMessages()
                 return
 
+    # 这个属性用于返回和生成需要整合和统计的部门和它整合后的对应类型。
+    # 该属性返回一个字典，字典的键‘key’为需要整合的部门，值‘value’为整合后对应的类型。
+    # gen_handle的示例可以参见__default_gen_handle
+    @property
+    def generalization_handle(self):
+        return self.gen_handle
+    
+    # 属性的setter函数只负责检查输入的参数是否为字典。
+    # 这里只设置为检查为字典的原因是归类方式完全为自定，无法做进一步的检查和限制。
+    @generalization_handle.setter
+    def generalization_handle(self, gen_handle):
+        # 检查输入参数gen_handle的类型是否为dict
+        if type(gen_handle) != dict:
+            print 'Genralizing sectors need input a dict gen_handle.'
+            
+            # logger output
+            self.ES_logger.error('Input gen_handle type error.')
+            return
+
+        return gen_handle
+
+    @property
+    def generalization_field(self):
+        return self.gen_field
+    
+    @generalization_field.setter
+    def generalization_field(self, gen_handle):
+        # TODO
+        # 生成需要统计的部门分类字段和排序后字段的名称
+        handle_fields = list(set(gen_handle.values()))
+        generalize_field = ['sorted_sectors'].extend(handle_fields)
+
     # 实际执行单个栅格的部门类型归类
-    def do_sectors_generalize(self, inPoint, genField, gen_handle):
+    # 这里传入的genFieldList参数是指需要在数据表中添加的用于结果生成的字段组成的列表。所以，列表中应该由若干字典组成。
+    # 这些字典中的键值这里需要满足field_attributes_checker的条件，也就是要满足arcpy为数据表添加字段的要求。
+    # 如果数据表中已经存在了对应的统计结果生成的字段，则可以传入一个空列表参数以跳过添加字段过程。
+    def do_sectors_generalize(self, inPoint, genFieldList, gen_handle):
+        # 检查genField参数，如果传入空字典则跳过添加字段步骤，如果为有内容的字典则进行字段添加，如果为其他类型的则报错
+        if type(genFieldList) != list:
+            print 'ERROR: result fields should be a list that values are dict that key-value are fields and attributes.'
+
+            # logger output
+            self.ES_logger.error('genFieldList should be a list that values are dict that key-value fields and attributes.')
+            return
+        elif genFieldList == []:
+            self.ES_logger.info('skipped add fields.')
+        else:
+            self.addField_list_assembler(inPoint, self.field_attributes_checker(genFieldList))
+            self.do_add_fields(self.addField_list_assembler)
+
         # 生成需要统计的部门分类字段和排序后字段的名称
         handle_fields = list(set(gen_handle.values()))
         generalize_field = ['sorted_sectors'].extend(handle_fields)
@@ -1797,13 +1852,13 @@ if __name__ == '__main__':
     #            'REF_TRF': 'REF_TRF', 'SWD_INC': 'SWD_INC', 'TNR_Ship': 'TNR_Ship'}
     # test_esc = {'AGS': 1, 'ENE': 2, 'RCO': 3, 'IND': 4,
     #             'REF_TRF': 5, 'SWD_INC': 6, 'TNR_Ship': 7}
-    test_es = {'AGS': 'AGS', 'ENE': 'ENE', 'RCO': 'RCO'}
-    test_esc = {'AGS': 1, 'ENE': 2, 'RCO': 3}
+    # test_es = {'AGS': 'AGS', 'ENE': 'ENE', 'RCO': 'RCO'}
+    # test_esc = {'AGS': 1, 'ENE': 2, 'RCO': 3}
 
     #calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
     ## merge_sectors test
-    aaa = EDGAR_spatial.merge_sectors('D:\\workplace\\geodatabase\\EDGAR_test.gdb',
-                       st_year=2018, en_year=2018, sectors=test_es, colormap=test_esc)
+    # aaa = EDGAR_spatial.merge_sectors('D:\\workplace\\geodatabase\\EDGAR_test.gdb',
+                    #    st_year=2018, en_year=2018, sectors=test_es, colormap=test_esc)
     # cProfile.run('aaa = EDGAR_spatial.merge_sectors(\'D:\\workplace\\geodatabase\\EDGAR_test.gdb\',st_year=2018, en_year=2018, sectors=test_es, colormap=test_esc)', 'merge_sector_init_profile.prof')
 
     ## extract_center test
@@ -1820,8 +1875,11 @@ if __name__ == '__main__':
     # aaa.extract_center_area(center_range=(3.5, 4.5),
     #                         year_range=(2010, 2018), isLog=True)
     ## merge_sectors test
-    aaa.proccess_year(start_year=2018, end_year=2018)
+    # aaa.proccess_year(start_year=2018, end_year=2018)
     # cProfile.run('aaa.proccess_year(start_year=2018, end_year=2018)','merge_sector_init_profile.prof')
 
     ## extract_center test
     # aaa.extract_center_area(center_range=(3.5, 4.5),year_range=(2018, 2018), isLog=False)
+    ## extract_center test
+    aaa = EDGAR_spatial.data_analyze(workspace='D:\\workplace\\geodatabase\\EDGAR_test.gdb',st_year=2010, en_year=2018)
+    print aaa.addField_list
