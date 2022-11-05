@@ -1674,7 +1674,7 @@ class EDGAR_spatial(object):
             field_attributes_checker['in_table'] = in_table
             self.addField_list.append(field_attributes_checker)
 
-    # 为点数据添加需要归类整合的字段
+    # 实际执行为点数据添加需要归类整合的字段
     def do_add_fields(self, addField_list):
         # 检查添加的字段列表是不是空
         if not addField_list:
@@ -1708,6 +1708,20 @@ class EDGAR_spatial(object):
                 print arcpy.GetMessages()
                 return
 
+    # 执行为点数据添加需要归类整合的字段
+    def addField_to_inPoint(self, inPoint, genFieldList):
+        if type(genFieldList) != list:
+            print 'ERROR: result fields should be a list that values are dict that key-value are fields and attributes.'
+
+            # logger output
+            self.ES_logger.error('genFieldList should be a list that values are dict that key-value fields and attributes.')
+            return
+        elif genFieldList == []:
+            self.ES_logger.info('skipped add fields.')
+        else:
+            self.addField_list_assembler(inPoint, self.field_attributes_checker(genFieldList))
+            self.do_add_fields(self.addField_list_assembler)
+
     # 这个属性用于返回和生成需要整合和统计的部门和它整合后的对应类型。
     # 该属性返回一个字典，字典的键‘key’为需要整合的部门，值‘value’为整合后对应的类型。
     # gen_handle的示例可以参见__default_gen_handle
@@ -1729,50 +1743,68 @@ class EDGAR_spatial(object):
 
         return gen_handle
 
-    @property
-    def generalization_field(self):
-        return self.gen_field
+    # 这里似乎写了一个重复的方法，
+    # 生成排序后的列表是多余的。
+    # 应该利用arcpy.listFields的结果，从这里确定位置和序列。
+    # 所以不需要排序，只需要知道位置。
+    # 生成需要统计的部门排序后的列表
+    # @property
+    # def generalization_fields(self):
+    #     return self.gen_field
     
-    @generalization_field.setter
-    def generalization_field(self, gen_handle):
-        # TODO
-        # 生成需要统计的部门分类字段和排序后字段的名称
+    # @generalization_fields.setter
+    # def generalization_fields(self, gen_handle):
+    #     self.gen_field = list(gen_handle.keys()).sort() 
+
+    # 生成需要统计的部门分类结果字段
+    @property
+    def generalization_results(self):
+        return self.gen_results
+    
+    @generalization_results.setter
+    def generalization_results(self, gen_handle):
         handle_fields = list(set(gen_handle.values()))
-        generalize_field = ['sorted_sectors'].extend(handle_fields)
+        self.gen_results = ['sorted_sectors'].extend(handle_fields)
+
+    # 这里似乎写了一个重复的方法，
+    # 生成排序后的列表是多余的。
+    # 应该利用arcpy.listFields的结果，从这里确定位置和序列。
+    # 所以不需要排序，只需要知道位置。
+    # 生成需要统计的部门分类字段和排序后字段的名称
+    @property
+    def generalization_method(self):
+        return self.gen_method
+    
+    @generalization_method.setter
+    def generalization_method(self, **args):
+        self.gen_method = {}
+
+        for sector, category in args['gen_handle'].items():
+            self.gen_method[category].extend(args['FieldsinTable'].index(sector))
 
     # 实际执行单个栅格的部门类型归类
     # 这里传入的genFieldList参数是指需要在数据表中添加的用于结果生成的字段组成的列表。所以，列表中应该由若干字典组成。
     # 这些字典中的键值这里需要满足field_attributes_checker的条件，也就是要满足arcpy为数据表添加字段的要求。
     # 如果数据表中已经存在了对应的统计结果生成的字段，则可以传入一个空列表参数以跳过添加字段过程。
     def do_sectors_generalize(self, inPoint, genFieldList, gen_handle):
-        # 检查genField参数，如果传入空字典则跳过添加字段步骤，如果为有内容的字典则进行字段添加，如果为其他类型的则报错
-        if type(genFieldList) != list:
-            print 'ERROR: result fields should be a list that values are dict that key-value are fields and attributes.'
+        # 尝试为数据表添加统计结果字段
+        # 这里会检查genField参数，如果传入空字典则跳过添加字段步骤，如果为有内容的字典则进行字段添加，如果为其他类型的则报错
+        self.addField_to_inPoint(inPoint=inPoint, genFieldList=genFieldList)
 
-            # logger output
-            self.ES_logger.error('genFieldList should be a list that values are dict that key-value fields and attributes.')
-            return
-        elif genFieldList == []:
-            self.ES_logger.info('skipped add fields.')
-        else:
-            self.addField_list_assembler(inPoint, self.field_attributes_checker(genFieldList))
-            self.do_add_fields(self.addField_list_assembler)
-
+        # --first lets make a list of all of the fields in the table
+        fields = arcpy.ListFields(inPoint)
+        field_names = [field.name for field in fields]
         # 生成需要统计的部门分类字段和排序后字段的名称
-        handle_fields = list(set(gen_handle.values()))
-        generalize_field = ['sorted_sectors'].extend(handle_fields)
+        self.generalization_method = {aa}
+        self.generalization_results = gen_handle
+        field_names.extend(self.generalization_results)
+
+
         # 首先列出点数据中的所有字段并提取出也在gen_handle存在的字段
         # 注意：
         # 根据arcpy文档给出的说明：
         # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
         # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
-        raw_fields = arcpy.ListFields(inPoint)
-        raw_field_names = [field.name for field in raw_fields]
-
-        field_names = raw_field_names.extend(genField)
-        field_dict = dict(zip(field_names,range(0,len(field_names))))
-        field_dict_generalize = 0
-
         # 构造游标，开始逐行操作
         with arcpy.da.UpdateCursor(inPoint, field_names) as cursor:
             for row in tqdm(cursor):
