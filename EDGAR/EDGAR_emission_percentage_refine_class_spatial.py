@@ -18,6 +18,7 @@ import tqdm
 from tqdm import tqdm
 import logging
 import csv
+import math
 
 # 性能测试相关模块
 import cProfile
@@ -1775,12 +1776,40 @@ class EDGAR_spatial(object):
     def generalization_method(self):
         return self.gen_method
     
+    # 需要为setter函数传入一个字典，字典中需要包含两个键值对：
+    # 第一个键值对：key：‘gen_handle’；value: 一个字典其需要符合__default_gen_handle。
+    # 第二个键值对：key：‘FieldsinTable’；value：一个列表其是获得的数据表中的所有已有的字段。
     @generalization_method.setter
     def generalization_method(self, **args):
         self.gen_method = {}
 
         for sector, category in args['gen_handle'].items():
             self.gen_method[category].extend(args['FieldsinTable'].index(sector))
+
+    # 执行对数据表中的行数据内容进行分类整合的函数
+    # 注意：
+    # 这个函数要返回结果？
+    def sectors_generalize_processe(self, arcpyCursor):
+        # 初始化临时变量
+        # 获得需要进行的分类名称
+        # 先从表格中获得结果字段然后删除排序结果字段就是需要的分类名称
+        temp_category = copy.deepcopy(self.generalization_results)
+        temp_category.remove('sorted_sectors')
+        # 临时存储分类比例加和结果的字典，其中的键为分类名称，值为比例加和结果
+        temp_results = {}
+
+        # 第一步统计各个分类的部门排放总和
+        for category in tqdm(temp_category):
+            # 从self.generalization_method获得需要统计加和的字段位置
+            temp_position_of_sectors = self.generalization_method[category]
+            # 神奇的解包操作
+            # 这个操作需要进一步测试
+            temp_values_of_sectors = [arcpyCursor[position] for position in temp_position_of_sectors]
+            # 将结果保存到字典中 
+            temp_results[category] = math.fsum(temp_values_of_sectors)
+        
+        # TODO
+        # 第二步排序字典结果，生成排序结果
 
     # 实际执行单个栅格的部门类型归类
     # 这里传入的genFieldList参数是指需要在数据表中添加的用于结果生成的字段组成的列表。所以，列表中应该由若干字典组成。
@@ -1791,16 +1820,16 @@ class EDGAR_spatial(object):
         # 这里会检查genField参数，如果传入空字典则跳过添加字段步骤，如果为有内容的字典则进行字段添加，如果为其他类型的则报错
         self.addField_to_inPoint(inPoint=inPoint, genFieldList=genFieldList)
 
+        # 首先列出点数据中的所有字段并提取出也在gen_handle存在的字段
         # --first lets make a list of all of the fields in the table
         fields = arcpy.ListFields(inPoint)
         field_names = [field.name for field in fields]
+        # 从已有的数据表中找到对应部门的位置，并存入统计方法中
+        self.generalization_method = {'gen_handle':gen_handle, 'FieldsinTable':field_names}
         # 生成需要统计的部门分类字段和排序后字段的名称
-        self.generalization_method = {aa}
         self.generalization_results = gen_handle
         field_names.extend(self.generalization_results)
 
-
-        # 首先列出点数据中的所有字段并提取出也在gen_handle存在的字段
         # 注意：
         # 根据arcpy文档给出的说明：
         # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
@@ -1809,46 +1838,16 @@ class EDGAR_spatial(object):
         with arcpy.da.UpdateCursor(inPoint, field_names) as cursor:
             for row in tqdm(cursor):
                 # 检查栅格排放值是否为0，为0则直接将所有值赋值为0
-                if row[field_dict['sector_counts']] == 0:
+                if row['sector_counts'] == 0:
                     # 检查最大部门排放是否为0
                     # 二次确认
                     if row['wmax'] == 0:
                         # 对genField给出的所有位置都赋值
-                        pass
+                        for result in self.generalization_results:
+                            row[result] = 0
+                else:
+                    pass
 
-        for pt in working_point_feature:
-            print 'start revise %s' % pt
-
-            # --first lets make a list of all of the fields in the table
-            fields = arcpy.ListFields(pt)
-            field_names = [field.name for field in fields]
-            # 注意：
-            # 根据arcpy文档给出的说明：
-            # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
-            # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
-
-            # 这里要找到四个需要修改的数据的位置
-            index_wmax = field_names.index('wmax')
-            index_wmaxid = field_names.index('wmaxid')
-            index_wraster = field_names.index('wraster')
-            index_sector_counts = field_names.index('sector_counts')
-
-            # 构造游标，开始逐行操作
-            with arcpy.da.UpdateCursor(pt, field_names) as cursor:
-                for row in tqdm(cursor):
-                    # 检查部门数量是否为0
-                    if row[index_sector_counts] == 0:
-                        # 检查最大部门排放是否为0
-                        # 二次确认
-                        if row[index_wmax] == 0:
-                            row[index_wraster] = 0
-                            row[index_wmaxid] = 'NULL'
-
-                    # 更新数据
-                    cursor.updateRow(row)
-
-            save_raster_categories = 'main_emi_%s' % pt[-4:]
-            save_raster_weight = 'main_emi_weight_%s' % pt[-4:]
 
 
     # 对点数据中的栅格执行部门类型归类
