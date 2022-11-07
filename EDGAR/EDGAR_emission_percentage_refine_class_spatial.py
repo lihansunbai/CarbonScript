@@ -19,6 +19,7 @@ from tqdm import tqdm
 import logging
 import csv
 import math
+import collections
 
 # 性能测试相关模块
 import cProfile
@@ -1786,6 +1787,82 @@ class EDGAR_spatial(object):
         for sector, category in args['gen_handle'].items():
             self.gen_method[category].extend(args['FieldsinTable'].index(sector))
 
+    # 分类的编码
+    # 返回一个分类名称的元组，元组中元素的位置代表了这个部门的编码。
+    # 元组中预留了0号位置为未分类定义。
+    @property
+    def generalization_encode(self):
+        return self.gen_encode
+    
+    # 分类的编码方式：
+    # 分类的编码方式，也就是自定义的一种排序方式，若当前的栅格中存在对应分类的部门，则记为1，若没有则记为0。
+    # 同时这个编码方式也确定了部门的对应编码。利用对应编码为代号，结合计算得到占比总和，对分类进行排序并以此
+    # 赋予对应位置的编码代号，得到栅格的分类排放比例排序。
+    @generalization_encode.setter
+    def generalization_encode(self, encode_list):
+        if not encode_list or encode_list == []:
+            print 'ERROR: encode list is empty. Please check the input is a list with values.'
+
+            # logger output
+            self.ES_logger.error('input encode list is empty.')
+            return
+        
+        self.gen_encode = tuple(['uncatalogued'].extend(encode_list))
+
+    # 这里需要传入第一个参数已经统计得到的分类和对应的排放量比例字典；第二个参数自定义的编码方式
+    def generalization_category_encoding(self, category_percentages, encode):
+        # 检查两个输入变量是否为空，若为空则直接返回空字典
+        if not category_percentages or not encode:
+            print 'ERROR: input category percentages or encode method is empty. Please check the input.'
+
+            # logger output
+            self.ES_logger.error('input category percentages or encode method is empty.')
+            return
+
+        # 排序字典结果，生成排序结果
+        # 这里需要引入排序字典以保证字典的顺序不会发生变化
+        temp_sorted = collections.OrderedDict(sorted(category_percentages.items(), key=lambda item:item[1], reverse=True))
+        
+        # 初始化编码
+        temp_encode = ''
+
+        # 从encode中找到位置然后顺序赋值
+        # TODO
+        # 这里还要处理一个情况，如果某一分类为0，则不用赋值代码直接标记之后为0
+        for position in temp_sorted.keys():
+            temp_index = encode.index(position)
+            temp_encode += temp_index
+        
+        # 返回结果
+        return int(temp_encode)
+
+    # 统计分类排放量比例总和的函数。
+    # 需要传入一个arcpy.cursor游标。
+    # 函数返回一个字典，键为分类的名称，值为排放比例。
+    def generalization_summrize(self, arcpyCursor, categories, generalization_method):
+        # 检查两个输入变量是否为空，若为空则直接返回空字典
+        if not categories or not generalization_method:
+            print 'ERROR: input categories or generalization method is empty. Please check the input.'
+
+            # logger output
+            self.ES_logger.error('input categories or generalization method is empty.')
+            return
+
+        # 临时存储分类比例加和结果的字典，其中的键为分类名称，值为比例加和结果
+        results = {}
+
+        # 第一步统计各个分类的部门排放总和
+        for category in tqdm(categories):
+            # 从self.generalization_method获得需要统计加和的字段位置
+            position_of_sectors = generalization_method[category]
+            # 神奇的解包操作
+            # 这个操作需要进一步测试
+            values_of_sectors = [arcpyCursor[position] for position in position_of_sectors]
+            # 将结果保存到字典中 
+            results[category] = math.fsum(values_of_sectors)
+        
+        return results
+
     # 执行对数据表中的行数据内容进行分类整合的函数
     # 注意：
     # 这个函数要返回结果？
@@ -1795,21 +1872,19 @@ class EDGAR_spatial(object):
         # 先从表格中获得结果字段然后删除排序结果字段就是需要的分类名称
         temp_category = copy.deepcopy(self.generalization_results)
         temp_category.remove('sorted_sectors')
-        # 临时存储分类比例加和结果的字典，其中的键为分类名称，值为比例加和结果
-        temp_results = {}
+        # 获得分类排序的编码规则
+        self.generalization_encode = temp_category
+        temp_encode = self.generalization_encode
 
-        # 第一步统计各个分类的部门排放总和
-        for category in tqdm(temp_category):
-            # 从self.generalization_method获得需要统计加和的字段位置
-            temp_position_of_sectors = self.generalization_method[category]
-            # 神奇的解包操作
-            # 这个操作需要进一步测试
-            temp_values_of_sectors = [arcpyCursor[position] for position in temp_position_of_sectors]
-            # 将结果保存到字典中 
-            temp_results[category] = math.fsum(temp_values_of_sectors)
+        # 统计分类的排放量
+        cate_percents = self.generalization_summrize(arcpyCursor=arcpyCursor,
+                                                    categories=temp_category,
+                                                    generalization_method=self.generalization_method)
+
         
         # TODO
         # 第二步排序字典结果，生成排序结果
+        temp_results = sorted(temp_results.items(), key=lambda item:item[1], reverse=True)
 
     # 实际执行单个栅格的部门类型归类
     # 这里传入的genFieldList参数是指需要在数据表中添加的用于结果生成的字段组成的列表。所以，列表中应该由若干字典组成。
