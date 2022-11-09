@@ -16,6 +16,7 @@ import re
 import copy
 import tqdm
 from tqdm import tqdm
+import tabulate
 import logging
 import csv
 import math
@@ -1721,6 +1722,9 @@ class EDGAR_spatial(object):
         elif genFieldList == []:
             self.ES_logger.info('skipped add fields.')
         else:
+            # TODO
+            # 这里使用了属性修饰器
+            # 所以又需要把setter的参数通过字典传进去......
             self.addField_list_assembler(inPoint, self.field_attributes_checker(genFieldList))
             self.do_add_fields(self.addField_list_assembler)
 
@@ -1766,7 +1770,7 @@ class EDGAR_spatial(object):
     @generalization_results.setter
     def generalization_results(self, gen_handle):
         handle_fields = list(set(gen_handle.values()))
-        self.gen_results = ['sorted_sectors'].extend(handle_fields)
+        self.gen_results = ['sorted_sectors'] + handle_fields
 
     # 这里似乎写了一个重复的方法，
     # 生成排序后的列表是多余的。
@@ -1792,6 +1796,14 @@ class EDGAR_spatial(object):
     # 元组中预留了0号位置为未分类定义。
     @property
     def generalization_encode(self):
+        print 'Following table shows the categories and assigned codes for sectoral emission generalization.'
+
+        # 设置打印格式
+        temp_table_header_fmt = ['Categories','Code']
+
+        # 打印表格
+        print tabulate(list(zip(self.gen_encode, len(self.gen_encode))), headers=temp_table_header_fmt, tablefmt="grid")
+
         return self.gen_encode
     
     # 分类的编码方式：
@@ -1807,9 +1819,11 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input encode list is empty.')
             return
         
-        self.gen_encode = tuple(['uncatalogued'].extend(encode_list))
+        # 将自定义的编码合并。同时将其转化为元组，保持元素的顺序。
+        self.gen_encode = tuple((['uncatalogued'] + encode_list))
 
     # 这里需要传入第一个参数已经统计得到的分类和对应的排放量比例字典；第二个参数自定义的编码方式
+    # 函数将返回一个整数，这个整数的不同位置上的数字代表了对应部门的代码，同时整数的位数也表明了栅格部门的排放有多少个分类。
     def generalization_category_encoding(self, category_percentages, encode):
         # 检查两个输入变量是否为空，若为空则直接返回空字典
         if not category_percentages or not encode:
@@ -1827,11 +1841,20 @@ class EDGAR_spatial(object):
         temp_encode = ''
 
         # 从encode中找到位置然后顺序赋值
-        # TODO
-        # 这里还要处理一个情况，如果某一分类为0，则不用赋值代码直接标记之后为0
-        for position in temp_sorted.keys():
-            temp_index = encode.index(position)
-            temp_encode += temp_index
+        for category, percentages in temp_sorted.items():
+            # 如果分类为0，则不用赋值代码直接返回现有代码
+            if percentages == 0:
+                # 特殊情况：如果最大排放（第一个元素）就是0，则直接返回0。
+                # 这里主要处理可能存在的0排放格网的漏网之鱼。
+                if temp_encode == '':
+                    return 0
+                # 直接返回现有代码
+                else:
+                    return int(temp_encode)
+            else:
+                # 从encode中找到元素的对应位置，位置即为代码
+                temp_index = encode.index(category)
+                temp_encode += temp_index
         
         # 返回结果
         return int(temp_encode)
@@ -1866,6 +1889,7 @@ class EDGAR_spatial(object):
     # 执行对数据表中的行数据内容进行分类整合的函数
     # 注意：
     # 这个函数要返回结果？
+    # 这个函数要返回一个字典，其键为对应arcpy的字段名，值为统计后的结果
     def sectors_generalize_processe(self, arcpyCursor):
         # 初始化临时变量
         # 获得需要进行的分类名称
@@ -1877,14 +1901,17 @@ class EDGAR_spatial(object):
         temp_encode = self.generalization_encode
 
         # 统计分类的排放量
+        # 这里self.generalization_summrize将返回一个字典，内容是分类和对应的比例
         cate_percents = self.generalization_summrize(arcpyCursor=arcpyCursor,
                                                     categories=temp_category,
                                                     generalization_method=self.generalization_method)
 
-        
-        # TODO
         # 第二步排序字典结果，生成排序结果
-        temp_results = sorted(temp_results.items(), key=lambda item:item[1], reverse=True)
+        cate_percents['sorted_sectors'] = self.generalization_category_encoding(category_percentages=cate_percents, encode=temp_encode)
+
+        # 返回结果字典
+        return cate_percents
+
 
     # 实际执行单个栅格的部门类型归类
     # 这里传入的genFieldList参数是指需要在数据表中添加的用于结果生成的字段组成的列表。所以，列表中应该由若干字典组成。
@@ -1921,18 +1948,22 @@ class EDGAR_spatial(object):
                         for result in self.generalization_results:
                             row[result] = 0
                 else:
-                    pass
-
-
+                    temp_generalization = self.sectors_generalize_processe(row)
+                    # 对genField给出的所有位置都赋值
+                    for result, value in temp_generalization.items():
+                        row[result] = value
+                
+                # 更新行信息
+                cursor.updateRow(row)
 
     # 对点数据中的栅格执行部门类型归类
-    def sectors_generalize(self, inPoint, gen_handle):
+    def sectors_generalize(self, inPoint, gen_handle, gen_fieldList):
         # 生成需要统计的部门分类字段和排序后字段的名称
         handle_fields = list(set(gen_handle.values()))
-        generalize_field = ['sorted_sectors'].extend(handle_fields)
+        generalize_field = ['sorted_sectors'] + handle_fields
 
         # 调用实际执行函数进行归类
-        self.do_sectors_generalize(inPoint=inPoint, genField=generalize_field, gen_handle=gen_handle)
+        self.do_sectors_generalize(inPoint=inPoint, genFieldList=gen_fieldList, gen_handle=gen_handle)
 
     # 对给定区域内的栅格进行部门类型归类
     def zonal_sectors_generalize(self, inPoint, zonal_mask):
@@ -1987,5 +2018,7 @@ if __name__ == '__main__':
     ## extract_center test
     # aaa.extract_center_area(center_range=(3.5, 4.5),year_range=(2018, 2018), isLog=False)
     ## extract_center test
-    aaa = EDGAR_spatial.data_analyze(workspace='D:\\workplace\\geodatabase\\EDGAR_test.gdb',st_year=2010, en_year=2018)
-    print aaa.addField_list
+    aaa = EDGAR_spatial.data_analyze(workspace='F:\\workplace\\geodatabase\\EDGAR_test.gdb',st_year=2010, en_year=2018)
+    temp_inPoint = 'sectoral_weights_2015'
+    temp_gen_fieldList = [{'field_name':'sorted_sectors','field_type':'LONG'},{'field_name':'G_TRA','field_type':'FLOAT'},{'field_name':'G_IND','field_type':'FLOAT'},{'field_name':'G_WST','field_type':'FLOAT'},{'field_name':'G_AGS','field_type':'FLOAT'},{'field_name':'G_ENE','field_type':'FLOAT'},{'field_name':'G_RCO','field_type':'FLOAT'}]
+    aaa.sectors_generalize(inPoint=temp_inPoint, gen_handle=aaa.generalization_handle, gen_fieldList=temp_gen_fieldList)
