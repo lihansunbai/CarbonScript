@@ -17,6 +17,7 @@ import copy
 import tqdm
 from tqdm import tqdm
 import tabulate
+from tabulate import tabulate
 import logging
 import csv
 import math
@@ -1528,7 +1529,7 @@ class EDGAR_spatial(object):
     # 其余arcpy AddField_management要求的参数为可选参数，这些可选参数需要
     # 符合arcpy的相应规定。
     # 如果不符合arcpy的规定则会返回一个空字典。
-    def do_field_attributes_check(self, **fieldAttributes):
+    def do_field_attributes_check(self, fieldAttributes):
         if not fieldAttributes:
             print 'ERROR: input field and its attributes are empty. Please check the input'
             
@@ -1536,7 +1537,7 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input field is empty.')
             return
         
-        # 一系列类型检查，检查的标准基于arcpy中的定义
+        # 一系列类型检查，检查的基于arcpy中的定义
         # field name check
         if fieldAttributes['field_name'] == '' or type(fieldAttributes['field_name']) != str:
             print 'ERROR: field name should be string type.'
@@ -1554,7 +1555,7 @@ class EDGAR_spatial(object):
             return {}
         
         # field precision check
-        if fieldAttributes['field_precision']:
+        if 'field_precision' in fieldAttributes:
             if fieldAttributes['field_precision'] < 0 or type(fieldAttributes['field_precision']) != int:
                 print 'ERROR: field precision should be positive integer type.'
                 
@@ -1565,7 +1566,7 @@ class EDGAR_spatial(object):
             fieldAttributes['field_precision'] = '#'
 
         # field scale check
-        if fieldAttributes['field_scale']:
+        if 'field_scale' in fieldAttributes:
             if fieldAttributes['field_scale'] < 0 or type(fieldAttributes['field_scale']) != int:
                 print 'ERROR: field scale should be positive integer type.'
                 
@@ -1576,7 +1577,7 @@ class EDGAR_spatial(object):
             fieldAttributes['field_scale'] = '#'
 
         # field length check
-        if fieldAttributes['field_length']:
+        if 'field_length' in fieldAttributes:
             if fieldAttributes['field_length'] < 0 or type(fieldAttributes['field_length']) != int:
                 print 'ERROR: field length should be positive integer type.'
                 
@@ -1587,7 +1588,7 @@ class EDGAR_spatial(object):
             fieldAttributes['field_length'] = '#'
 
         # field alias check
-        if fieldAttributes['field_alias']:
+        if 'field_alias' in fieldAttributes:
             if fieldAttributes['field_alias'] == '' or type(fieldAttributes['field_alias']) != str:
                 print 'ERROR: field alias should be string type.'
                 
@@ -1598,7 +1599,7 @@ class EDGAR_spatial(object):
             fieldAttributes['field_alias'] = '#'
 
         # field is nullable check
-        if fieldAttributes['field_is_nullable']:
+        if 'field_is_nullable' in fieldAttributes:
             if not fieldAttributes['field_is_nullable'] == 'NULLABLE' or not fieldAttributes['field_is_nullable'] == 'NON_NULLABLE':
                 print 'ERROR: field is nullable should be "NULLABLE" or "NON_NULLABLE".'
                 
@@ -1609,7 +1610,7 @@ class EDGAR_spatial(object):
             fieldAttributes['field_is_nullable'] = '#'
         
         # field is required check
-        if fieldAttributes['field_is_required']:
+        if 'field_is_required' in fieldAttributes:
             if not fieldAttributes['field_is_required'] == 'NON_REQUIRED' or not fieldAttributes['field_is_required'] == 'REQUIRED':
                 print 'ERROR: field is required should be "NON_REQUIRED" or "REQUIRED"'
                 
@@ -1619,7 +1620,7 @@ class EDGAR_spatial(object):
         else:
             fieldAttributes['field_is_required'] = '#'
         
-        if fieldAttributes['field_domain']:
+        if 'field_domain' in fieldAttributes:
             if fieldAttributes['field_domain'] == '' or type(fieldAttributes['field_domain']) != str:
                 print 'ERROR: field domain should be string type.'
                 
@@ -1641,6 +1642,10 @@ class EDGAR_spatial(object):
             return
         # 处理列表形式的添加字段属性的合规性
         elif type(fields) == list:
+            print 'Checking fields attributes...\n'
+
+            # logger output
+            self.ES_logger.info('Checking fields attributes.')
             for field in tqdm(fields):
                 self.do_field_attributes_check(field)
         # 处理单个字典形式的添加字段属性的合规性
@@ -1651,31 +1656,37 @@ class EDGAR_spatial(object):
             
     # 如果需要添加多个字段，则可以利用以下这个函数生成一个待添加字段列表
     # 直接调用这个函数将返回现有的字段列表
-    # 生成列表时，则需要传入两个参数，第一个参数为需要添加的数据名或者表名；
-    # 第二个参数是经过field_attributes_checker返回的字典或者字典的列表，
+    # 生成列表时，则需要传入一个字典，字典中需要包括两个参数：
+    #       第一个参数键名为‘in_table’，值为需要添加的数据名或者表名；
+    #       第二个参数键名为‘field_attributes_checker’，值为需要检查的字段属性的字典或者字典的列表，
+    #
     # 如果传入参数是一个字典的列表则会向同一张表中一次性添加多个字段。
     # 注意：
-    # 这里可以一次性向一张表中添加多个字段，也就是一个表名，添加字段的列表含有多个字典。
-    # 如果需要向多张表中添加字段则需要多次调用setter函数
+    #    这里可以一次性向一张表中添加多个字段，也就是一个表名，添加字段的列表含有多个字典。
+    #    如果需要向多张表中添加字段则需要多次调用setter函数
     @property
     def addField_list_assembler(self):
         return self.addField_list
     
     @addField_list_assembler.setter
-    def addField_list_assembler(self, in_table, field_attributes_checker):
-        if not field_attributes_checker:
+    def addField_list_assembler(self, args):
+        if not args['field_attributes_checker']:
             print 'ERROR: fields are empty. Please check input.'
 
             # logger output
             self.ES_logger.error('input fields are empty.')
             return
-        elif type(field_attributes_checker) == list:
-            for field in tqdm(field_attributes_checker):
-                field['in_table'] = in_table
+        elif type(args['field_attributes_checker']) == list:
+            print 'Assembling attributes to data table name...\n'
+
+            # logger output
+            self.ES_logger.info('Assembling attribtues to table name.')
+            for field in tqdm(args['field_attributes_checker']):
+                field['in_table'] = args['in_table']
                 self.addField_list.append(field)
-        elif type(field_attributes_checker) == dict:
-            field_attributes_checker['in_table'] = in_table
-            self.addField_list.append(field_attributes_checker)
+        elif type(args['field_attributes_checker']) == dict:
+            args['field_attributes_checker']['in_table'] = in_table
+            self.addField_list.append(args['field_attributes_checker'])
 
     # 实际执行为点数据添加需要归类整合的字段
     def do_add_fields(self, addField_list):
@@ -1687,8 +1698,12 @@ class EDGAR_spatial(object):
             self.ES_logger.error('add field is empty.')
             return
         
+        print 'Adding fields...\n'
+
         for field in tqdm(addField_list):
             # 开始执行添加字段
+            # logger output
+            self.ES_logger.info('Adding %s to %s' % (field['field_name'],field['in_table']))
             try:
                 arcpy.AddField_management(field['in_table'],
                                         field['field_name'],
@@ -1721,11 +1736,13 @@ class EDGAR_spatial(object):
             return
         elif genFieldList == []:
             self.ES_logger.info('skipped add fields.')
+            return
         else:
             # TODO
             # 这里使用了属性修饰器
             # 所以又需要把setter的参数通过字典传进去......
-            self.addField_list_assembler(inPoint, self.field_attributes_checker(genFieldList))
+            temp_addField_list_assembler_dict = {'in_table': inPoint, 'field_attributes_checker': self.field_attributes_checker(genFieldList)}
+            self.addField_list_assembler = temp_addField_list_assembler_dict
             self.do_add_fields(self.addField_list_assembler)
 
     # 这个属性用于返回和生成需要整合和统计的部门和它整合后的对应类型。
@@ -1785,11 +1802,14 @@ class EDGAR_spatial(object):
     # 第一个键值对：key：‘gen_handle’；value: 一个字典其需要符合__default_gen_handle。
     # 第二个键值对：key：‘FieldsinTable’；value：一个列表其是获得的数据表中的所有已有的字段。
     @generalization_method.setter
-    def generalization_method(self, **args):
+    def generalization_method(self, args):
         self.gen_method = {}
 
         for sector, category in args['gen_handle'].items():
-            self.gen_method[category].extend(args['FieldsinTable'].index(sector))
+            if not category in self.gen_method:
+                self.gen_method[category] = [args['FieldsinTable'].index(sector)]
+            else:
+                self.gen_method[category].append(args['FieldsinTable'].index(sector))
 
     # 分类的编码
     # 返回一个分类名称的元组，元组中元素的位置代表了这个部门的编码。
@@ -1802,7 +1822,7 @@ class EDGAR_spatial(object):
         temp_table_header_fmt = ['Categories','Code']
 
         # 打印表格
-        print tabulate(list(zip(self.gen_encode, len(self.gen_encode))), headers=temp_table_header_fmt, tablefmt="grid")
+        print tabulate(list(zip(self.gen_encode, range(len(self.gen_encode)))), headers=temp_table_header_fmt, tablefmt="grid")
 
         return self.gen_encode
     
@@ -1854,7 +1874,7 @@ class EDGAR_spatial(object):
             else:
                 # 从encode中找到元素的对应位置，位置即为代码
                 temp_index = encode.index(category)
-                temp_encode += temp_index
+                temp_encode += str(temp_index)
         
         # 返回结果
         return int(temp_encode)
@@ -1875,9 +1895,14 @@ class EDGAR_spatial(object):
         results = {}
 
         # 第一步统计各个分类的部门排放总和
+        # print 'Summarizing sectoral emission percentages into categories percentages... ...\n'
+
+        # # logger output
+        # self.ES_logger.info('Summarizing sectoral emission percentages into categories percentages.')
         for category in tqdm(categories):
             # 从self.generalization_method获得需要统计加和的字段位置
             position_of_sectors = generalization_method[category]
+            # TODO
             # 神奇的解包操作
             # 这个操作需要进一步测试
             values_of_sectors = [arcpyCursor[position] for position in position_of_sectors]
@@ -1898,6 +1923,7 @@ class EDGAR_spatial(object):
         temp_category.remove('sorted_sectors')
         # 获得分类排序的编码规则
         self.generalization_encode = temp_category
+        # 注意：这里会在循环中多次被调用，考虑修改property中输出编码表格的功能
         temp_encode = self.generalization_encode
 
         # 统计分类的排放量
@@ -1940,27 +1966,37 @@ class EDGAR_spatial(object):
         with arcpy.da.UpdateCursor(inPoint, field_names) as cursor:
             for row in tqdm(cursor):
                 # 检查栅格排放值是否为0，为0则直接将所有值赋值为0
-                if row['sector_counts'] == 0:
+                if row[field_names.index('sector_counts')] == 0:
                     # 检查最大部门排放是否为0
                     # 二次确认
-                    if row['wmax'] == 0:
+                    if row[field_names.index('wmax')] == 0:
                         # 对genField给出的所有位置都赋值
                         for result in self.generalization_results:
-                            row[result] = 0
+                            row[field_names.index(result)] = 0
                 else:
                     temp_generalization = self.sectors_generalize_processe(row)
                     # 对genField给出的所有位置都赋值
                     for result, value in temp_generalization.items():
-                        row[result] = value
+                        row[field_names.index(result)] = value
                 
                 # 更新行信息
                 cursor.updateRow(row)
 
     # 对点数据中的栅格执行部门类型归类
     def sectors_generalize(self, inPoint, gen_handle, gen_fieldList):
-        # 生成需要统计的部门分类字段和排序后字段的名称
-        handle_fields = list(set(gen_handle.values()))
-        generalize_field = ['sorted_sectors'] + handle_fields
+        # 检查输入是否为空。为空则直接返回。
+        if not inPoint or not gen_handle :
+            print 'ERROR: input inPoint or gen_handle is empty. Please check the inputs.'
+
+            # logger output
+            self.ES_logger.error('sectors generalize input arguments were empty.')
+            return
+
+        if gen_fieldList == []:
+            print 'WARNING: gen_fieldList is empty. Process will not add new field to data table.'
+
+            # logger output
+            self.ES_logger.info('No new fields were added.')
 
         # 调用实际执行函数进行归类
         self.do_sectors_generalize(inPoint=inPoint, genFieldList=gen_fieldList, gen_handle=gen_handle)
@@ -2021,4 +2057,7 @@ if __name__ == '__main__':
     aaa = EDGAR_spatial.data_analyze(workspace='F:\\workplace\\geodatabase\\EDGAR_test.gdb',st_year=2010, en_year=2018)
     temp_inPoint = 'sectoral_weights_2015'
     temp_gen_fieldList = [{'field_name':'sorted_sectors','field_type':'LONG'},{'field_name':'G_TRA','field_type':'FLOAT'},{'field_name':'G_IND','field_type':'FLOAT'},{'field_name':'G_WST','field_type':'FLOAT'},{'field_name':'G_AGS','field_type':'FLOAT'},{'field_name':'G_ENE','field_type':'FLOAT'},{'field_name':'G_RCO','field_type':'FLOAT'}]
-    aaa.sectors_generalize(inPoint=temp_inPoint, gen_handle=aaa.generalization_handle, gen_fieldList=temp_gen_fieldList)
+    temp_gen_handle = {'ENE': 'G_ENE','REF_TRF': 'G_IND','IND': 'G_IND','RCO': 'G_RCO','PRO': 'G_ENE','NMM': 'G_IND','CHE': 'G_IND','IRO': 'G_IND','NFE': 'G_IND',
+'NEU': 'G_IND','PRU_SOL': 'G_IND','AGS': 'G_AGS','SWD_INC': 'G_WST','FFF': 'G_ENE','TRO_noRES': 'G_TRA','TNR_Other': 'G_TRA'}
+
+    aaa.sectors_generalize(inPoint=temp_inPoint, gen_handle=temp_gen_handle, gen_fieldList=[])
