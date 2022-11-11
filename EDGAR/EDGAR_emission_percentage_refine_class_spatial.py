@@ -1738,7 +1738,6 @@ class EDGAR_spatial(object):
             self.ES_logger.info('skipped add fields.')
             return
         else:
-            # TODO
             # 这里使用了属性修饰器
             # 所以又需要把setter的参数通过字典传进去......
             temp_addField_list_assembler_dict = {'in_table': inPoint, 'field_attributes_checker': self.field_attributes_checker(genFieldList)}
@@ -1779,7 +1778,7 @@ class EDGAR_spatial(object):
     # def generalization_fields(self, gen_handle):
     #     self.gen_field = list(gen_handle.keys()).sort() 
 
-    # 生成需要统计的部门分类结果字段
+    # 获得和设置统计的部门分类结果字段的名称
     @property
     def generalization_results(self):
         return self.gen_results
@@ -1816,6 +1815,10 @@ class EDGAR_spatial(object):
     # 元组中预留了0号位置为未分类定义。
     @property
     def generalization_encode(self):
+        return self.gen_encode
+    
+    # 打印分类和对应编码的表格
+    def print_categories(self, generalization_encode):
         print 'Following table shows the categories and assigned codes for sectoral emission generalization.'
 
         # 设置打印格式
@@ -1824,8 +1827,6 @@ class EDGAR_spatial(object):
         # 打印表格
         print tabulate(list(zip(self.gen_encode, range(len(self.gen_encode)))), headers=temp_table_header_fmt, tablefmt="grid")
 
-        return self.gen_encode
-    
     # 分类的编码方式：
     # 分类的编码方式，也就是自定义的一种排序方式，若当前的栅格中存在对应分类的部门，则记为1，若没有则记为0。
     # 同时这个编码方式也确定了部门的对应编码。利用对应编码为代号，结合计算得到占比总和，对分类进行排序并以此
@@ -1899,12 +1900,10 @@ class EDGAR_spatial(object):
 
         # # logger output
         # self.ES_logger.info('Summarizing sectoral emission percentages into categories percentages.')
-        for category in tqdm(categories):
+        for category in categories:
             # 从self.generalization_method获得需要统计加和的字段位置
             position_of_sectors = generalization_method[category]
-            # TODO
             # 神奇的解包操作
-            # 这个操作需要进一步测试
             values_of_sectors = [arcpyCursor[position] for position in position_of_sectors]
             # 将结果保存到字典中 
             results[category] = math.fsum(values_of_sectors)
@@ -1954,10 +1953,9 @@ class EDGAR_spatial(object):
         field_names = [field.name for field in fields]
         # 从已有的数据表中找到对应部门的位置，并存入统计方法中
         self.generalization_method = {'gen_handle':gen_handle, 'FieldsinTable':field_names}
-        # 生成需要统计的部门分类字段和排序后字段的名称
+        # 获得统计结果字段的名称
         self.generalization_results = gen_handle
-        field_names.extend(self.generalization_results)
-
+        
         # 注意：
         # 根据arcpy文档给出的说明：
         # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
