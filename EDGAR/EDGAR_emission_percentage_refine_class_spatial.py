@@ -22,6 +22,7 @@ import logging
 import csv
 import math
 import collections
+import numpy
 
 # 性能测试相关模块
 import cProfile
@@ -246,6 +247,9 @@ class EDGAR_spatial(object):
         # 这个参数需要用property属性提供的方法构造
         root_init.gen_field = []
 
+        # 初始化分类编码
+        root_init.generalization_encode = root_init.__default_gen_encode_list
+
         print 'EDGAR_Spatial initialized! More debug information please check the log file.'
         cls.ES_logger.info('Initialization finished.')
         # 返回初始化之后的类
@@ -346,6 +350,8 @@ class EDGAR_spatial(object):
                                'SWD_INC': 'G_WST',
                                'FFF': 'G_ENE'}
 
+    # 默认部门编码
+    __default_gen_encode_list = ['G_ENE','G_IND','G_TRA','G_RCO','G_AGS','G_WST']
 
     ############################################################################
     ############################################################################
@@ -1817,20 +1823,10 @@ class EDGAR_spatial(object):
     def generalization_encode(self):
         return self.gen_encode
     
-    # 打印分类和对应编码的表格
-    def print_categories(self, generalization_encode):
-        print 'Following table shows the categories and assigned codes for sectoral emission generalization.'
-
-        # 设置打印格式
-        temp_table_header_fmt = ['Categories','Code']
-
-        # 打印表格
-        print tabulate(list(zip(self.gen_encode, range(len(self.gen_encode)))), headers=temp_table_header_fmt, tablefmt="grid")
 
     # 分类的编码方式：
-    # 分类的编码方式，也就是自定义的一种排序方式，若当前的栅格中存在对应分类的部门，则记为1，若没有则记为0。
-    # 同时这个编码方式也确定了部门的对应编码。利用对应编码为代号，结合计算得到占比总和，对分类进行排序并以此
-    # 赋予对应位置的编码代号，得到栅格的分类排放比例排序。
+    # 分类的编码方式，也就是自定义的一种排序方式，同时这个编码方式也确定了部门的对应编码。
+    # 利用对应编码为代号，结合计算得到占比总和，对分类进行排序并赋予对应顺序的编码代号，得到栅格的分类排放比例排序。
     @generalization_encode.setter
     def generalization_encode(self, encode_list):
         if not encode_list or encode_list == []:
@@ -1842,6 +1838,16 @@ class EDGAR_spatial(object):
         
         # 将自定义的编码合并。同时将其转化为元组，保持元素的顺序。
         self.gen_encode = tuple((['uncatalogued'] + encode_list))
+
+    # 打印分类和对应编码的表格
+    def print_categories(self, generalization_encode):
+        print 'Following table shows the categories and assigned codes for sectoral emission generalization.'
+
+        # 设置打印格式
+        temp_table_header_fmt = ['Categories','Code']
+
+        # 打印表格
+        print tabulate(list(zip(self.gen_encode, range(len(self.gen_encode)))), headers=temp_table_header_fmt, tablefmt="grid")
 
     # 这里需要传入第一个参数已经统计得到的分类和对应的排放量比例字典；第二个参数自定义的编码方式
     # 函数将返回一个整数，这个整数的不同位置上的数字代表了对应部门的代码，同时整数的位数也表明了栅格部门的排放有多少个分类。
@@ -1864,14 +1870,19 @@ class EDGAR_spatial(object):
         # 从encode中找到位置然后顺序赋值
         for category, percentages in temp_sorted.items():
             # 如果分类为0，则不用赋值代码直接返回现有代码
+            # 注意这里可能会由于栅格的排放比例为极小的小数，从而产生误判，需要特殊处理
             if percentages == 0:
                 # 特殊情况：如果最大排放（第一个元素）就是0，则直接返回0。
                 # 这里主要处理可能存在的0排放格网的漏网之鱼。
                 if temp_encode == '':
                     return 0
-                # 直接返回现有代码
+                # 从现有位开始剩余位置均返回0
                 else:
-                    return int(temp_encode)
+                    temp_sorted_position = list(temp_sorted.keys()).index(category)
+                    # 之后位数赋值为0的本质就是乘上10，100，1000...这样的10的幂次的数
+                    fill_surfix = math.pow(10, len(temp_sorted) - temp_sorted_position)
+                    temp_encode = int(temp_encode) * fill_surfix
+                    return temp_encode
             else:
                 # 从encode中找到元素的对应位置，位置即为代码
                 temp_index = encode.index(category)
@@ -1921,8 +1932,6 @@ class EDGAR_spatial(object):
         temp_category = copy.deepcopy(self.generalization_results)
         temp_category.remove('sorted_sectors')
         # 获得分类排序的编码规则
-        self.generalization_encode = temp_category
-        # 注意：这里会在循环中多次被调用，考虑修改property中输出编码表格的功能
         temp_encode = self.generalization_encode
 
         # 统计分类的排放量
