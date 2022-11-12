@@ -1532,7 +1532,7 @@ class EDGAR_spatial(object):
     # 注意：
     # 这个函数需要输入一个字典，
     # 这个字典至少需要包含‘field_name’和‘field_type’两个参数，
-    # 其余arcpy AddField_management要求的参数为可选参数，这些可选参数需要
+    # 其余arcpy AddField_management要求的参数为可选参数，这些可参数需要
     # 符合arcpy的相应规定。
     # 如果不符合arcpy的规定则会返回一个空字典。
     def do_field_attributes_check(self, fieldAttributes):
@@ -2008,6 +2008,29 @@ class EDGAR_spatial(object):
         # 调用实际执行函数进行归类
         self.do_sectors_generalize(inPoint=inPoint, genFieldList=gen_fieldList, gen_handle=gen_handle)
 
+    # 处理一定时间范围内的部门排放进行类型归类
+    def year_sectors_generalize(self, year_range, gen_handle, gen_fieldList):
+        # 检查输入年份变量参数是否合规
+        if (type(year_range[0]) != int) or (type(year_range[1]) != int):
+            print 'Error! Proccessing starting year and ending year must be int value'
+            self.ES_logger.info('Year setting type error.')
+            self.ES_logger.error('Year setting error!')
+            return
+        elif min(year_range) < self.__default_start_year or max(year_range) > self.__default_end_year:
+            print 'Error! Proccessing year range out of data support! The year must containt in 1970 to 2018'
+            self.ES_logger.info('Year settings are out of range.')
+            self.ES_logger.error('Year setting error!')
+            return
+        else:
+            temp_start_year, temp_end_year = min(year_range), max(year_range)
+            self.ES_logger.info('Year has set.')
+
+        for year in range(temp_start_year, temp_end_year + 1):
+            temp_inPoint = 'sectoral_weights_%s' + year
+            self.print_start_year(year=year)
+            self.sectors_generalize(inPoint=temp_inPoint, gen_handle=gen_handle, gen_fieldList=gen_fieldList)
+            self.print_finish_year(year=year)
+        
     # 对给定区域内的栅格进行部门类型归类
     def zonal_sectors_generalize(self, inPoint, zonal_mask):
         pass
