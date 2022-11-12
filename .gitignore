@@ -8,3 +8,4 @@ EDGAR.log
 merge_sectors_profile.prof
 output.png
 test/class_init.py
+EDGAR/test_sectoral_generalization.py
