@@ -93,6 +93,22 @@ class EDGAR_spatial(object):
         # # 准备时间范围内的所有部门的栅格
         # self.all_prepare_working_rasters = []
 
+        # year_range 参数初始化部分
+        # 这里需要初始化计算的起始和结束
+        if (type(st_year) != int) or (type(en_year) != int):
+            print 'Error! Proccessing starting year and ending year must be int value'
+            self.ES_logger.info('Year setting type error.')
+            self.ES_logger.error('Year setting error!')
+            return
+        elif st_year < self.__default_start_year or en_year > self.__default_end_year:
+            print 'Error! Proccessing year range out of data support! The year must containt in 1970 to 2018'
+            self.ES_logger.info('Year settings are out of range.')
+            self.ES_logger.error('Year setting error!')
+            return
+        else:
+            self.year_range = (st_year, en_year)
+            self.ES_logger.info('Year has set.')
+
         # 需要操作的栅格
         self.working_rasters = []
 
@@ -128,7 +144,7 @@ class EDGAR_spatial(object):
     @classmethod
     def merge_sectors(cls, workspace, background_flag=True, background_flag_label='BA', background_raster='background', sectors={}, colormap={}, st_year=1970, en_year=2018, log_path='EDGAR.log'):
         # 先调用init构造函数初始化类
-        root_init = cls(workspace=workspace, log_path=log_path)
+        root_init = cls(workspace=workspace, log_path=log_path, st_year=st_year, en_year=en_year)
 
         # 数据库过滤标签
         root_init.raster_filter_wildcard = []
@@ -175,22 +191,6 @@ class EDGAR_spatial(object):
             root_init.sectors_colormap_handle = copy.deepcopy(colormap)
             cls.ES_logger.info('EDGAR_sectors_colormap has set.')
 
-        # year_range 参数初始化部分
-        # 这里需要初始化计算的起始和结束
-        if (type(st_year) != int) or (type(en_year) != int):
-            print 'Error! Proccessing starting year and ending year must be int value'
-            cls.ES_logger.info('Year setting type error.')
-            cls.ES_logger.error('Year setting error!')
-            return
-        elif st_year < root_init.__default_start_year or en_year > root_init.__default_end_year:
-            print 'Error! Proccessing year range out of data support! The year must containt in 1970 to 2018'
-            cls.ES_logger.info('Year settings are out of range.')
-            cls.ES_logger.error('Year setting error!')
-            return
-        else:
-            root_init.year_range = (st_year, en_year)
-            cls.ES_logger.info('Year has set.')
-
         # background 参数初始化部分
         # 这里要明确处理的数据是否包含背景0值
         # 检查并赋值label
@@ -234,7 +234,7 @@ class EDGAR_spatial(object):
     @classmethod
     def data_analyze(cls, workspace, st_year=1970, en_year=2018, log_path='EDGAR.log'):
         # 先调用init构造函数初始化类
-        root_init = cls(workspace=workspace,st_year=1970, en_year=2018, log_path=log_path)
+        root_init = cls(workspace=workspace,st_year=st_year, en_year=en_year, log_path=log_path)
 
         # 整合部门到分类的整合方式
         # 这个参数需要用property属性提供的方法构造
@@ -1337,8 +1337,7 @@ class EDGAR_spatial(object):
         del outCon
 
         # 生成中心主要排放部门栅格
-        outMain = arcpy.Raster(temp_center_mask_path) * \
-            arcpy.Raster(temp_main_sector)
+        outMain = arcpy.Raster(temp_center_mask_path) * arcpy.Raster(temp_main_sector)
 
         # Save the output
         temp_center_main = 'center_main_sector_%s_%s' % (temp_center, year)
@@ -1348,8 +1347,7 @@ class EDGAR_spatial(object):
         del outMain
 
         # 生成中心主要排放部门比重栅格
-        outMainWeight = arcpy.Raster(
-            temp_center_mask_path) * arcpy.Raster(temp_main_sector_weight)
+        outMainWeight = arcpy.Raster(temp_center_mask_path) * arcpy.Raster(temp_main_sector_weight)
 
         # Save the output
         temp_center_main_weight = 'center_main_sector_weight_%s_%s' % (
@@ -1380,6 +1378,7 @@ class EDGAR_spatial(object):
             self.ES_logger.info('Year has set.')
 
         # 列出总排放量栅格
+        # 需要区分栅格中的总量数据是否已经进行了对数换算
         if bool(isLog) == True:
             temp_wild_card = ['total_emission_%s_log' %
                               s for s in range(temp_start_year, temp_end_year+1)]
@@ -1694,6 +1693,10 @@ class EDGAR_spatial(object):
             args['field_attributes_checker']['in_table'] = in_table
             self.addField_list.append(args['field_attributes_checker'])
 
+    @addField_list_assembler.deleter
+    def addField_list_assembler(self):
+        self.addField_list = []
+
     # 实际执行为点数据添加需要归类整合的字段
     def do_add_fields(self, addField_list):
         # 检查添加的字段列表是不是空
@@ -1749,6 +1752,7 @@ class EDGAR_spatial(object):
             temp_addField_list_assembler_dict = {'in_table': inPoint, 'field_attributes_checker': self.field_attributes_checker(genFieldList)}
             self.addField_list_assembler = temp_addField_list_assembler_dict
             self.do_add_fields(self.addField_list_assembler)
+            del self.addField_list_assembler
 
     # 这个属性用于返回和生成需要整合和统计的部门和它整合后的对应类型。
     # 该属性返回一个字典，字典的键‘key’为需要整合的部门，值‘value’为整合后对应的类型。
@@ -2031,9 +2035,102 @@ class EDGAR_spatial(object):
             self.sectors_generalize(inPoint=temp_inPoint, gen_handle=gen_handle, gen_fieldList=gen_fieldList)
             self.print_finish_year(year=year)
         
+    #TODO
     # 对给定区域内的栅格进行部门类型归类
-    def zonal_sectors_generalize(self, inPoint, zonal_mask):
-        pass
+    # 第一步点数据转栅格
+    # 第二步栅格*中心mask
+    # 第二步（1）提取最大分类
+    # 第三步zonal statistic输出结果
+
+    def sorted_categories_rasterize(self, year):
+        temp_point = 'sectoral_weights_%s' % year
+        save_raster_categories = 'sorted_categories_%s' % year
+
+        # 用wraster列转栅格
+        try:
+            arcpy.PointToRaster_conversion(temp_point,
+                                           'wraster',
+                                           save_raster_categories,
+                                           'MOST_FREQUENT',
+                                           '#',
+                                           '0.1')
+
+            print 'Create categories sorts raster: %s' % temp_point
+
+            # logger output
+            self.ES_logger.debug('Categories sorts rasterize finished:%s' % year)
+        except:
+            print 'Create categories sorts raster field: %s' % temp_point
+
+            # logger output
+            self.ES_logger.error('categories sorts rasterize failed:%s' % year)
+
+            print arcpy.GetMessages()
+
+    # 这里inRaster是需要提取数据的原始栅格；inZone是用来分类的区域范围；center_range是生成分类兴趣区域的标准；outPath是最后csv文件的输出位置
+    def zonal_sectors_generalize(self, year_range, inZone, center_range, zoneField, outPath):
+        # 获得保存路径
+        temp_out_csv_path = os.path.abspath(outPath)
+
+        # 生成中心点
+        temp_center = str((min(center_range)+max(center_range))/2).replace('.', '')
+
+        # 检查所用的分类区域范围是否存在
+        if not (arcpy.Exists(inZone)):
+            print 'Error: input inZone not found.'
+
+            # logger output
+            self.ES_logger.error('input inZone does not exist.')
+            return
+
+        for yr in tqdm(range(min(year_range), max(year_range)+1)):
+            # 生成需要提取数据的原始栅格
+            # 生成需要提取数据的inRaster名称
+            temp_inRaster = 'sorted_categories_%s' % yr
+            # 检查所用的中心mask是否存在
+            if not (arcpy.Exists(temp_inRaster)):
+                print 'Error: input sorted categories raster not found.'
+
+                # logger output
+                self.ES_logger.error('input sorted categories raster does not exist.')
+
+                return
+
+            # 生成中心的栅格名称
+            # 生成提取所用的中心mask名称
+            temp_mask_inRaster = 'center_mask_%s_%s' % (temp_center, yr)
+            # 检查所用的中心mask是否存在
+            if not (arcpy.Exists(temp_mask_inRaster)):
+                print 'Error: input mask raster not found.'
+
+                # logger output
+                self.ES_logger.error('input mask raster does not exist.')
+
+                return
+
+            temp_outTable_path = 'table_sorted_categories_%s_%s' % (temp_center, yr)
+
+            # 这里要注意！！！
+            # 为了提取最大的分类，这里采用了“//”整除计算，整除100000会获得最高位的数值。
+            temp_zonalRaster = (Raster(temp_inRaster) * Raster(temp_mask_inRaster)) // 100000
+
+            self.do_zonal_statistic_to_table(year=yr,
+                                            inZoneData=inZone,
+                                            zoneField=zoneField,
+                                            inValueRaster=temp_zonalRaster,
+                                            outTable=temp_outTable_path)
+
+            # logger output
+            self.ES_logger.debug('Zonal statistics finished:%s' % temp_inRaster)
+
+            temp_outCsv = os.path.join(temp_out_csv_path, temp_inRaster+'.csv')
+
+            self.do_zonal_table_to_csv(table=temp_outTable_path,
+                                       year=yr,
+                                       outPath=temp_outCsv)
+
+            # logger output
+            self.ES_logger.debug('Zonal statitics convert to csv.')
 
 # ======================================================================
 # ======================================================================
@@ -2087,7 +2184,6 @@ if __name__ == '__main__':
     aaa = EDGAR_spatial.data_analyze(workspace='F:\\workplace\\geodatabase\\EDGAR_test.gdb',st_year=2010, en_year=2018)
     temp_inPoint = 'sectoral_weights_2015'
     temp_gen_fieldList = [{'field_name':'sorted_sectors','field_type':'LONG'},{'field_name':'G_TRA','field_type':'FLOAT'},{'field_name':'G_IND','field_type':'FLOAT'},{'field_name':'G_WST','field_type':'FLOAT'},{'field_name':'G_AGS','field_type':'FLOAT'},{'field_name':'G_ENE','field_type':'FLOAT'},{'field_name':'G_RCO','field_type':'FLOAT'}]
-    temp_gen_handle = {'ENE': 'G_ENE','REF_TRF': 'G_IND','IND': 'G_IND','RCO': 'G_RCO','PRO': 'G_ENE','NMM': 'G_IND','CHE': 'G_IND','IRO': 'G_IND','NFE': 'G_IND',
-'NEU': 'G_IND','PRU_SOL': 'G_IND','AGS': 'G_AGS','SWD_INC': 'G_WST','FFF': 'G_ENE','TRO_noRES': 'G_TRA','TNR_Other': 'G_TRA'}
+    temp_gen_handle = {'ENE': 'G_ENE','REF_TRF': 'G_IND','IND': 'G_IND','RCO': 'G_RCO','PRO': 'G_ENE','NMM': 'G_IND','CHE': 'G_IND','IRO': 'G_IND','NFE': 'G_IND','NEU': 'G_IND','PRU_SOL': 'G_IND','AGS': 'G_AGS','SWD_INC': 'G_WST','FFF': 'G_ENE','TRO_noRES': 'G_TRA','TNR_Other': 'G_TRA'}
 
     aaa.sectors_generalize(inPoint=temp_inPoint, gen_handle=temp_gen_handle, gen_fieldList=[])
