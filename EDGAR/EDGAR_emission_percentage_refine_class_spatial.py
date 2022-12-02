@@ -58,6 +58,8 @@ class EDGAR_spatial(object):
     def __init__(self, workspace, background_flag=True, background_flag_label='BA', background_raster='background', sectors={}, colormap={}, st_year=1970, en_year=2018, log_path='EDGAR.log'):
         # 初始化logger记录类的全体工作
         # ES_logger为可使用的logging实例
+        # 类使用的logger
+        self.ES_logger = logging.getLogger()
         self.ES_logger.setLevel(level=logging.DEBUG)
         ES_logger_file = logging.FileHandler(log_path)
         ES_logger_formatter = logging.Formatter(
@@ -158,18 +160,18 @@ class EDGAR_spatial(object):
         # 为EDGAR_sectors参数赋值
         if type(sectors) != dict:
             print 'Error! EDGAR_sectors only accept a dictionary type input.'
-            cls.ES_logger.info(
+            root_init.ES_logger.info(
                 'EDGAR_sectors only accept a dictionary type input.')
-            cls.ES_logger.error('EDGAR_sectors type error.')
+            root_init.ES_logger.error('EDGAR_sectors type error.')
             return
         elif sectors == {}:
             root_init.sectors_handle = copy.deepcopy(
-                cls.__default_EDGAR_sectors)
-            cls.ES_logger.info('This run use default EDGAR sectors setting.')
-            cls.ES_logger.info('EDGAR_sectors has set.')
+                root_init.__default_EDGAR_sectors)
+            root_init.ES_logger.info('This run use default EDGAR sectors setting.')
+            root_init.ES_logger.info('EDGAR_sectors has set.')
         else:
             root_init.sectors_handle = copy.deepcopy(sectors)
-            cls.ES_logger.info('EDGAR_sectors has set.')
+            root_init.ES_logger.info('EDGAR_sectors has set.')
 
         # EDGAR_sectors_colormap 参数初始化部分
         # 检查参数输入类型
@@ -177,19 +179,19 @@ class EDGAR_spatial(object):
         # 为EDGAR_sectors_colormap 参数赋值
         if type(colormap) != dict:
             print 'Error! EDGAR_sectors_colormap only accept a dictionary type input.'
-            cls.ES_logger.info(
+            root_init.ES_logger.info(
                 'EDGAR_sectors_colormap only accept a dictionary type input.')
-            cls.ES_logger.error('EDGAR_sectors_colormap type error.')
+            root_init.ES_logger.error('EDGAR_sectors_colormap type error.')
             return
         elif colormap == {}:
             root_init.sectors_colormap_handle = copy.deepcopy(
-                cls.__default_EDGAR_sectors_colormap)
-            cls.ES_logger.info(
+                root_init.__default_EDGAR_sectors_colormap)
+            root_init.ES_logger.info(
                 'This run use default EDGAR sectors colormap setting.')
-            cls.ES_logger.info('EDGAR_sectors_colormap has set.')
+            root_init.ES_logger.info('EDGAR_sectors_colormap has set.')
         else:
             root_init.sectors_colormap_handle = copy.deepcopy(colormap)
-            cls.ES_logger.info('EDGAR_sectors_colormap has set.')
+            root_init.ES_logger.info('EDGAR_sectors_colormap has set.')
 
         # background 参数初始化部分
         # 这里要明确处理的数据是否包含背景0值
@@ -199,18 +201,18 @@ class EDGAR_spatial(object):
                 root_init.background = {'flag': bool(background_flag),
                                         'label': background_flag_label,
                                         'raster': background_raster}
-                cls.ES_logger.debug('Background has set.')
+                root_init.ES_logger.debug('Background has set.')
             else:
                 print 'Error: Please check background flag or label or raster.'
-                cls.ES_logger.error('Background setting error!')
+                root_init.ES_logger.error('Background setting error!')
                 return
         elif bool(background_flag) == False:
             root_init.background = {'flag': bool(background_flag),
                                     'label': '',
                                     'raster': ''}
-            cls.ES_logger.debug('Background has set.')
+            root_init.ES_logger.debug('Background has set.')
         else:
-            cls.ES_logger.error('Background setting error!')
+            root_init.ES_logger.error('Background setting error!')
             return
 
         # raster_filter 参数初始化部分
@@ -222,10 +224,10 @@ class EDGAR_spatial(object):
                                   'start_year': root_init.year_range[0],
                                   'end_year': root_init.year_range[1]}
         root_init.filter_label = temp_init_filter_label
-        cls.ES_logger.info('filter_label has set.')
+        root_init.ES_logger.info('filter_label has set.')
 
         print 'EDGAR_Spatial initialized! More debug information please check the log file.'
-        cls.ES_logger.info('Initialization finished.')
+        root_init.ES_logger.info('Initialization finished.')
 
         # 返回初始化之后的类
         return root_init
@@ -249,9 +251,15 @@ class EDGAR_spatial(object):
 
         # 初始化分类编码
         root_init.generalization_encode = root_init.__default_gen_encode_list
+        
+        # 初始化排放峰值
+        root_init.emission_peaks_time_series = {}
+
+        # 初始化排放峰值总和
+        root_init.emission_peaks_time_series_name_list = []
 
         print 'EDGAR_Spatial initialized! More debug information please check the log file.'
-        cls.ES_logger.info('Initialization finished.')
+        root_init.ES_logger.info('Initialization finished.')
         # 返回初始化之后的类
         return root_init
 
@@ -261,8 +269,6 @@ class EDGAR_spatial(object):
     # Default class variances
     ############################################################################
     ############################################################################
-    # 类使用的logger
-    ES_logger = logging.getLogger()
 
     # Arcgis workspace
     __workspace = ''
@@ -2042,14 +2048,14 @@ class EDGAR_spatial(object):
     # 第二步（1）提取最大分类
     # 第三步zonal statistic输出结果
 
-    def sorted_categories_rasterize(self, year):
+    def sorted_categories_rasterize(self, year, fieldName):
         temp_point = 'sectoral_weights_%s' % year
         save_raster_categories = 'sorted_categories_%s' % year
 
         # 用wraster列转栅格
         try:
             arcpy.PointToRaster_conversion(temp_point,
-                                           'wraster',
+                                           fieldName,
                                            save_raster_categories,
                                            'MOST_FREQUENT',
                                            '#',
@@ -2109,10 +2115,12 @@ class EDGAR_spatial(object):
                 return
 
             temp_outTable_path = 'table_sorted_categories_%s_%s' % (temp_center, yr)
+            temp_outRaster_path = 'raster_sorted_categories_%s_%s' % (temp_center, yr)
 
             # 这里要注意！！！
             # 为了提取最大的分类，这里采用了“//”整除计算，整除100000会获得最高位的数值。
             temp_zonalRaster = (Raster(temp_inRaster) * Raster(temp_mask_inRaster)) // 100000
+            temp_zonalRaster.save(temp_outRaster_path)
 
             self.do_zonal_statistic_to_table(year=yr,
                                             inZoneData=inZone,
@@ -2123,7 +2131,7 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.debug('Zonal statistics finished:%s' % temp_inRaster)
 
-            temp_outCsv = os.path.join(temp_out_csv_path, temp_inRaster+'.csv')
+            temp_outCsv = os.path.join(temp_out_csv_path, 'sorted_categories_%s_%s.csv' % (temp_center, yr))
 
             self.do_zonal_table_to_csv(table=temp_outTable_path,
                                        year=yr,
@@ -2132,6 +2140,123 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.debug('Zonal statitics convert to csv.')
 
+    # @property
+    # def center_group(self):
+    #     return self.center_group_list
+
+    # @center_group.setter
+    # def center_group(self):
+    #     pass
+
+    @property
+    def emission_center_time_series(self):
+        return self.emission_center_time_series
+
+    @emission_center_time_series.setter
+    def emission_center_time_series(self, emission_peak_assembler):
+        pass
+
+    @emission_center_time_series.deleter
+    def emission_center_time_series(self):
+        pass
+
+    # 这个类用于表示排放中心
+    class emission_center(object):
+        def __init__(self, outter_class, center_name='default_center'):
+            # 获得外部类的属性
+            self.outter_class = outter_class
+
+            # 中心的名字
+            self.name = ''
+
+            # 排放量峰值，一个排序字典，用于区别不同年份的排放峰值区域。
+            self.center_peaks = {}
+            
+            # 用于生成最终列表的暂时缓冲
+            self.center_peaks_buffer = {}
+
+        def emission_peak_assembler(self, emission_peak): 
+            if not emission_peak:
+                print "Error: emission peak is empty."
+
+                # logger output
+                self.outter_class.ES_logger.error('Emission peak is emtpy.')
+                return
+
+            self.center_peaks_buffer[emission_peak['year']] = emission_peak
+
+        def emission_peak(self, emission_peak_range, year):
+            # 排放中心变量检查
+            if type(emission_peak_range) == tuple:
+                if len(emission_peak_range) == 2:
+                    temp_peak_upper_bound = max(emission_peak_range)
+                    temp_peak_lower_bound = min(emission_peak_range)
+                    temp_peak = str((temp_peak_lower_bound+temp_peak_upper_bound)/2).replace('.', '')
+                else:
+                    print "Error: emission peak requir maximum and minimum range."
+
+                    # logger output
+                    self.outter_class.ES_logger.error('Emission peak range error.')
+                    return
+            else:
+                print "Error: emission peak range require a tuple. Please check the input."
+
+            # 年份变量检查
+            if year < self.outter_class.start_year or year > self.outter_class.end_year:
+                print "Error: emission peak requir a correct year."
+
+                # logger output
+                self.outter_class.ES_logger.error('Emission peak year error.')
+                return
+
+            return {'peak_max': temp_peak_upper_bound,
+                    'peak_min': temp_peak_lower_bound,
+                    'peak_name': temp_peak,
+                    'year': year}
+
+        def center(self):
+            return self.center_peaks
+
+        def generate_center(self):
+            # 检查center_peaks是否存在
+            # 存在时则将其按年份排序，再组成一个排序字典
+            if not self.center_peaks:
+                self.center_peaks = collections.OrderedDict(sorted(self.center_peaks_buffer, key=lambda t:t[0]))
+            # 若不存在则直接报错并返回
+            else:
+                print 'ERROR: center peak is empty, please run emission_center.emission_peak_assembler to add peaks.'
+
+                # logger output
+                self.outter_class.ES_logger.error('center peaks is empty.')
+                return
+        
+        def remove_peak(self, year):
+            if not year or year > self.outter_class.end_year or year < self.outter_class.start_year:
+                print 'ERROR: removing peak failed, please assign a correct year to index the peak.'
+
+                # logger output
+                self.outter_class.ES_logger.error('Input year is empty.')
+                return
+            
+            self.center_peaks.pop(year)
+            
+        def edit_peak(self, emission_peak):
+            # 从peak_buffer 中删除待修改数据
+            self.center_peaks_buffer.pop(emission_peak['year'])
+
+            # 将新数据添加入assembler
+            self.emission_peak_assembler(emission_peak)
+
+            # 更新center的内容
+            self.generate_center()
+
+
+
+
+
+    # 函数可以将同年份的不同中心进行合并，并输出栅格合并结果
+    def merger_center_into_year(self, year):
+        pass
 # ======================================================================
 # ======================================================================
 # TEST SCRIPT
