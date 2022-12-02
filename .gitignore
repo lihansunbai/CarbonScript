@@ -10,3 +10,5 @@ output.png
 test/class_init.py
 EDGAR/test_sectoral_generalization.py
 EDGAR/test_center_extract copy.py
+EDGAR/test_innerclass.py
+EDGAR/test_orderdict.py
