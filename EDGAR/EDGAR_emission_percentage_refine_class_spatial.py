@@ -33,8 +33,7 @@ __metaclass__ = type
 # ======================================================================
 # Memorandum:
 # 备忘录：
-#   1. 考虑是否需要在构造函数中包含 arcpy 的几个环境变量的引入；
-#   2. 计算字段的构造方法
+#       1. TODO
 # ======================================================================
 # ======================================================================
 
@@ -43,7 +42,6 @@ __metaclass__ = type
 # SPATIAL OPERATIONS CLASS
 # ======================================================================
 # ======================================================================
-
 
 class EDGAR_spatial(object):
     ############################################################################
@@ -232,7 +230,7 @@ class EDGAR_spatial(object):
         # 返回初始化之后的类
         return root_init
 
-    # 只进行排放量栅格数量峰值中心提取时的构造函数
+    # 只进行排放量栅格数量峰值中心提取和其他分析操作时的构造函数
     @classmethod
     def data_analyze(cls, workspace, st_year=1970, en_year=2018, log_path='EDGAR.log'):
         # 先调用init构造函数初始化类
@@ -257,6 +255,9 @@ class EDGAR_spatial(object):
 
         # 初始化排放峰值总和
         root_init.emission_peaks_time_series_name_list = []
+
+        # 初始化排放中心的列表
+        root_init.center_list = []
 
         print 'EDGAR_Spatial initialized! More debug information please check the log file.'
         root_init.ES_logger.info('Initialization finished.')
@@ -361,8 +362,53 @@ class EDGAR_spatial(object):
 
     ############################################################################
     ############################################################################
-    # 参数设定部分
+    # 通用参数、属性和方法
     ############################################################################
+    ############################################################################
+
+    # 想要自定义或者修改数据处理的年份时间范围的特殊property函数
+    @property
+    def year_range(self):
+        return (self.start_year, self.end_year)
+
+    @year_range.setter
+    def year_range(self, start_end=(1970, 2018)):
+        self.start_year, self.end_year = start_end
+
+        # logger output
+        self.ES_logger.debug('year range changed to:%s to %s' % start_end)
+
+    def print_start_year(self, year):
+
+        # logger output
+        self.ES_logger.debug('Processing start of year %s' % year)
+
+        print '=============================='
+        print '=============================='
+        print 'Processing start of year %s' % year
+        print '=============================='
+        print '=============================='
+
+    def print_finish_year(self, year):
+
+        # logger output
+        self.ES_logger.debug('Finished processing data of year %s' % year)
+
+        print '=============================='
+        print '=============================='
+        print 'Congratulations!'
+        print 'Finished processing data of year %s' % year
+        print '=============================='
+        print '=============================='
+
+    ############################################################################
+    ############################################################################
+    # EDGAR 原始数据合并为点数据部分
+    ############################################################################
+    ############################################################################
+
+    ############################################################################
+    # EDGAR 原始数据合并参数设定
     ############################################################################
     # 想要自定义或者修改处理的部门排放需要使用特殊的property函数
     @property
@@ -400,18 +446,6 @@ class EDGAR_spatial(object):
         # logger output
         self.ES_logger.debug(
             'EDGAR_sectors_colormap changed to:%s' % sectors_colormap)
-
-    # 想要自定义或者修改数据处理的年份时间范围的特殊property函数
-    @property
-    def year_range(self):
-        return (self.start_year, self.end_year)
-
-    @year_range.setter
-    def year_range(self, start_end=(1970, 2018)):
-        self.start_year, self.end_year = start_end
-
-        # logger output
-        self.ES_logger.debug('year range changed to:%s to %s' % start_end)
 
     # 栅格图像背景值设置和查看属性/函数
     @property
@@ -727,9 +761,7 @@ class EDGAR_spatial(object):
         return sectors_rasters_dict
 
     ############################################################################
-    ############################################################################
-    # 实际数据计算相关函数/方法
-    ############################################################################
+    # 实EDGAR 原始数据合并际数据计算相关函数/方法
     ############################################################################
     # 生成需要计算的栅格列表
     def prepare_raster(self):
@@ -1215,7 +1247,6 @@ class EDGAR_spatial(object):
 
     # 处理给定年份范围内的工作
     # 批量处理可以使用这个函数
-
     def proccess_year(self, start_year, end_year):
         # 首先需要列出所有需要使用到的栅格
         self.prepare_raster()
@@ -1233,29 +1264,15 @@ class EDGAR_spatial(object):
     def proccess_all_year(self):
         self.proccess_year(start_year=1970, end_year=2018)
 
-    def print_start_year(self, year):
-
-        # logger output
-        self.ES_logger.debug('Processing start of year %s' % year)
-
-        print '=============================='
-        print '=============================='
-        print 'Processing start of year %s' % year
-        print '=============================='
-        print '=============================='
-
-    def print_finish_year(self, year):
-
-        # logger output
-        self.ES_logger.debug('Finished processing data of year %s' % year)
-
-        print '=============================='
-        print '=============================='
-        print 'Congratulations!'
-        print 'Finished processing data of year %s' % year
-        print '=============================='
-        print '=============================='
-
+    ############################################################################
+    ############################################################################
+    # 排放峰值和排放中心分析
+    ############################################################################
+    ############################################################################
+    
+    ############################################################################
+    # 排放峰值和排放中心分析计算相关函数/方法
+    ############################################################################
     # 这个函数实际执行从一个年份中提取中心操作
     # 这里要求可以center_range是一个元组
     def do_extract_center_area(self, center_range, total_emission_raster, year):
@@ -1665,6 +1682,15 @@ class EDGAR_spatial(object):
         
         return fields
             
+    ############################################################################
+    ############################################################################
+    # 部门排放合并至分类排放
+    ############################################################################
+    ############################################################################
+
+    ############################################################################
+    # 部门排放合并至分类排放参数设定
+    ############################################################################
     # 如果需要添加多个字段，则可以利用以下这个函数生成一个待添加字段列表
     # 直接调用这个函数将返回现有的字段列表
     # 生成列表时，则需要传入一个字典，字典中需要包括两个参数：
@@ -1833,7 +1859,6 @@ class EDGAR_spatial(object):
     def generalization_encode(self):
         return self.gen_encode
     
-
     # 分类的编码方式：
     # 分类的编码方式，也就是自定义的一种排序方式，同时这个编码方式也确定了部门的对应编码。
     # 利用对应编码为代号，结合计算得到占比总和，对分类进行排序并赋予对应顺序的编码代号，得到栅格的分类排放比例排序。
@@ -1849,6 +1874,9 @@ class EDGAR_spatial(object):
         # 将自定义的编码合并。同时将其转化为元组，保持元素的顺序。
         self.gen_encode = tuple((['uncatalogued'] + encode_list))
 
+    ############################################################################
+    # 部门排放合并至分类排放相关函数/方法
+    ############################################################################
     # 打印分类和对应编码的表格
     def print_categories(self, generalization_encode):
         print 'Following table shows the categories and assigned codes for sectoral emission generalization.'
@@ -1956,7 +1984,6 @@ class EDGAR_spatial(object):
         # 返回结果字典
         return cate_percents
 
-
     # 实际执行单个栅格的部门类型归类
     # 这里传入的genFieldList参数是指需要在数据表中添加的用于结果生成的字段组成的列表。所以，列表中应该由若干字典组成。
     # 这些字典中的键值这里需要满足field_attributes_checker的条件，也就是要满足arcpy为数据表添加字段的要求。
@@ -2041,13 +2068,6 @@ class EDGAR_spatial(object):
             self.sectors_generalize(inPoint=temp_inPoint, gen_handle=gen_handle, gen_fieldList=gen_fieldList)
             self.print_finish_year(year=year)
         
-    #TODO
-    # 对给定区域内的栅格进行部门类型归类
-    # 第一步点数据转栅格
-    # 第二步栅格*中心mask
-    # 第二步（1）提取最大分类
-    # 第三步zonal statistic输出结果
-
     def sorted_categories_rasterize(self, year, fieldName):
         temp_point = 'sectoral_weights_%s' % year
         save_raster_categories = 'sorted_categories_%s' % year
@@ -2140,28 +2160,17 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.debug('Zonal statitics convert to csv.')
 
-    # @property
-    # def center_group(self):
-    #     return self.center_group_list
-
-    # @center_group.setter
-    # def center_group(self):
-    #     pass
-
-    @property
-    def emission_center_time_series(self):
-        return self.emission_center_time_series
-
-    @emission_center_time_series.setter
-    def emission_center_time_series(self, emission_peak_assembler):
-        pass
-
-    @emission_center_time_series.deleter
-    def emission_center_time_series(self):
-        pass
-
+    ############################################################################
+    ############################################################################
+    # 合并同一年不同排放中心至一个栅格
+    ############################################################################
+    ############################################################################
+    # TODO
+    # 类只负责存储peaks和center的数据，管理数据的方法和操作都依赖于外部类的方法实现。
     # 这个类用于表示排放中心
     class emission_center(object):
+        # 初始化函数
+        # 创建一个emission_center类必须提供一个名称用于标识类
         def __init__(self, outter_class, center_name='default_center'):
             # 获得外部类的属性
             self.outter_class = outter_class
@@ -2175,6 +2184,7 @@ class EDGAR_spatial(object):
             # 用于生成最终列表的暂时缓冲
             self.center_peaks_buffer = {}
 
+        # 将emission_peak转换为center的元素
         def emission_peak_assembler(self, emission_peak): 
             if not emission_peak:
                 print "Error: emission peak is empty."
@@ -2185,38 +2195,7 @@ class EDGAR_spatial(object):
 
             self.center_peaks_buffer[emission_peak['year']] = emission_peak
 
-        def emission_peak(self, emission_peak_range, year):
-            # 排放中心变量检查
-            if type(emission_peak_range) == tuple:
-                if len(emission_peak_range) == 2:
-                    temp_peak_upper_bound = max(emission_peak_range)
-                    temp_peak_lower_bound = min(emission_peak_range)
-                    temp_peak = str((temp_peak_lower_bound+temp_peak_upper_bound)/2).replace('.', '')
-                else:
-                    print "Error: emission peak requir maximum and minimum range."
-
-                    # logger output
-                    self.outter_class.ES_logger.error('Emission peak range error.')
-                    return
-            else:
-                print "Error: emission peak range require a tuple. Please check the input."
-
-            # 年份变量检查
-            if year < self.outter_class.start_year or year > self.outter_class.end_year:
-                print "Error: emission peak requir a correct year."
-
-                # logger output
-                self.outter_class.ES_logger.error('Emission peak year error.')
-                return
-
-            return {'peak_max': temp_peak_upper_bound,
-                    'peak_min': temp_peak_lower_bound,
-                    'peak_name': temp_peak,
-                    'year': year}
-
-        def center(self):
-            return self.center_peaks
-
+        # 将临时的emission_peak元素组合成center
         def generate_center(self):
             # 检查center_peaks是否存在
             # 存在时则将其按年份排序，再组成一个排序字典
@@ -2230,29 +2209,71 @@ class EDGAR_spatial(object):
                 self.outter_class.ES_logger.error('center peaks is empty.')
                 return
         
-        def remove_peak(self, year):
-            if not year or year > self.outter_class.end_year or year < self.outter_class.start_year:
-                print 'ERROR: removing peak failed, please assign a correct year to index the peak.'
+    # 返回完整的排放中心数据
+    def print_center(self, emission_center):
+        if not emission_center or not emission_center.center_list:
+            print 'Center list has not been create in this work.'
+            return
+        else:
+            return emission_center.center_peaks
+
+    # 删除center中的某个peak
+    # 只需要提供年份即可
+    def remove_peak(self, emission_center, year):
+        if not year or year > self.end_year or year < self.start_year:
+            print 'ERROR: removing peak failed, please assign a correct year to index the peak.'
+
+            # logger output
+            self.ES_logger.error('Input year is empty.')
+            return
+        
+        emission_center.center_peaks.pop(year)
+        
+    # 修改某个peak的内容
+    def edit_peak(self, emission_center, emission_peak):
+        # 从peak_buffer 中删除待修改数据
+        emission_center.center_peaks_buffer.pop(emission_peak['year'])
+
+        # 将新数据添加入assembler
+        emission_center.emission_peak_assembler(emission_peak)
+
+        # 更新center的内容
+        emission_center.generate_center()
+    
+    # 利用排放范围和年份时间构建排放峰值
+    def emission_peak(self, emission_peak_range, year):
+            # 排放中心变量检查
+            if type(emission_peak_range) == tuple:
+                if len(emission_peak_range) == 2:
+                    temp_peak_upper_bound = max(emission_peak_range)
+                    temp_peak_lower_bound = min(emission_peak_range)
+                    temp_peak = str((temp_peak_lower_bound+temp_peak_upper_bound)/2).replace('.', '')
+                else:
+                    print "Error: emission peak requir maximum and minimum range."
+
+                    # logger output
+                    self.ES_logger.error('Emission peak range error.')
+                    return
+            else:
+                print "Error: emission peak range require a tuple. Please check the input."
+
+            # 年份变量检查
+            if year < self.start_year or year > self.end_year:
+                print "Error: emission peak requir a correct year."
 
                 # logger output
-                self.outter_class.ES_logger.error('Input year is empty.')
+                self.ES_logger.error('Emission peak year error.')
                 return
-            
-            self.center_peaks.pop(year)
-            
-        def edit_peak(self, emission_peak):
-            # 从peak_buffer 中删除待修改数据
-            self.center_peaks_buffer.pop(emission_peak['year'])
 
-            # 将新数据添加入assembler
-            self.emission_peak_assembler(emission_peak)
-
-            # 更新center的内容
-            self.generate_center()
+            # 这里实际上定义了emission_peak的结构。
+            return {'peak_max': temp_peak_upper_bound,
+                    'peak_min': temp_peak_lower_bound,
+                    'peak_name': temp_peak,
+                    'year': year}
 
 
-
-
+    def create_center(self, emission_name, emission_peak):
+        pass
 
     # 函数可以将同年份的不同中心进行合并，并输出栅格合并结果
     def merger_center_into_year(self, year):
