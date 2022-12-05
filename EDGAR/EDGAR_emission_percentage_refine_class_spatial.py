@@ -1271,11 +1271,449 @@ class EDGAR_spatial(object):
     ############################################################################
     
     ############################################################################
+    # emisison_center 类和类相关的操作函数
+    ############################################################################
+
+    ############################################################################
+    # 类定义
+    ############################################################################
+    class emission_center(object):
+        # 初始化函数
+        # 创建一个emission_center类必须提供一个名称用于标识类
+        def __init__(self, center_name='default_center'):
+            # 获得外部类的属性
+            self.outter_class = outter_class
+
+            # 中心的名字
+            self.name = ''
+
+            # 排放量峰值，一个排序字典，用于区别不同年份的排放峰值区域。
+            self.center_peaks = {}
+            
+            # 用于生成最终列表的暂时缓冲
+            self.center_peaks_buffer = {}
+
+        # 将emission_peak转换为center的元素
+        def emission_peak_assembler(self, emission_peak): 
+            if not emission_peak:
+                print "Error: emission peak is empty."
+
+                # logger output
+                self.outter_class.ES_logger.error('Emission peak is emtpy.')
+                return
+
+            self.center_peaks_buffer[emission_peak['year']] = emission_peak
+
+        # 将临时的emission_peak元素组合成center
+        def generate_center(self):
+            # 检查center_peaks是否存在
+            # 存在时则将其按年份排序，再组成一个排序字典
+            if not self.center_peaks:
+                self.center_peaks = collections.OrderedDict(sorted(self.center_peaks_buffer, key=lambda t:t[0]))
+            # 若不存在则直接报错并返回
+            else:
+                print 'ERROR: center peak is empty, please run emission_center.emission_peak_assembler to add peaks.'
+
+                # logger output
+                self.outter_class.ES_logger.error('center peaks is empty.')
+                return
+        
+        def return_center(self):
+            if not self.center_list:
+                print 'Center list has not been create in this work.'
+                return
+            else:
+                return self.center_peaks
+
+    ############################################################################
+    # 操作类的函数
+    ############################################################################
+    # 返回完整的排放中心数据
+    def print_center(self, emission_center):
+        # 检查输入的emission_center是否存在，不存在则直接返回
+        if not emission_center:
+            print 'ERROR: emission center does not exist.'
+
+            # logger output
+            self.ES_logger.error('input emission center does not exist.')
+            return
+
+        return emission_center.return_center()
+
+    # 删除center中的某个peak
+    # 只需要提供年份即可
+    def remove_peak(self, emission_center, year):
+        # 检查输入的emission_center是否存在，不存在则直接返回
+        if not emission_center:
+            print 'ERROR: emission center does not exist.'
+
+            # logger output
+            self.ES_logger.error('input emission center does not exist.')
+            return
+
+        if not year or year > self.end_year or year < self.start_year:
+            print 'ERROR: removing peak failed, please assign a correct year to index the peak.'
+
+            # logger output
+            self.ES_logger.error('Input year is empty.')
+            return
+        
+        emission_center.center_peaks.pop(year)
+        
+    # 修改某个peak的内容
+    def edit_peak(self, emission_center, emission_peak):
+        # 检查输入的emission_center是否存在，不存在则直接返回
+        if not emission_center:
+            print 'ERROR: emission center does not exist.'
+
+            # logger output
+            self.ES_logger.error('input emission center does not exist.')
+            return
+
+        # 从peak_buffer 中删除待修改数据
+        emission_center.center_peaks_buffer.pop(emission_peak['year'])
+
+        # 将新数据添加入assembler
+        emission_center.emission_peak_assembler(emission_peak)
+
+        # 更新center的内容
+        emission_center.generate_center()
+    
+    # 利用排放范围和年份时间构建排放峰值
+    def emission_peak(self, emission_peak_range, year):
+        # 检查输入的emission_center是否存在，不存在则直接返回
+        if not emission_center:
+            print 'ERROR: emission center does not exist.'
+
+            # logger output
+            self.ES_logger.error('input emission center does not exist.')
+            return
+
+        # 排放中心变量检查
+        if type(emission_peak_range) == tuple:
+            if len(emission_peak_range) == 2:
+                temp_peak_upper_bound = max(emission_peak_range)
+                temp_peak_lower_bound = min(emission_peak_range)
+                temp_peak = str((temp_peak_lower_bound+temp_peak_upper_bound)/2).replace('.', '')
+            else:
+                print "Error: emission peak requir maximum and minimum range."
+
+                # logger output
+                self.ES_logger.error('Emission peak range error.')
+                return
+        else:
+            print "Error: emission peak range require a tuple. Please check the input."
+
+        # 年份变量检查
+        if year < self.start_year or year > self.end_year:
+            print "Error: emission peak requir a correct year."
+
+            # logger output
+            self.ES_logger.error('Emission peak year error.')
+            return
+
+        # 这里实际上定义了emission_peak的结构。
+        return {'peak_max': temp_peak_upper_bound,
+                'peak_min': temp_peak_lower_bound,
+                'peak_name': temp_peak,
+                'year': year}
+
+    # 创建一个仅包含名称的emission_center实例
+    def create_center(self, emission_center_name):
+        # 检查排放中心的名称是否存在，不存在则直接返回
+        if not emission_center_name or type(emission_center_name) != str:
+            print 'ERROR: center name is empty or not a string'
+
+            # logger output
+            self.ES_logger.error('center name type error.')
+            return
+        
+        # 创建一个仅包含名称的emission_center实例
+        self.emission_center(center_name=emission_center_name)
+
+    # 向中心中添加排放峰值数据
+    def add_emission_peaks(self,emission_center, peaks_list):
+        # 检查输入的emission_center是否存在，不存在则直接返回
+        if not emission_center:
+            print 'ERROR: emission center does not exist.'
+
+            # logger output
+            self.ES_logger.error('input emission center does not exist.')
+            return
+        
+        # 检查输入的peak_list是否存在，不存在则直接返回
+        if not peaks_list:
+            print 'ERROR: peak list center does not exist.'
+
+            # logger output
+            self.ES_logger.error('input peak list does not exist.')
+            return
+
+        # 支持将emission_peak或者由它组成的列表传入类中
+        if type(peaks_list) == list:
+            for pl in peaks_list:
+                emission_center.emission_peak_assembler(pl)
+        elif type(peaks_list) == dict:
+            emission_center.emission_peak_assembler(peaks_list)
+        else:
+            print 'ERROR: emission peak type error, please run emission_peak function to generate a emission peak or a list of emission peaks.'
+
+            # logger output 
+            self.ES_logger.error('emission peak type or structure error.')
+            return
+
+        # 添加emission_peak后重新整理emission_center的内容
+        emission_center.generate_center()
+
+    
+    ############################################################################
     # 排放峰值和排放中心分析计算相关函数/方法
     ############################################################################
     # 这个函数实际执行从一个年份中提取中心操作
     # 这里要求可以center_range是一个元组
-    def do_extract_center_area(self, center_range, total_emission_raster, year):
+    def do_extract_center_area(self, emission_center_peak, extract_raster, output, saveMask=False):
+        # 检查输入的emission_center_peak是否存在，不存在则直接返回
+        if not emission_center:
+            print 'ERROR: emission center does not exist.'
+
+            # logger output
+            self.ES_logger.error('input emission center does not exist.')
+            return
+
+        # 检查输入的栅格是否存在
+        # 检查total_emission
+        if not (arcpy.Exists(extract_raster)):
+            print 'Error: input raster does not exist'
+
+            # logger output
+            self.ES_logger.error('input raster not found.')
+            return
+
+        # 检查输出路径是否存在
+        if not output or type(output) != str:
+            print 'Error: output path does not exist'
+
+            # logger output
+            self.ES_logger.error('output path does not exist.')
+            return
+
+        # 将大于上界和小于下界范围的栅格设为nodata
+        # Set local variables
+        whereClause = "VALUE < %s OR VALUE > %s" % (
+            emission_center_peak['peak_min'], emission_center_peak['peak_max'])
+        
+        # 利用setnull的结果作为提取中心的mask
+        # Execute SetNull
+        temp_SetNull = SetNull(extract_raster,
+                             extract_raster, whereClause)
+        
+        temp_mask = Con(temp_SetNull, 1, '')
+        # 通过saveMask参数
+        # 在这里控制保存一个提取结果的mask（掩膜）结果
+        if saveMask:
+            temp_center_mask_path = 'center_mask_%s_%s' % (emission_center_peak['peak_name'], emission_center_peak['year'])
+            temp_mask.save(temp_center_mask_path)
+
+        temp_result = temp_mask * extract_raster
+        temp_result.save(output)
+
+    # def extract_center_area(self, center_range, year_range, isLog):
+    def extract_center_basic_info(self, emission_center, isLog):
+        # 检查输入的emission_center是否存在，不存在则直接返回
+        if not emission_center:
+            print 'ERROR: emission center does not exist.'
+
+            # logger output
+            self.ES_logger.error('input emission center does not exist.')
+            return
+
+        # 从传入参数中获得peaks。
+        # 注意：这里的peaks是一个字典
+        temp_peaks = emission_center.return_center()
+
+        # 临时变量
+        temp_year_list = temp_peaks.keys()
+        temp_start_year = temp_year_list[0]
+        temp_end_year = temp_year_list[-1]
+
+        # 列出总排放量栅格
+        # 需要区分栅格中的总量数据是否已经进行了对数换算
+        if bool(isLog) == True:
+            temp_wild_card = ['total_emission_%s_log' %
+                              s for s in range(temp_start_year, temp_end_year+1)]
+        elif bool(isLog) == False:
+            temp_wild_card = ['total_emission_%s' %
+                              s for s in range(temp_start_year, temp_end_year+1)]
+        else:
+            print 'Error: Please set the isLog flag.'
+
+            # logger output
+            self.ES_logger.error('isLog flag check failed.')
+            return
+
+        # 列出需要的total emission 栅格
+        self.do_arcpy_list_raster_list(temp_wild_card)
+
+        # 逐年处理
+        for yr in tqdm(range(temp_start_year, temp_end_year+1)):
+            # 检查输入的栅格是否存在
+            # 检查total_emission
+            temp_total_emission = [
+                s for s in self.working_rasters if str(yr) in s].pop()
+            if not (arcpy.Exists(temp_total_emission)):
+                print 'Error: input total emission raster does not exist'
+
+                # logger output
+                self.ES_logger.error('input tatal emission not found.')
+                return
+
+            # 检查对应年份的主要排放部门栅格
+            temp_main_sector = 'main_emi_%s' % yr
+
+            if not (arcpy.Exists(temp_main_sector)):
+                print 'Error: input total emission raster does not exist'
+
+                # logger output
+                self.ES_logger.error('input tatal emission not found.')
+                return
+
+            # 检查对应年份的主要排放部门权重栅格
+            temp_main_sector_weight = 'main_emi_weight_%s' % yr
+
+            if not (arcpy.Exists(temp_main_sector_weight)):
+                print 'Error: input total emission weight raster does not exist'
+
+                # logger output
+                self.ES_logger.error('input tatal emission not found.')
+                return
+
+            temp_center_peak = temp_peaks[yr]
+            temp_center_peak_name = temp_center_peak['peak_name']
+
+            # set the output
+            temp_center_path = 'center_%s_%s' % (temp_center_peak_name, yr)
+
+            # 提取中心的总排放属性
+            self.do_extract_center_area(emission_center_peak=temp_center_peak,
+                                        extract_raster=temp_total_emission,
+                                        output=temp_center_path,
+                                        saveMask=True)
+
+            # 提取中心的最大排放部门类型属性
+            self.do_extract_center_area(emission_center_peak=temp_center_peak,
+                                        extract_raster=temp_main_sector,
+                                        output=temp_center_path)
+
+            # 提取中心的最大排放部门占比属性
+            self.do_extract_center_area(emission_center_peak=temp_center_peak,
+                                        extract_raster=temp_main_sector_weight,
+                                        output=temp_center_path)
+
+        # 清空使用的working_rasters变量
+        self.working_rasters = []
+
+    # 实际执行zonal statistic
+    def do_zonal_statistic_to_table(self, year, inZoneData, zoneField, inValueRaster, outTable):
+        # Execute ZonalStatisticsAsTable
+        outZSaT = ZonalStatisticsAsTable(inZoneData, zoneField, inValueRaster,
+                                         outTable, "DATA", "ALL")
+
+        # logger output
+        self.ES_logger.debug('Sataistics finished.')
+
+    ############################################################################
+    # 表转CSV相关功能
+    ############################################################################
+    # 实际执行将统计的结果转化为csv输出
+    def do_zonal_table_to_csv(self, table, year, outPath):
+        temp_table = table
+
+        # --first lets make a list of all of the fields in the table
+        fields = arcpy.ListFields(table)
+        field_names = [field.name for field in fields]
+        # 追加年份在最后一列
+        field_names.append('year')
+
+        # 获得输出文件的绝对路径
+        temp_outPath = os.path.abspath(outPath)
+
+        with open(temp_outPath, 'wt') as f:
+            w = csv.writer(f)
+            # --write all field names to the output file
+            w.writerow(field_names)
+
+            # --now we make the search cursor that will iterate through the rows of the table
+            for row in arcpy.SearchCursor(temp_table):
+                field_vals = [row.getValue(field.name) for field in fields]
+                field_vals.append(str(year))
+                w.writerow(field_vals)
+            del row
+
+        # logger output
+        self.ES_logger.debug(
+            'Convert %s\'s statistics table to csv file:%s' % (year, temp_outPath))
+
+    # 这里的year_range和center_range都是一个二元元组
+    def zonal_year_statistics(self, year_range, inZone, center_range, outPath):
+        # 获得保存路径
+        temp_out_csv_path = os.path.abspath(outPath)
+
+        # 检查输入的分区是否存在
+        if not (arcpy.Exists(inZone)):
+            print 'Error: inZone not found.'
+
+            # logger output
+            self.ES_logger.error('inZone does not exist.')
+
+            return
+
+        # 生成中心点
+        temp_center = str(
+            (min(center_range)+max(center_range))/2).replace('.', '')
+
+        for yr in tqdm(range(min(year_range), max(year_range)+1)):
+            # 生成中心的栅格名称
+            temp_main_inRaster = 'center_main_sector_%s_%s' % (temp_center, yr)
+            # 检查输入的待统计值
+            if not (arcpy.Exists(temp_main_inRaster)):
+                print 'Error: inRaster not found.'
+
+                # logger output
+                self.ES_logger.error('inRaster does not exist.')
+
+                return
+
+            temp_outTable = 'table_' + temp_main_inRaster
+
+            self.do_zonal_statistic_to_table(year=yr,
+                                             inZoneData=inZone,
+                                             zoneField='ISO_A3',
+                                             inValueRaster=temp_main_inRaster,
+                                             outTable=temp_outTable)
+            # logger output
+            self.ES_logger.debug(
+                'Zonal statistics finished:%s' % temp_main_inRaster)
+
+            temp_outCsv = os.path.join(
+                temp_out_csv_path, temp_main_inRaster+'.csv')
+            self.do_zonal_table_to_csv(table=temp_outTable,
+                                       year=yr,
+                                       outPath=temp_outCsv)
+
+            # logger output
+            self.ES_logger.debug('Zonal statitics convert to csv.')
+
+            # 生成中心权重的栅格名称
+            temp_main_weight_inRaster = 'center_main_sector_weight_%s_%s' % (
+                temp_center, yr)
+            # 检查输入的待统计值
+            if not (arcpy.Exists(temp_main_weight_inRaster)):
+                print 'Error: inRaster not found.'
+
+                # logger output
+                self.ES_logger.error('inRaster does not exist.')
+
+    def old_do_extract_center_area(self, center_range, total_emission_raster, year):
         # 临时变量
         temp_center_upper_bound = 0
         temp_center_lower_bound = 0
@@ -1303,7 +1741,7 @@ class EDGAR_spatial(object):
             self.ES_logger.error('Center range type error.')
             return
 
-        # 检查两个输入的栅格是否存在
+        # 检查输入的栅格是否存在
         # 检查total_emission
         if not (arcpy.Exists(total_emission_raster)):
             print 'Error: input total emission raster does not exist'
@@ -1380,7 +1818,7 @@ class EDGAR_spatial(object):
         del outMainWeight
 
     # 这里要求可以center_range和year_range是一个元组
-    def extract_center_area(self, center_range, year_range, isLog):
+    def old_extract_center_area(self, center_range, year_range, isLog):
         # 临时变量
         temp_start_year = self.start_year
         temp_end_year = self.end_year
@@ -1439,6 +1877,9 @@ class EDGAR_spatial(object):
         # logger output
         self.ES_logger.debug('Sataistics finished.')
 
+    ############################################################################
+    # 表转CSV相关功能
+    ############################################################################
     # 实际执行将统计的结果转化为csv输出
     def do_zonal_table_to_csv(self, table, year, outPath):
         temp_table = table
@@ -1550,6 +1991,15 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.debug('Zonal statitics convert to csv.')
 
+    ############################################################################
+    ############################################################################
+    # 部门排放合并至分类排放
+    ############################################################################
+    ############################################################################
+
+    ############################################################################
+    # 部门排放合并至分类排放参数设定
+    ############################################################################
     # 实际执行添加字段时使用的字段属性检查函数
     # 注意：
     # 这个函数需要输入一个字典，
@@ -1682,15 +2132,6 @@ class EDGAR_spatial(object):
         
         return fields
             
-    ############################################################################
-    ############################################################################
-    # 部门排放合并至分类排放
-    ############################################################################
-    ############################################################################
-
-    ############################################################################
-    # 部门排放合并至分类排放参数设定
-    ############################################################################
     # 如果需要添加多个字段，则可以利用以下这个函数生成一个待添加字段列表
     # 直接调用这个函数将返回现有的字段列表
     # 生成列表时，则需要传入一个字典，字典中需要包括两个参数：
@@ -2165,193 +2606,6 @@ class EDGAR_spatial(object):
     # 合并同一年不同排放中心至一个栅格
     ############################################################################
     ############################################################################
-    # TODO
-    # 类只负责存储peaks和center的数据，管理数据的方法和操作都依赖于外部类的方法实现。
-    # 这个类用于表示排放中心
-    class emission_center(object):
-        # 初始化函数
-        # 创建一个emission_center类必须提供一个名称用于标识类
-        def __init__(self, center_name='default_center'):
-            # 获得外部类的属性
-            self.outter_class = outter_class
-
-            # 中心的名字
-            self.name = ''
-
-            # 排放量峰值，一个排序字典，用于区别不同年份的排放峰值区域。
-            self.center_peaks = {}
-            
-            # 用于生成最终列表的暂时缓冲
-            self.center_peaks_buffer = {}
-
-        # 将emission_peak转换为center的元素
-        def emission_peak_assembler(self, emission_peak): 
-            if not emission_peak:
-                print "Error: emission peak is empty."
-
-                # logger output
-                self.outter_class.ES_logger.error('Emission peak is emtpy.')
-                return
-
-            self.center_peaks_buffer[emission_peak['year']] = emission_peak
-
-        # 将临时的emission_peak元素组合成center
-        def generate_center(self):
-            # 检查center_peaks是否存在
-            # 存在时则将其按年份排序，再组成一个排序字典
-            if not self.center_peaks:
-                self.center_peaks = collections.OrderedDict(sorted(self.center_peaks_buffer, key=lambda t:t[0]))
-            # 若不存在则直接报错并返回
-            else:
-                print 'ERROR: center peak is empty, please run emission_center.emission_peak_assembler to add peaks.'
-
-                # logger output
-                self.outter_class.ES_logger.error('center peaks is empty.')
-                return
-        
-        def return_center(self):
-            if not self.center_list:
-                print 'Center list has not been create in this work.'
-                return
-            else:
-                return emission_center.center_peaks
-
-    # 返回完整的排放中心数据
-    def print_center(self, emission_center):
-        # 检查输入的emission_center是否存在，不存在则直接返回
-        if not emission_center:
-            print 'ERROR: emission center does not exist.'
-
-            # logger output
-            self.ES_logger.error('input emission center does not exist.')
-            return
-
-        return emission_center.return_center()
-
-    # 删除center中的某个peak
-    # 只需要提供年份即可
-    def remove_peak(self, emission_center, year):
-        # 检查输入的emission_center是否存在，不存在则直接返回
-        if not emission_center:
-            print 'ERROR: emission center does not exist.'
-
-            # logger output
-            self.ES_logger.error('input emission center does not exist.')
-            return
-
-        if not year or year > self.end_year or year < self.start_year:
-            print 'ERROR: removing peak failed, please assign a correct year to index the peak.'
-
-            # logger output
-            self.ES_logger.error('Input year is empty.')
-            return
-        
-        emission_center.center_peaks.pop(year)
-        
-    # 修改某个peak的内容
-    def edit_peak(self, emission_center, emission_peak):
-        # 检查输入的emission_center是否存在，不存在则直接返回
-        if not emission_center:
-            print 'ERROR: emission center does not exist.'
-
-            # logger output
-            self.ES_logger.error('input emission center does not exist.')
-            return
-
-        # 从peak_buffer 中删除待修改数据
-        emission_center.center_peaks_buffer.pop(emission_peak['year'])
-
-        # 将新数据添加入assembler
-        emission_center.emission_peak_assembler(emission_peak)
-
-        # 更新center的内容
-        emission_center.generate_center()
-    
-    # 利用排放范围和年份时间构建排放峰值
-    def emission_peak(self, emission_peak_range, year):
-        # 检查输入的emission_center是否存在，不存在则直接返回
-        if not emission_center:
-            print 'ERROR: emission center does not exist.'
-
-            # logger output
-            self.ES_logger.error('input emission center does not exist.')
-            return
-
-        # 排放中心变量检查
-        if type(emission_peak_range) == tuple:
-            if len(emission_peak_range) == 2:
-                temp_peak_upper_bound = max(emission_peak_range)
-                temp_peak_lower_bound = min(emission_peak_range)
-                temp_peak = str((temp_peak_lower_bound+temp_peak_upper_bound)/2).replace('.', '')
-            else:
-                print "Error: emission peak requir maximum and minimum range."
-
-                # logger output
-                self.ES_logger.error('Emission peak range error.')
-                return
-        else:
-            print "Error: emission peak range require a tuple. Please check the input."
-
-        # 年份变量检查
-        if year < self.start_year or year > self.end_year:
-            print "Error: emission peak requir a correct year."
-
-            # logger output
-            self.ES_logger.error('Emission peak year error.')
-            return
-
-        # 这里实际上定义了emission_peak的结构。
-        return {'peak_max': temp_peak_upper_bound,
-                'peak_min': temp_peak_lower_bound,
-                'peak_name': temp_peak,
-                'year': year}
-
-    # 创建一个仅包含名称的emission_center实例
-    def create_center(self, emission_center_name):
-        # 检查排放中心的名称是否存在，不存在则直接返回
-        if not emission_center_name or type(emission_center_name) != str:
-            print 'ERROR: center name is empty or not a string'
-
-            # logger output
-            self.ES_logger.error('center name type error.')
-            return
-        
-        # 创建一个仅包含名称的emission_center实例
-        self.emission_center(center_name=emission_center_name)
-
-    # 向中心中添加排放峰值数据
-    def add_emission_peaks(self,emission_center, peaks_list):
-        # 检查输入的emission_center是否存在，不存在则直接返回
-        if not emission_center:
-            print 'ERROR: emission center does not exist.'
-
-            # logger output
-            self.ES_logger.error('input emission center does not exist.')
-            return
-        
-        # 检查输入的peak_list是否存在，不存在则直接返回
-        if not peaks_list:
-            print 'ERROR: peak list center does not exist.'
-
-            # logger output
-            self.ES_logger.error('input peak list does not exist.')
-            return
-
-        # 支持将emission_peak或者由它组成的列表传入类中
-        if type(peaks_list) == list:
-            for pl in peaks_list:
-                emission_center.emission_peak_assembler(pl)
-        elif type(peaks_list) == dict:
-            emission_center.emission_peak_assembler(peaks_list)
-        else:
-            print 'ERROR: emission peak type error, please run emission_peak function to generate a emission peak or a list of emission peaks.'
-
-            # logger output 
-            self.ES_logger.error('emission peak type or structure error.')
-            return
-
-        # 添加emission_peak后重新整理emission_center的内容
-        emission_center.generate_center()
 
 # ======================================================================
 # ======================================================================
