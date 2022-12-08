@@ -1280,12 +1280,17 @@ class EDGAR_spatial(object):
     class emission_center(object):
         # 初始化函数
         # 创建一个emission_center类必须提供一个名称用于标识类
-        def __init__(self, center_name='default_center'):
-            # 获得外部类的属性
-            self.outter_class = outter_class
+        def __init__(self, outer_class, center_name='default_center'):
+            # 需要检查是否出入EDGAR_spatial类,出入类的作用是保证共享的参数可以获取
+            if not outer_class:
+                print 'ERROR: please input a EDGAR_spatial class.'
+
+                return
+            
+            self.outer_class = outer_class
 
             # 中心的名字
-            self.name = ''
+            self.name = center_name
 
             # 排放量峰值，一个排序字典，用于区别不同年份的排放峰值区域。
             self.center_peaks = {}
@@ -1299,31 +1304,52 @@ class EDGAR_spatial(object):
                 print "Error: emission peak is empty."
 
                 # logger output
-                self.outter_class.ES_logger.error('Emission peak is emtpy.')
+                self.outer_class.ES_logger.error('Emission peak is emtpy.')
                 return
 
             self.center_peaks_buffer[emission_peak['year']] = emission_peak
 
         # 将临时的emission_peak元素组合成center
         def generate_center(self):
-            # 检查center_peaks是否存在
+            # 检查center_peaks_buffer是否存在
             # 存在时则将其按年份排序，再组成一个排序字典
-            if not self.center_peaks:
-                self.center_peaks = collections.OrderedDict(sorted(self.center_peaks_buffer, key=lambda t:t[0]))
-            # 若不存在则直接报错并返回
-            else:
+            if not self.center_peaks_buffer:
                 print 'ERROR: center peak is empty, please run emission_center.emission_peak_assembler to add peaks.'
 
                 # logger output
-                self.outter_class.ES_logger.error('center peaks is empty.')
+                self.outer_class.ES_logger.error('center peaks is empty.')
                 return
+            # 若不存在则直接报错并返回
+            else:
+                self.center_peaks = collections.OrderedDict(sorted(self.center_peaks_buffer.items(), key=lambda t:t[0]))
         
+        # 不加修改的返回整个中心的数据内容
         def return_center(self):
-            if not self.center_list:
+            if not self.center_peaks:
                 print 'Center list has not been create in this work.'
                 return
             else:
                 return self.center_peaks
+
+        # 返回一个套娃的列表，列表元素为字典{year_range,center_range}
+        def return_peak_name_sytle_center(self):
+            if not self.center_peaks:
+                print 'Center list has not been create in this work.'
+                return
+            else:
+                # 最后的返回结果
+                temp_center_list = []
+
+                # 从原始列表中解析出的数据
+                temp_center = {}
+                
+                # 先拆解原始的字典，以peak_name为键名，键值仍然为一个字典。
+                # 键值中的元素分别是，一、年份列表，注意这个列表还要在下一步进行整理；二、中心范围的元组
+                for val in self.center_peaks.values():
+                    if not temp_center[val['peak_name']]:
+                        temp_center[val['peak_name']] = {'year_range':[val['year']],'center_range':(val['peak_max'],val['peak_min'])}
+                    elif temp_center[val['peak_name']]:
+                        temp_center[val['peak_name']]['year_range'].append(val['year'])
 
     ############################################################################
     # 操作类的函数
@@ -1381,14 +1407,26 @@ class EDGAR_spatial(object):
     
     # 利用排放范围和年份时间构建排放峰值
     def emission_peak(self, emission_peak_range, year):
-        # 检查输入的emission_center是否存在，不存在则直接返回
-        if not emission_center:
-            print 'ERROR: emission center does not exist.'
+        # 如果输入年份是单一年份，则直接构建emission_peak并返回
+        if type(year) == int:
+            return self.do_emission_peak(emission_peak_range=emission_peak_range, year=year)
+        # 如果输入年份是一组年份，则逐个构建该组年份中的时间，并返回一个列表
+        elif isinstance(year, collections.Iterable):
+            temp_peaks_list = []
+
+            for yr in year:
+                temp_peaks_list.append(self.do_emission_peak(emission_peak_range=emission_peak_range, year=yr))
+            
+            return temp_peaks_list
+        else:
+            print 'ERROR: input year error.'
 
             # logger output
-            self.ES_logger.error('input emission center does not exist.')
+            self.ES_logger.error('input year error.')
             return
 
+    # 实际执行构建排放峰值
+    def do_emission_peak(self, emission_peak_range, year):
         # 排放中心变量检查
         if type(emission_peak_range) == tuple:
             if len(emission_peak_range) == 2:
@@ -1419,7 +1457,7 @@ class EDGAR_spatial(object):
                 'year': year}
 
     # 创建一个仅包含名称的emission_center实例
-    def create_center(self, emission_center_name):
+    def create_center(self, outer_class, emission_center_name):
         # 检查排放中心的名称是否存在，不存在则直接返回
         if not emission_center_name or type(emission_center_name) != str:
             print 'ERROR: center name is empty or not a string'
@@ -1429,7 +1467,7 @@ class EDGAR_spatial(object):
             return
         
         # 创建一个仅包含名称的emission_center实例
-        self.emission_center(center_name=emission_center_name)
+        return self.emission_center(outer_class=outer_class, center_name=emission_center_name)
 
     # 向中心中添加排放峰值数据
     def add_emission_peaks(self,emission_center, peaks_list):
@@ -1470,10 +1508,9 @@ class EDGAR_spatial(object):
     # 排放峰值和排放中心分析计算相关函数/方法
     ############################################################################
     # 这个函数实际执行从一个年份中提取中心操作
-    # 这里要求可以center_range是一个元组
     def do_extract_center_area(self, emission_center_peak, extract_raster, output, saveMask=False):
         # 检查输入的emission_center_peak是否存在，不存在则直接返回
-        if not emission_center:
+        if not emission_center_peak:
             print 'ERROR: emission center does not exist.'
 
             # logger output
@@ -1517,7 +1554,7 @@ class EDGAR_spatial(object):
         temp_result = temp_mask * extract_raster
         temp_result.save(output)
 
-    # def extract_center_area(self, center_range, year_range, isLog):
+    # 提取总排放量、最大排放部门和最大排放部门比例的函数
     def extract_center_basic_info(self, emission_center, isLog):
         # 检查输入的emission_center是否存在，不存在则直接返回
         if not emission_center:
@@ -1536,30 +1573,22 @@ class EDGAR_spatial(object):
         temp_start_year = temp_year_list[0]
         temp_end_year = temp_year_list[-1]
 
-        # 列出总排放量栅格
-        # 需要区分栅格中的总量数据是否已经进行了对数换算
-        if bool(isLog) == True:
-            temp_wild_card = ['total_emission_%s_log' %
-                              s for s in range(temp_start_year, temp_end_year+1)]
-        elif bool(isLog) == False:
-            temp_wild_card = ['total_emission_%s' %
-                              s for s in range(temp_start_year, temp_end_year+1)]
-        else:
-            print 'Error: Please set the isLog flag.'
-
-            # logger output
-            self.ES_logger.error('isLog flag check failed.')
-            return
-
-        # 列出需要的total emission 栅格
-        self.do_arcpy_list_raster_list(temp_wild_card)
-
         # 逐年处理
         for yr in tqdm(range(temp_start_year, temp_end_year+1)):
+            # 生成total_emission
+            if bool(isLog) == True:
+                temp_total_emission = 'total_emission_%s_log' % yr
+            elif bool(isLog) == False:
+                temp_total_emission= 'total_emission_%s' % yr
+            else:
+                print 'Error: Please set the isLog flag.'
+
+                # logger output
+                self.ES_logger.error('isLog flag check failed.')
+                return
+
             # 检查输入的栅格是否存在
             # 检查total_emission
-            temp_total_emission = [
-                s for s in self.working_rasters if str(yr) in s].pop()
             if not (arcpy.Exists(temp_total_emission)):
                 print 'Error: input total emission raster does not exist'
 
@@ -1590,129 +1619,29 @@ class EDGAR_spatial(object):
             temp_center_peak = temp_peaks[yr]
             temp_center_peak_name = temp_center_peak['peak_name']
 
+            # 提取中心的总排放属性
             # set the output
             temp_center_path = 'center_%s_%s' % (temp_center_peak_name, yr)
 
-            # 提取中心的总排放属性
             self.do_extract_center_area(emission_center_peak=temp_center_peak,
                                         extract_raster=temp_total_emission,
                                         output=temp_center_path,
                                         saveMask=True)
 
             # 提取中心的最大排放部门类型属性
+            temp_center_main = 'center_main_sector_%s_%s' % (temp_center_peak_name, yr)
             self.do_extract_center_area(emission_center_peak=temp_center_peak,
                                         extract_raster=temp_main_sector,
-                                        output=temp_center_path)
+                                        output=temp_center_main)
 
             # 提取中心的最大排放部门占比属性
+            temp_center_main_weight = 'center_main_sector_weight_%s_%s' % (temp_center_peak_name, yr)
             self.do_extract_center_area(emission_center_peak=temp_center_peak,
                                         extract_raster=temp_main_sector_weight,
-                                        output=temp_center_path)
+                                        output=temp_center_main_weight)
 
-        # 清空使用的working_rasters变量
-        self.working_rasters = []
-
-    # 实际执行zonal statistic
-    def do_zonal_statistic_to_table(self, year, inZoneData, zoneField, inValueRaster, outTable):
-        # Execute ZonalStatisticsAsTable
-        outZSaT = ZonalStatisticsAsTable(inZoneData, zoneField, inValueRaster,
-                                         outTable, "DATA", "ALL")
-
-        # logger output
-        self.ES_logger.debug('Sataistics finished.')
-
-    ############################################################################
-    # 表转CSV相关功能
-    ############################################################################
-    # 实际执行将统计的结果转化为csv输出
-    def do_zonal_table_to_csv(self, table, year, outPath):
-        temp_table = table
-
-        # --first lets make a list of all of the fields in the table
-        fields = arcpy.ListFields(table)
-        field_names = [field.name for field in fields]
-        # 追加年份在最后一列
-        field_names.append('year')
-
-        # 获得输出文件的绝对路径
-        temp_outPath = os.path.abspath(outPath)
-
-        with open(temp_outPath, 'wt') as f:
-            w = csv.writer(f)
-            # --write all field names to the output file
-            w.writerow(field_names)
-
-            # --now we make the search cursor that will iterate through the rows of the table
-            for row in arcpy.SearchCursor(temp_table):
-                field_vals = [row.getValue(field.name) for field in fields]
-                field_vals.append(str(year))
-                w.writerow(field_vals)
-            del row
-
-        # logger output
-        self.ES_logger.debug(
-            'Convert %s\'s statistics table to csv file:%s' % (year, temp_outPath))
-
-    # 这里的year_range和center_range都是一个二元元组
-    def zonal_year_statistics(self, year_range, inZone, center_range, outPath):
-        # 获得保存路径
-        temp_out_csv_path = os.path.abspath(outPath)
-
-        # 检查输入的分区是否存在
-        if not (arcpy.Exists(inZone)):
-            print 'Error: inZone not found.'
-
-            # logger output
-            self.ES_logger.error('inZone does not exist.')
-
-            return
-
-        # 生成中心点
-        temp_center = str(
-            (min(center_range)+max(center_range))/2).replace('.', '')
-
-        for yr in tqdm(range(min(year_range), max(year_range)+1)):
-            # 生成中心的栅格名称
-            temp_main_inRaster = 'center_main_sector_%s_%s' % (temp_center, yr)
-            # 检查输入的待统计值
-            if not (arcpy.Exists(temp_main_inRaster)):
-                print 'Error: inRaster not found.'
-
-                # logger output
-                self.ES_logger.error('inRaster does not exist.')
-
-                return
-
-            temp_outTable = 'table_' + temp_main_inRaster
-
-            self.do_zonal_statistic_to_table(year=yr,
-                                             inZoneData=inZone,
-                                             zoneField='ISO_A3',
-                                             inValueRaster=temp_main_inRaster,
-                                             outTable=temp_outTable)
-            # logger output
-            self.ES_logger.debug(
-                'Zonal statistics finished:%s' % temp_main_inRaster)
-
-            temp_outCsv = os.path.join(
-                temp_out_csv_path, temp_main_inRaster+'.csv')
-            self.do_zonal_table_to_csv(table=temp_outTable,
-                                       year=yr,
-                                       outPath=temp_outCsv)
-
-            # logger output
-            self.ES_logger.debug('Zonal statitics convert to csv.')
-
-            # 生成中心权重的栅格名称
-            temp_main_weight_inRaster = 'center_main_sector_weight_%s_%s' % (
-                temp_center, yr)
-            # 检查输入的待统计值
-            if not (arcpy.Exists(temp_main_weight_inRaster)):
-                print 'Error: inRaster not found.'
-
-                # logger output
-                self.ES_logger.error('inRaster does not exist.')
-
+    ### 旧函数不建议使用！！！
+    # 提取总排放量、最大排放部门和最大排放部门比例的函数
     def old_do_extract_center_area(self, center_range, total_emission_raster, year):
         # 临时变量
         temp_center_upper_bound = 0
@@ -1817,6 +1746,7 @@ class EDGAR_spatial(object):
 
         del outMainWeight
 
+    ### 旧函数不建议使用！！！
     # 这里要求可以center_range和year_range是一个元组
     def old_extract_center_area(self, center_range, year_range, isLog):
         # 临时变量
@@ -1868,8 +1798,11 @@ class EDGAR_spatial(object):
         # 清空使用的working_rasters变量
         self.working_rasters = []
 
+    ############################################################################
+    # 表转CSV相关功能
+    ############################################################################
     # 实际执行zonal statistic
-    def do_zonal_statistic_to_table(self, year, inZoneData, zoneField, inValueRaster, outTable):
+    def do_zonal_statistic_to_table(self, inZoneData, zoneField, inValueRaster, outTable):
         # Execute ZonalStatisticsAsTable
         outZSaT = ZonalStatisticsAsTable(inZoneData, zoneField, inValueRaster,
                                          outTable, "DATA", "ALL")
@@ -1877,9 +1810,6 @@ class EDGAR_spatial(object):
         # logger output
         self.ES_logger.debug('Sataistics finished.')
 
-    ############################################################################
-    # 表转CSV相关功能
-    ############################################################################
     # 实际执行将统计的结果转化为csv输出
     def do_zonal_table_to_csv(self, table, year, outPath):
         temp_table = table
@@ -1910,7 +1840,71 @@ class EDGAR_spatial(object):
             'Convert %s\'s statistics table to csv file:%s' % (year, temp_outPath))
 
     # 这里的year_range和center_range都是一个二元元组
-    def zonal_year_statistics(self, year_range, inZone, center_range, outPath):
+    # def zonal_year_statistics(self, year_range, inZone, center_range, outPath):
+    def zonal_center_basic_info_statistics(self, emission_cneter, inZone, outPath):
+        # 获得保存路径
+        temp_out_csv_path = os.path.abspath(outPath)
+
+        # 检查输入的分区是否存在
+        if not (arcpy.Exists(inZone)):
+            print 'Error: inZone not found.'
+
+            # logger output
+            self.ES_logger.error('inZone does not exist.')
+
+            return
+
+        if not emission_cneter:
+            print 'ERROR: input emission center does not exist.'
+
+            # logger output
+            self.ES_logger.error('input emission center does not exist.')
+            return 
+
+        # 逐年处理
+        for peak in emission_cneter.return_center().values():
+            # 生成中心的栅格名称
+            temp_main_inRaster = 'center_main_sector_%s_%s' % (peak['peak_name'], peak['year'])
+
+            # 检查输入的待统计值
+            if not (arcpy.Exists(temp_main_inRaster)):
+                print 'Error: inRaster not found.'
+
+                # logger output
+                self.ES_logger.error('inRaster does not exist.')
+
+                return
+
+            temp_outTable = 'table_' + temp_main_inRaster
+
+            self.do_zonal_statistic_to_table(inZoneData=inZone,
+                                             zoneField='ISO_A3',
+                                             inValueRaster=temp_main_inRaster,
+                                             outTable=temp_outTable)
+            # logger output
+            self.ES_logger.debug(
+                'Zonal statistics finished:%s' % temp_main_inRaster)
+
+            temp_outCsv = os.path.join(
+                temp_out_csv_path, temp_main_inRaster+'.csv')
+            self.do_zonal_table_to_csv(table=temp_outTable,
+                                       year=peak['year'],
+                                       outPath=temp_outCsv)
+
+            # logger output
+            self.ES_logger.debug('Zonal statitics convert to csv.')
+
+            # 生成中心权重的栅格名称
+            temp_main_weight_inRaster = 'center_main_sector_weight_%s_%s' % (
+                peak['peak_name'], peak['year'])
+            # 检查输入的待统计值
+            if not (arcpy.Exists(temp_main_weight_inRaster)):
+                print 'Error: inRaster not found.'
+
+                # logger output
+                self.ES_logger.error('inRaster does not exist.')
+
+    def old_zonal_year_statistics(self, year_range, inZone, center_range, outPath):
         # 获得保存路径
         temp_out_csv_path = os.path.abspath(outPath)
 
@@ -1968,28 +1962,6 @@ class EDGAR_spatial(object):
 
                 # logger output
                 self.ES_logger.error('inRaster does not exist.')
-
-                return
-
-            temp_outTable = 'table_' + temp_main_weight_inRaster
-
-            self.do_zonal_statistic_to_table(year=yr,
-                                             inZoneData=inZone,
-                                             zoneField='ISO_A3',
-                                             inValueRaster=temp_main_weight_inRaster,
-                                             outTable=temp_outTable)
-            # logger output
-            self.ES_logger.debug('Zonal statistics finished:%s' %
-                                 temp_main_weight_inRaster)
-
-            temp_outCsv = os.path.join(
-                temp_out_csv_path, temp_main_weight_inRaster+'.csv')
-            self.do_zonal_table_to_csv(table=temp_outTable,
-                                       year=yr,
-                                       outPath=temp_outCsv)
-
-            # logger output
-            self.ES_logger.debug('Zonal statitics convert to csv.')
 
     ############################################################################
     ############################################################################

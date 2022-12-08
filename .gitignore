@@ -12,3 +12,6 @@ EDGAR/test_sectoral_generalization.py
 EDGAR/test_center_extract copy.py
 EDGAR/test_innerclass.py
 EDGAR/test_orderdict.py
+test_extract_center
+EDGAR/test_old_center_extract.py
+EDGAR/test_sector_to_category.py
