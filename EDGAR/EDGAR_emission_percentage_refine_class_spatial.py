@@ -257,7 +257,7 @@ class EDGAR_spatial(object):
         root_init.emission_peaks_time_series_name_list = []
 
         # 初始化排放中心的列表
-        root_init.center_list = []
+        root_init.emission_center_list = []
 
         print 'EDGAR_Spatial initialized! More debug information please check the log file.'
         root_init.ES_logger.info('Initialization finished.')
@@ -1271,7 +1271,7 @@ class EDGAR_spatial(object):
     ############################################################################
     
     ############################################################################
-    # emisison_center 类和类相关的操作函数
+    # emission_center 类和类相关的操作函数
     ############################################################################
 
     ############################################################################
@@ -1321,7 +1321,12 @@ class EDGAR_spatial(object):
                 return
             # 若不存在则直接报错并返回
             else:
+                # 重新排序center_peaks
                 self.center_peaks = collections.OrderedDict(sorted(self.center_peaks_buffer.items(), key=lambda t:t[0]))
+
+                # 将生成的字典名字添加到外部类的center列表中
+                self.outer_class.emission_center_list.extend(self)
+               
         
         # 不加修改的返回整个中心的数据内容
         def return_center(self):
@@ -1331,31 +1336,11 @@ class EDGAR_spatial(object):
             else:
                 return self.center_peaks
 
-        # 返回一个套娃的列表，列表元素为字典{year_range,center_range}
-        def return_peak_name_sytle_center(self):
-            if not self.center_peaks:
-                print 'Center list has not been create in this work.'
-                return
-            else:
-                # 最后的返回结果
-                temp_center_list = []
-
-                # 从原始列表中解析出的数据
-                temp_center = {}
-                
-                # 先拆解原始的字典，以peak_name为键名，键值仍然为一个字典。
-                # 键值中的元素分别是，一、年份列表，注意这个列表还要在下一步进行整理；二、中心范围的元组
-                for val in self.center_peaks.values():
-                    if not temp_center[val['peak_name']]:
-                        temp_center[val['peak_name']] = {'year_range':[val['year']],'center_range':(val['peak_max'],val['peak_min'])}
-                    elif temp_center[val['peak_name']]:
-                        temp_center[val['peak_name']]['year_range'].append(val['year'])
-
     ############################################################################
     # 操作类的函数
     ############################################################################
     # 返回完整的排放中心数据
-    def print_center(self, emission_center):
+    def return_emission_center(self, emission_center):
         # 检查输入的emission_center是否存在，不存在则直接返回
         if not emission_center:
             print 'ERROR: emission center does not exist.'
@@ -1503,6 +1488,9 @@ class EDGAR_spatial(object):
         # 添加emission_peak后重新整理emission_center的内容
         emission_center.generate_center()
 
+    # 生成所有排放中心的名字列表
+    def return_emission_center_list(self):
+        return self.emission_center_list
     
     ############################################################################
     # 排放峰值和排放中心分析计算相关函数/方法
@@ -1863,7 +1851,38 @@ class EDGAR_spatial(object):
 
         # 逐年处理
         for peak in emission_cneter.return_center().values():
-            # 生成中心的栅格名称
+            # 生成总量中心的栅格名称
+            temp_emission_inRaster = 'center_%s_%s' % (peak['peak_name'], peak['year'])
+
+            # 检查输入的待统计值
+            if not (arcpy.Exists(temp_emission_inRaster)):
+                print 'Error: inRaster not found.'
+
+                # logger output
+                self.ES_logger.error('inRaster does not exist.')
+
+                return
+
+            temp_outTable = 'table_' + temp_emission_inRaster
+
+            self.do_zonal_statistic_to_table(inZoneData=inZone,
+                                             zoneField='ISO_A3',
+                                             inValueRaster=temp_emission_inRaster,
+                                             outTable=temp_outTable)
+            # logger output
+            self.ES_logger.debug(
+                'Zonal statistics finished:%s' % temp_emission_inRaster)
+
+            temp_outCsv = os.path.join(
+                temp_out_csv_path, temp_emission_inRaster+'.csv')
+            self.do_zonal_table_to_csv(table=temp_outTable,
+                                       year=peak['year'],
+                                       outPath=temp_outCsv)
+
+            # logger output
+            self.ES_logger.debug('Zonal statitics convert to csv.')
+            
+            # 生成部门中心的栅格名称
             temp_main_inRaster = 'center_main_sector_%s_%s' % (peak['peak_name'], peak['year'])
 
             # 检查输入的待统计值
@@ -2578,6 +2597,61 @@ class EDGAR_spatial(object):
     # 合并同一年不同排放中心至一个栅格
     ############################################################################
     ############################################################################
+    def year_emission_center_raster_merge(self, wild_card_fmt, emission_center_list, year_range, output_fmt):
+        if not wild_card_fmt or type(wild_card_fmt) != str or not emission_center_list or not year:
+            print 'ERROR: input emission_center_list or year is empty.'
+
+            # logger output
+            self.ES_logger.error('emission_center_list or year is empty.')
+        
+        if len(year_range) != 2:
+            print 'ERROR: year range requir a two ints tuple.'
+
+            # logger output
+            self.ES_logger.error('year range error.')
+            return
+        
+        if max(year_range) > self.end_year or min(year_range) < self.start_year:
+            print 'ERROR: year is out range.'
+
+            # logger output
+            self.ES_logger.error('year range error.')
+            return
+    
+        for yr in tqdm(range(min(year_range), max(year_range)+1)):
+            self.do_emission_center_raster_merge(wild_card_fmt=wild_card_fmt,
+                                                emission_center_list=emission_center_list,
+                                                year=yr,
+                                                output_fmt=output_fmt)
+
+    def do_emission_center_raster_merge(self, wild_card_fmt, emission_center_list, year, output_fmt='categories_%s_%s'):
+        if not wild_card_fmt or type(wild_card_fmt) != str or not emission_center_list or not year:
+            print 'ERROR: input emission_center_list or year is empty.'
+
+            # logger output
+            self.ES_logger.error('emission_center_list or year is empty.')
+        
+        # temp_centers_chainmap = collections.ChainMap()
+        temp_center_peaks = []
+
+        # 生成多个中心的年份列表
+        for center in emission_center_list:
+            temp_raster_name = wild_card_fmt % (center[year]['peak_name'], year)
+            temp_center_peaks.append(temp_raster_name)
+        
+        self.do_arcpy_list_raster_list(temp_center_peaks)
+
+        temp_output = output_fmt % (center[year]['peak_name'], year)
+        # Mosaic 比例计算结果和0值背景
+        # Mosaic 的结果仍然保存在temp_output_weight_raster中
+        arcpy.Mosaic_management(inputs=self.working_rasters,
+                                target=temp_output,
+                                mosaic_type="FIRST",
+                                colormap="FIRST",
+                                mosaicking_tolerance=0.5)
+
+        
+
 
 # ======================================================================
 # ======================================================================
