@@ -401,6 +401,10 @@ class EDGAR_spatial(object):
         print '=============================='
         print '=============================='
 
+    # TODO
+    # 通用导出栅格，并规定nodata的值
+    def raster_export(self):
+        pass
     ############################################################################
     ############################################################################
     # EDGAR 原始数据合并为点数据部分
@@ -1324,10 +1328,10 @@ class EDGAR_spatial(object):
                 # 重新排序center_peaks
                 self.center_peaks = collections.OrderedDict(sorted(self.center_peaks_buffer.items(), key=lambda t:t[0]))
 
-                # 将生成的字典名字添加到外部类的center列表中
-                self.outer_class.emission_center_list.extend(self)
-               
-        
+                if self not in self.outer_class.emission_center_list:
+                    # 将生成的字典名字添加到外部类的center列表中
+                    self.outer_class.emission_center_list.append(self)
+                
         # 不加修改的返回整个中心的数据内容
         def return_center(self):
             if not self.center_peaks:
@@ -1335,6 +1339,18 @@ class EDGAR_spatial(object):
                 return
             else:
                 return self.center_peaks
+
+        # 返回一个峰值范围是元组的center表达形式
+        def return_center_range_style(self):
+            temp_peaks = self.return_center()
+
+            for val in temp_peaks.values():
+                val['peak_range'] = (val['peak_min'],val['peak_max'])
+                del val['peak_min']
+                del val['peak_max']
+            
+            return temp_peaks
+
 
     ############################################################################
     # 操作类的函数
@@ -1496,7 +1512,7 @@ class EDGAR_spatial(object):
     # 排放峰值和排放中心分析计算相关函数/方法
     ############################################################################
     # 这个函数实际执行从一个年份中提取中心操作
-    def do_extract_center_area(self, emission_center_peak, extract_raster, output, saveMask=False):
+    def do_raster_extract_center_area(self, emission_center_peak, extract_raster, output, saveMask=False):
         # 检查输入的emission_center_peak是否存在，不存在则直接返回
         if not emission_center_peak:
             print 'ERROR: emission center does not exist.'
@@ -1543,7 +1559,7 @@ class EDGAR_spatial(object):
         temp_result.save(output)
 
     # 提取总排放量、最大排放部门和最大排放部门比例的函数
-    def extract_center_basic_info(self, emission_center, isLog):
+    def extract_raster_center_basic_info(self, emission_center, isLog):
         # 检查输入的emission_center是否存在，不存在则直接返回
         if not emission_center:
             print 'ERROR: emission center does not exist.'
@@ -1627,6 +1643,27 @@ class EDGAR_spatial(object):
             self.do_extract_center_area(emission_center_peak=temp_center_peak,
                                         extract_raster=temp_main_sector_weight,
                                         output=temp_center_main_weight)
+
+    def do_point_center_assign(self, emission_center_list, inPoint, output_field_name, year):
+        # 检查输入是否为空。为空则直接返回。
+        if not inPoint or not output_field_name or not year:
+            print 'ERROR: input inPoint or output_field_name is empty. Please check the inputs.'
+
+            # logger output
+            self.ES_logger.error('point center assign input arguments were empty.')
+            return
+
+        if emission_center_list == []:
+            print 'WARNING: emission_center_list is empty.'
+
+            # logger output
+            self.ES_logger.error('emission center list is empty.')
+
+        # TODO
+        # 这里要生成一个peaks值的列表，用于筛选每一个栅格应该归属于哪个范围。
+        # 这里可能要从emission_center 类中重新写一个返回函数，返回一个方便使用的字典。
+    def extract_point_center_basic_info(self, emission_center, isLog):
+        pass
 
     ### 旧函数不建议使用！！！
     # 提取总排放量、最大排放部门和最大排放部门比例的函数
@@ -1821,7 +1858,7 @@ class EDGAR_spatial(object):
                 field_vals = [row.getValue(field.name) for field in fields]
                 field_vals.append(str(year))
                 w.writerow(field_vals)
-            del row
+            # del row
 
         # logger output
         self.ES_logger.debug(
@@ -2598,7 +2635,7 @@ class EDGAR_spatial(object):
     ############################################################################
     ############################################################################
     def year_emission_center_raster_merge(self, wild_card_fmt, emission_center_list, year_range, output_fmt):
-        if not wild_card_fmt or type(wild_card_fmt) != str or not emission_center_list or not year:
+        if not wild_card_fmt or type(wild_card_fmt) != str or not emission_center_list or not year_range:
             print 'ERROR: input emission_center_list or year is empty.'
 
             # logger output
@@ -2624,7 +2661,7 @@ class EDGAR_spatial(object):
                                                 year=yr,
                                                 output_fmt=output_fmt)
 
-    def do_emission_center_raster_merge(self, wild_card_fmt, emission_center_list, year, output_fmt='categories_%s_%s'):
+    def do_emission_center_raster_merge(self, wild_card_fmt, emission_center_list, year, output_fmt='categories_center_merge_%s'):
         if not wild_card_fmt or type(wild_card_fmt) != str or not emission_center_list or not year:
             print 'ERROR: input emission_center_list or year is empty.'
 
@@ -2636,22 +2673,37 @@ class EDGAR_spatial(object):
 
         # 生成多个中心的年份列表
         for center in emission_center_list:
-            temp_raster_name = wild_card_fmt % (center[year]['peak_name'], year)
+            # 列出需要合并的栅格列表
+            # 这里需要用try...catch...来处理输入的output_fmt是无法格式化的。
+            try:
+                temp_raster_name = wild_card_fmt % (center.return_center()[year]['peak_name'], center.return_center()[year]['year'])
+            except Exception as e:
+                temp_raster_name = wild_card_fmt
+
+                # logger output
+                self.ES_logger.info('temp raster name fomatting failed. raster name was %s.' % temp_raster_name)
+
             temp_center_peaks.append(temp_raster_name)
         
+        # 列出需要合并的栅格列表
         self.do_arcpy_list_raster_list(temp_center_peaks)
 
-        temp_output = output_fmt % (center[year]['peak_name'], year)
-        # Mosaic 比例计算结果和0值背景
-        # Mosaic 的结果仍然保存在temp_output_weight_raster中
-        arcpy.Mosaic_management(inputs=self.working_rasters,
-                                target=temp_output,
-                                mosaic_type="FIRST",
-                                colormap="FIRST",
-                                mosaicking_tolerance=0.5)
+        # 这里需要用try...catch...来处理输入的output_fmt是无法格式化的。
+        try:
+            temp_output = output_fmt % year
+        except Exception as e:
+            temp_output = output_fmt
 
-        
+            # logger output
+            self.ES_logger.info('temp raster name fomatting failed. raster name was %s.' % temp_raster_name)
 
+        # Mosaic 所有中心的结果到新的栅格中
+        arcpy.MosaicToNewRaster_management(input_rasters=self.working_rasters,
+                                            output_location=self.__workspace,
+                                            raster_dataset_name_with_extension=temp_output,
+                                            number_of_bands=1,
+                                            mosaic_method="FIRST",
+                                            mosaic_colormap_mode="FIRST")
 
 # ======================================================================
 # ======================================================================
