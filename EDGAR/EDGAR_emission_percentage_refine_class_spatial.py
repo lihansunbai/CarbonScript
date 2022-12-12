@@ -23,6 +23,7 @@ import csv
 import math
 import collections
 import numpy
+import interval
 
 # 性能测试相关模块
 import cProfile
@@ -1294,7 +1295,7 @@ class EDGAR_spatial(object):
             self.outer_class = outer_class
 
             # 中心的名字
-            self.name = center_name
+            self.center_name = center_name
 
             # 排放量峰值，一个排序字典，用于区别不同年份的排放峰值区域。
             self.center_peaks = {}
@@ -1311,6 +1312,10 @@ class EDGAR_spatial(object):
                 self.outer_class.ES_logger.error('Emission peak is emtpy.')
                 return
 
+            # 这里为peak中补充中心名称的信息
+            emission_peak['center_name'] = self.center_name
+
+            # 将peak 存入临时字典中，等待最后的排序
             self.center_peaks_buffer[emission_peak['year']] = emission_peak
 
         # 将临时的emission_peak元素组合成center
@@ -1644,9 +1649,9 @@ class EDGAR_spatial(object):
                                         extract_raster=temp_main_sector_weight,
                                         output=temp_center_main_weight)
 
-    def do_point_center_assign(self, emission_center_list, inPoint, output_field_name, year):
+    def do_point_center_assign(self, emission_center_list, inPoint, log_emission_field, output_field_name, year):
         # 检查输入是否为空。为空则直接返回。
-        if not inPoint or not output_field_name or not year:
+        if not inPoint or not log_emission_field or not output_field_name or not year:
             print 'ERROR: input inPoint or output_field_name is empty. Please check the inputs.'
 
             # logger output
@@ -1662,6 +1667,32 @@ class EDGAR_spatial(object):
         # TODO
         # 这里要生成一个peaks值的列表，用于筛选每一个栅格应该归属于哪个范围。
         # 这里可能要从emission_center 类中重新写一个返回函数，返回一个方便使用的字典。
+        temp_peaks = []
+        
+        # 取出每个中心中对应年份的peak信息
+        for center in emission_center_list:
+            temp_peaks.append(center.return_center()[year])
+        
+        # 在每个peak中生成interval
+        for peak in temp_peaks:
+            peak['peak_range'] = interval.Interval(peak['peak_min'], peak['peak_max'])
+
+        # 构造游标需要的列名称
+        # 注意：
+        # 根据arcpy文档给出的说明：
+        # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
+        # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
+        temp_working_fields = [log_emission_field, output_field_name]
+
+        with arcpy.da.UpdateCursor(inPoint, temp_working_fields) as cursor:
+             for row in tqdm(cursor):
+                for peak in temp_peaks:
+                    if row[0] in peak['peak_range']:
+                        row[1] = peak['center_name']
+
+                        # 更新行信息
+                        cursor.updateRow(row)
+
     def extract_point_center_basic_info(self, emission_center, isLog):
         pass
 
@@ -2224,7 +2255,7 @@ class EDGAR_spatial(object):
                                         field['field_alias'],
                                         field['field_is_nullable'],
                                         field['field_is_required'],
-                                        field['field_domain'],)
+                                        field['field_domain'])
                 # logger output
                 self.ES_logger.debug('Fields added:%s' % field['field_name'])
             except:
