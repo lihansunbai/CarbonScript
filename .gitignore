@@ -19,3 +19,5 @@ test_year_center_merge
 EDGAR/test_year_center_merge.py
 EDGAR/test_log_emission_calculate.py
 EDGAR/test_point_center_extract.py
+EDGAR/test_center_extract_category.py
+EDGAR/test_center_main_weight_extract.py
