@@ -21,3 +21,10 @@ EDGAR/test_log_emission_calculate.py
 EDGAR/test_point_center_extract.py
 EDGAR/test_center_extract_category.py
 EDGAR/test_center_main_weight_extract.py
+hist.txt
+.gitignore
+EDGAR/test_center_statistic_project_km.py
+EDGAR/test_export_raster_for_eof.py
+EDGAR/test_project_center.py
+EDGAR/test_year_center_mask_merge.py
+SHELL/test_output.csv

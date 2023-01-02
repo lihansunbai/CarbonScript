@@ -1,0 +1,12 @@
+2022-12-28 20:39:40,405-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2022-12-28 20:39:40,405-[DEBUG]-[root]-[year_range]-year range changed to:1970 to 2018
+2022-12-28 20:39:40,405-[INFO]-[root]-[__init__]-Year has set.
+2022-12-28 20:39:45,334-[INFO]-[root]-[__init__]-workpace has set.
+2022-12-28 20:39:45,335-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2022-12-28 20:39:45,335-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 100%.
+2022-12-28 20:39:45,335-[INFO]-[root]-[__init__]-Root initialization finished.
+2022-12-28 20:39:45,339-[INFO]-[root]-[data_analyze]-Initialization finished.
+2022-12-28 20:39:53,635-[DEBUG]-[root]-[do_zonal_statistic_to_table]-Sataistics finished.
+2022-12-28 20:39:53,635-[DEBUG]-[root]-[zonal_center_info_statistic]-Zonal statistics finished:center_7_1970_Behrmann
+2022-12-28 20:39:54,334-[DEBUG]-[root]-[do_zonal_table_to_csv]-Convert 1970's statistics table to csv file:F:\workplace\geodatabase\statistic\table_ZST_center_7_1970_Behrmann.csv
+2022-12-28 20:39:54,334-[DEBUG]-[root]-[zonal_center_info_statistic]-Zonal statitics convert to csv. Csv name: F:\workplace\geodatabase\statistic\table_ZST_center_7_1970_Behrmann.csv

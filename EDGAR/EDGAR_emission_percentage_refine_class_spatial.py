@@ -113,8 +113,11 @@ class EDGAR_spatial(object):
         self.ES_logger.info('arcpy Spatial extension checked.')
         # 将多线程处理设置为100%
         #   吐槽：虽然没什么用，cpu利用率最多也只能达到5%
-        arcpy.env.parallelProcessingFactor = "100%"
-        self.ES_logger.info('arcpy parallelProcessingFactor set to 100%.')
+        arcpy.env.parallelProcessingFactor = "200%"
+        self.ES_logger.info('arcpy parallelProcessingFactor set to 200%.')
+
+        arcpy.env.overwriteOutput = True
+        self.ES_logger.info('arcpy overwriteOutput set to True.')
 
         print 'More debug information please check the log file.'
         self.ES_logger.info('Root initialization finished.')
@@ -389,10 +392,46 @@ class EDGAR_spatial(object):
         print '=============================='
         print '=============================='
 
-    # TODO
-    # 通用导出栅格，并规定nodata的值
-    def raster_export(self):
-        pass
+    # 简易导出栅格函数，并规定nodata的值
+    def raster_quick_export(self, raster_list, nodata_value, output_path, output_formate):
+        # 检查输入的栅格列表是否存在
+        if not raster_list:
+            print 'ERROR: input raster_list is empty. Please check the input.'
+
+            # logger output
+            self.ES_logger.error('input raster list is empty')
+            return
+        
+        # 检查其余参数是否正确
+        if not nodata_value or not output_formate or type(output_formate) != str:
+            print 'ERROR: nodata_value or ouput_formate argument error.'
+
+            # logger output
+            self.ES_logger.error('nodata_value or ouput_formate argument error')
+            return
+
+        # 对列表中的栅格逐个转化
+        for raster in raster_list:
+            # 先检查栅格是否存在
+            if not arcpy.Exists(raster):
+                print 'ERROR: input raster not found. Raster name: %s' % raster
+                
+                # logger ouput
+                self.ES_logger.error('ERROR: input raster not found. Raster name: %s' % raster)
+                return
+
+            
+            # 先利用从con()函数将所有nodata定义为固定值
+            temp_set_nodata_value = Con(in_conditional_raster=IsNull(raster),
+                                        in_true_raster_or_constant=nodata_value,
+                                        in_false_raster_or_constant=raster)
+
+            # 生成输出文件名
+            temp_output_name = '%s\\%s.%s' % (output_path, raster, output_formate)
+
+            arcpy.CopyRaster_management(in_raster=temp_set_nodata_value,
+                                        out_rasterdataset=temp_output_name,
+                                        format=output_formate)
 
     ############################################################################
     ############################################################################
@@ -1975,9 +2014,28 @@ class EDGAR_spatial(object):
     ############################################################################
     # 表转CSV相关功能
     ############################################################################
+    # TODO
+    # 需要继续改进，加入以下功能：
+    # 1、统计要素加入交叉制表，这个要实现为do_xxxxx函数
+    # 3、统计函数需要加入统计栅格的自定义表达，以适应不同投影和自定义中心名称。
+
+    # 实际执行TabulateArea
+    def do_tabulate_area(self, in_zone_data, zone_field, in_class_data, out_table):
+        # 获得输入栅格的像素尺寸
+        temp_cell_size = arcpy.Describe(in_class_data).meanCellWidth
+
+        # 执行TabulateArea
+        TabulateArea(in_zone_data=in_zone_data,
+                    zone_field=zone_field,
+                    in_class_data=in_class_data,
+                    class_field='VALUE',
+                    out_table=out_table,
+                    processing_cell_size=temp_cell_size)
+
     # 实际执行zonal statistic
     def do_zonal_statistic_to_table(self, inZoneData, zoneField, inValueRaster, outTable):
         # Execute ZonalStatisticsAsTable
+        # 很奇怪吧，这里用了一个临时值接收ZSAT的返回值。只是因为参考手册就是这么写的。
         outZSaT = ZonalStatisticsAsTable(inZoneData, zoneField, inValueRaster,
                                          outTable, "DATA", "ALL")
 
@@ -2013,8 +2071,194 @@ class EDGAR_spatial(object):
         self.ES_logger.debug(
             'Convert %s\'s statistics table to csv file:%s' % (year, temp_outPath))
 
+    def zonal_center_info_statistics(self, emission_center, inZone, zoneField, outPath, inRaster_fmt='center_%s_%s', do_tabluate_area=False):
+        # 获得保存路径
+        temp_out_csv_path = os.path.abspath(outPath)
+
+        # 检查输入的分区是否存在
+        if not (arcpy.Exists(inZone)):
+            print 'Error: inZone not found.'
+
+            # logger output
+            self.ES_logger.error('inZone does not exist.')
+
+            return
+
+        # 获取inZoned的投影信息
+        inZone_prj = arcpy.Describe(inZone).spatialReference.factoryCode
+
+        if not emission_center:
+            print 'ERROR: input emission center does not exist.'
+
+            # logger output
+            self.ES_logger.error('input emission center does not exist.')
+            return
+
+        for peak in tqdm(emission_center.return_center().values()):
+            # 生成待统计的栅格名称
+            try:
+                temp_inRaster = inRaster_fmt % (
+                    peak['peak_name'], peak['year'])
+            except Exception as e:
+                # logger output
+                self.ES_logger.error(
+                    'temp raster name fomatting failed. raster name formate was %s.' % inRaster_fmt)
+                
+                return
+
+            if not (arcpy.Exists(temp_inRaster)):
+                print 'Error: inRaster not found. inRaster name: %s' % temp_inRaster
+
+                # logger output
+                self.ES_logger.error(
+                    'inRaster does not exist. inRaster name: %s' % temp_inRaster)
+
+                return
+
+            if arcpy.Describe(temp_inRaster).spatialReference.factoryCode != inZone_prj:
+                print 'ERROR: inzone and raster spatial reference does not same!'
+
+                # logger output
+                self.ES_logger.error('Spatial reference was different.')
+                return
+
+            # 统计zonal_statistic_to_table
+            temp_ZST_outTable = 'table_ZST_' + temp_inRaster
+
+            self.do_zonal_statistic_to_table(inZoneData=inZone,
+                                            zoneField=zoneField,
+                                            inValueRaster=temp_inRaster,
+                                            outTable=temp_ZST_outTable)
+
+            # logger output
+            self.ES_logger.debug(
+                'Zonal statistics finished:%s' % temp_inRaster)
+
+            temp_ZST_outCsv = os.path.join(
+                temp_out_csv_path, temp_ZST_outTable+'.csv')
+            self.do_zonal_table_to_csv(table=temp_ZST_outTable,
+                                       year=peak['year'],
+                                       outPath=temp_ZST_outCsv)
+
+            # logger output
+            self.ES_logger.debug('Zonal statitics convert to csv. Csv name: %s' % temp_ZST_outCsv)
+
+            # 统计Tabulate_area
+            if do_tabluate_area:
+                temp_TA_outTable = 'table_TA_' + temp_inRaster
+
+                self.do_tabulate_area(in_zone_data=inZone,
+                                    zone_field=zoneField,
+                                    in_class_data=temp_inRaster,
+                                    out_table=temp_TA_outTable)
+
+                # logger output
+                self.ES_logger.debug(
+                    'Tabulate area finished:%s' % temp_inRaster)
+
+                temp_TA_outCsv = os.path.join(
+                    temp_out_csv_path, temp_TA_outTable+'.csv')
+                self.do_zonal_table_to_csv(table=temp_TA_outTable,
+                                        year=peak['year'],
+                                        outPath=temp_TA_outCsv)
+                
+                # logger output
+                self.ES_logger.debug('Zonal statitics convert to csv. Csv name: %s' % temp_TA_outCsv)
+
+    def zonal_center_merge_info_statistics(self, emission_center, inZone, zoneField, outPath, inRaster_fmt='center_merge_%s', do_tabluate_area=False):
+        # 获得保存路径
+        temp_out_csv_path = os.path.abspath(outPath)
+
+        # 检查输入的分区是否存在
+        if not (arcpy.Exists(inZone)):
+            print 'Error: inZone not found.'
+
+            # logger output
+            self.ES_logger.error('inZone does not exist.')
+
+            return
+
+        # 获取inZoned的投影信息
+        inZone_prj = arcpy.Describe(inZone).spatialReference.factoryCode
+
+        if not emission_center:
+            print 'ERROR: input emission center does not exist.'
+
+            # logger output
+            self.ES_logger.error('input emission center does not exist.')
+            return
+
+        for year in tqdm(emission_center.return_center().keys()):
+            # 生成待统计的栅格名称
+            try:
+                temp_inRaster = inRaster_fmt % year
+            except Exception as e:
+                # logger output
+                self.ES_logger.error(
+                    'temp raster name fomatting failed. raster name formate was %s.' % inRaster_fmt)
+                
+                return
+
+            if not (arcpy.Exists(temp_inRaster)):
+                print 'Error: inRaster not found. inRaster name: %s' % temp_inRaster
+
+                # logger output
+                self.ES_logger.error(
+                    'inRaster does not exist. inRaster name: %s' % temp_inRaster)
+
+                return
+
+            if arcpy.Describe(temp_inRaster).spatialReference.factoryCode != inZone_prj:
+                print 'ERROR: inzone and raster spatial reference does not same!'
+
+                # logger output
+                self.ES_logger.error('Spatial reference was different.')
+                return
+
+            # 统计zonal_statistic_to_table
+            temp_ZST_outTable = 'table_ZST_' + temp_inRaster
+
+            self.do_zonal_statistic_to_table(inZoneData=inZone,
+                                            zoneField=zoneField,
+                                            inValueRaster=temp_inRaster,
+                                            outTable=temp_ZST_outTable)
+
+            # logger output
+            self.ES_logger.debug(
+                'Zonal statistics finished:%s' % temp_inRaster)
+
+            temp_ZST_outCsv = os.path.join(
+                temp_out_csv_path, temp_ZST_outTable+'.csv')
+            self.do_zonal_table_to_csv(table=temp_ZST_outTable,
+                                       year=year,
+                                       outPath=temp_ZST_outCsv)
+
+            # logger output
+            self.ES_logger.debug('Zonal statitics convert to csv. Csv name: %s' % temp_ZST_outCsv)
+
+            # 统计Tabulate_area
+            if do_tabluate_area:
+                temp_TA_outTable = 'table_TA_' + temp_inRaster
+
+                self.do_tabulate_area(in_zone_data=inZone,
+                                    zone_field=zoneField,
+                                    in_class_data=temp_inRaster,
+                                    out_table=temp_TA_outTable)
+
+                # logger output
+                self.ES_logger.debug(
+                    'Tabulate area finished:%s' % temp_inRaster)
+
+                temp_TA_outCsv = os.path.join(
+                    temp_out_csv_path, temp_TA_outTable+'.csv')
+                self.do_zonal_table_to_csv(table=temp_TA_outTable,
+                                        year=year,
+                                        outPath=temp_TA_outCsv)
+                
+                # logger output
+                self.ES_logger.debug('Zonal statitics convert to csv. Csv name: %s' % temp_TA_outCsv)
+
     # 这里的year_range和center_range都是一个二元元组
-    # def zonal_year_statistics(self, year_range, inZone, center_range, outPath):
     def zonal_center_basic_info_statistics(self, emission_center, inZone, outPath):
         # 获得保存路径
         temp_out_csv_path = os.path.abspath(outPath)
@@ -2894,6 +3138,7 @@ class EDGAR_spatial(object):
 
             # logger output
             self.ES_logger.error('emission_center_list or year is empty.')
+            return
 
         if len(year_range) != 2:
             print 'ERROR: year range requir a two ints tuple.'
@@ -2970,6 +3215,88 @@ class EDGAR_spatial(object):
 
         # 清空使用的self.working_rasters变量
         self.working_rasters = []
+
+    # 这里需要传入一个center_colormap字典
+    def year_emission_center_mask_raster_merge(self, wild_card_fmt, emission_center_list, center_colormap, year_range, output_fmt):
+        if not wild_card_fmt or type(wild_card_fmt) != str or not emission_center_list or not year_range or not center_colormap:
+            print 'ERROR: input arguments were empty.'
+
+            # logger output
+            self.ES_logger.error('input arguments were empty.')
+            return
+
+        if len(year_range) != 2:
+            print 'ERROR: year range requir a two ints tuple.'
+
+            # logger output
+            self.ES_logger.error('year range error.')
+            return
+
+        if max(year_range) > self.end_year or min(year_range) < self.start_year:
+            print 'ERROR: year is out range.'
+
+            # logger output
+            self.ES_logger.error('year range error.')
+            return
+
+        for yr in tqdm(range(min(year_range), max(year_range)+1)):
+            temp_center_peaks = []
+            temp_raster_centers_name = {}
+
+            # 生成多个中心的年份列表
+            for center in emission_center_list:
+                # 列出需要合并的栅格列表
+                # 这里需要用try...catch...来处理输入的output_fmt是无法格式化的。
+                try:
+                    temp_raster_name = wild_card_fmt % (center.return_center(
+                    )[yr]['peak_name'], center.return_center()[yr]['year'])
+                except Exception as e:
+                    temp_raster_name = wild_card_fmt
+
+                    # logger output
+                    self.ES_logger.info(
+                        'temp raster name fomatting failed. raster name was %s.' % temp_raster_name)
+
+                temp_center_peaks.append(temp_raster_name)
+                temp_raster_centers_name[temp_raster_name] = center.return_center()[yr]['center_name']
+
+            # 列出需要合并的栅格列表
+            self.do_arcpy_list_raster_list(temp_center_peaks)
+
+            # 这里将修改每个中心的栅格值为传入的color_map 中的对应值；
+            # 同时生成真正待合并的栅格列表
+            temp_mosaic_list = []
+            for raster in self.working_rasters:
+                temp_false_value = center_colormap[temp_raster_centers_name[raster]]
+                temp_con = Con(raster,temp_false_value)
+
+                temp_mosaic_list.append(temp_con)
+
+            # 这里需要用try...catch...来处理输入的output_fmt是无法格式化的。
+            try:
+                temp_output = output_fmt % yr
+            except Exception as e:
+                temp_output = output_fmt
+
+                # logger output
+                self.ES_logger.info(
+                    'temp raster name fomatting failed. raster name was %s.' % temp_raster_name)
+
+            # 进行合并之前需要先获得原始栅格的像素深度参数。
+            # 原因如下：MosaicToNewRaster_management（）函数中如果不设置像素类型，将使用默认值 8 位，而输出结果可能会不正确。
+
+            temp_pixel_type = self.__raster_pixel_type[temp_mosaic_list[0].pixelType]
+            
+            arcpy.MosaicToNewRaster_management(input_rasters=temp_mosaic_list,
+                                            output_location=self.__workspace,
+                                            raster_dataset_name_with_extension=temp_output,
+                                            pixel_type=temp_pixel_type,
+                                            number_of_bands=1,
+                                            mosaic_method="FIRST",
+                                            mosaic_colormap_mode="FIRST")
+
+            # 一定要记得清空working_rasters参数
+            self.working_rasters = []
 
 
 # ======================================================================
