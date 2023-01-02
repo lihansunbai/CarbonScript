@@ -11,12 +11,13 @@
 BEGIN{
     FS=",";
 
-    if (ARGC < 2){
-        print "Output file name does not exist."
-        exit 1
-    }
+    # TODO 增加自定义输出文件名的功能
+    # if (ARGC < 2){
+    #     print "Output file name does not exist."
+    #     exit 1
+    # }
 
-    output_file = ARGV[2]
+    output_file = "ouput.csv"
 }
 
 # 处理首行：从标题行中提取每个唯一值的名字。
