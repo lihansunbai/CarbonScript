@@ -433,6 +433,42 @@ class EDGAR_spatial(object):
                                         out_rasterdataset=temp_output_name,
                                         format=output_formate)
 
+    # 为栅格添加背景值
+    # 用途：添加一个背景值以消除NULL值栅格的影响。
+    # 注意：如果指定了output_Raster参数，则会输出到该参数指定的栅格中。
+    def mosaic_background_to_raster(self, inRaster, background, output_Raster=None):
+        if not inRaster or not background:
+            print 'ERROR: raster or background does not exist. Please check the input.'
+
+            # logger output
+            self.ES_logger.error('Input raster or background does not exist. inRaster:%s; background:%s.' % (inRaster,background))
+            return
+
+        if output_Raster: 
+            if type(output_Raster) != str 
+                print 'ERROR: output raster name does not exist.'
+
+                # logger output
+                self.ES_logger.error('output raster name does not exist.')
+
+            # 确定输出栅格的pixel_type
+            temp_pixel_type = self.__raster_pixel_type[arcpy.Raster(inRaster).pixelType]
+
+            # Mosaic 所有中心的结果到新的栅格中
+            arcpy.MosaicToNewRaster_management(input_rasters=[inRaster, background],
+                                            output_location=self.__workspace,
+                                            raster_dataset_name_with_extension=output_Raster,
+                                            pixel_type=temp_pixel_type,
+                                            number_of_bands=1,
+                                            mosaic_method="FIRST",
+                                            mosaic_colormap_mode="FIRST")
+        else:
+            arcpy.Mosaic_management(inputs=[inRaster, background],
+                                target=inRaster,
+                                mosaic_type="FIRST",
+                                colormap="FIRST",
+                                mosaicking_tolerance=0.5)
+
     ############################################################################
     ############################################################################
     # EDGAR 原始数据合并为点数据部分

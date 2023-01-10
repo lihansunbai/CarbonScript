@@ -33,3 +33,4 @@ EDGAR/test_emission_geographical_extend.py
 EDGAR/test_extract_total_emission_to_point.py
 EDGAR/test_quick_export_raster.py
 EDGAR/test_extract_total_emission_to_point.py
+EDGAR/EDGAR_spatial.pyc
