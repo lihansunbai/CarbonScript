@@ -16,7 +16,7 @@ from arcpy.sa import *
 
 # 引入自己的ES_spatial模块
 sys.path.append('E:\\CODE\\CARBON\\CarbonScript\\EDGAR')
-from EDGAR_emission_percentage_refine_class_spatial import EDGAR_spatial
+from EDGAR_spatial import EDGAR_spatial
 
 # 为工作空间进行赋值
 # 这里需要为两个参数赋值：第一个参数是系统中arcpy environment workspace 参数，

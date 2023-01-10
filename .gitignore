@@ -28,3 +28,8 @@ EDGAR/test_export_raster_for_eof.py
 EDGAR/test_project_center.py
 EDGAR/test_year_center_mask_merge.py
 SHELL/test_output.csv
+EDGAR/test_delete_raster.py
+EDGAR/test_emission_geographical_extend.py
+EDGAR/test_extract_total_emission_to_point.py
+EDGAR/test_quick_export_raster.py
+EDGAR/test_extract_total_emission_to_point.py
