@@ -132,6 +132,9 @@ class EDGAR_spatial(object):
         # 数据库过滤标签
         root_init.raster_filter_wildcard = []
 
+        # 构建数据库过滤标签的信息
+        root_init.filter_label_dict = {}
+
         # 准备时间范围内的所有部门的栅格
         root_init.all_prepare_working_rasters = []
 
@@ -445,7 +448,7 @@ class EDGAR_spatial(object):
             return
 
         if output_Raster: 
-            if type(output_Raster) != str 
+            if type(output_Raster) != str:
                 print 'ERROR: output raster name does not exist.'
 
                 # logger output
@@ -462,12 +465,17 @@ class EDGAR_spatial(object):
                                             number_of_bands=1,
                                             mosaic_method="FIRST",
                                             mosaic_colormap_mode="FIRST")
+            # logger output
+            self.ES_logger.debug('New raster was mosaiced with background: %s' % output_Raster)
+
         else:
             arcpy.Mosaic_management(inputs=[inRaster, background],
                                 target=inRaster,
                                 mosaic_type="FIRST",
                                 colormap="FIRST",
                                 mosaicking_tolerance=0.5)
+            
+            self.ES_logger.debug('Background was mosaiced into raster: %s' % inRaster)
 
     ############################################################################
     ############################################################################
@@ -841,9 +849,9 @@ class EDGAR_spatial(object):
     # 实EDGAR 原始数据合并际数据计算相关函数/方法
     ############################################################################
     # 生成需要计算的栅格列表
-    def prepare_raster(self):
+    def prepare_raster(self, filter_label):
         # 首先构造用于筛选raster用的wildcard
-        self.raster_filter = self.filter_label
+        self.raster_filter = filter_label
         # 通过arcpy列出需要的栅格
         self.prepare_working_rasters(self.raster_filter)
 
@@ -1330,7 +1338,10 @@ class EDGAR_spatial(object):
     # 批量处理可以使用这个函数
     def proccess_year(self, start_year, end_year):
         # 首先需要列出所有需要使用到的栅格
-        self.prepare_raster()
+        temp_filter_label = self.filter_label
+        temp_filter_label['label']['start_year'] = start_year
+        temp_filter_label['label']['end_year'] = end_year
+        self.prepare_raster(filter_label=temp_filter_label)
 
         # 逐年处理
         for yr in range(start_year, end_year+1):
@@ -1783,6 +1794,60 @@ class EDGAR_spatial(object):
                 temp_main_sector_weight) * temp_mask
             temp_center_main_weight.save(temp_center_main_weight_output)
 
+    def extract_point_center(self, emission_cneter_list, inPoint, log_emission_field, output_field_name, year, log_calculate_flag=False, total_emission_field=None):
+        if not emission_cneter_list or not inPoint or not log_emission_field or not output_field_name or not year:
+            print 'ERROR: input arguments not exist, please check the inputs.'
+
+            # logger output
+            self.ES_logger.error('some input arguments do not exist.')
+            return
+
+        if log_calculate_flag:
+            if not total_emission_field:
+                print 'ERROR: total emission field does not exist, please check the input.'
+
+                # logger output
+                self.ES_logger.error('total emission tield does not exist.')
+                return
+
+            # 先计算出总排放量的对数值
+            # 第一步尝试列出loge_emission_field，如果不存在则添加一列
+            temp_field_checker = arcpy.ListFields(dataset=inPoint,
+                            wild_card=log_emission_field)
+
+            # 如果不存在则添加一列
+            if not temp_field_checker:
+                temp_gen_fieldList = [{'field_name':log_emission_field,'field_type':'DOUBLE'}]
+
+                self.addField_to_inPoint(inPoint=inPoint,
+                                        genFieldList=temp_gen_fieldList)
+
+            # 构造游标计算log值
+            temp_field_names = [total_emission_field, log_emission_field]
+            with arcpy.da.UpdateCursor(inPoint, temp_field_names) as cursor:
+                for row in tqdm(cursor):
+                    # 检查栅格排放值是否为0，为0则直接将所有值赋值为0
+                    if row[0] == 0 or not row[0]:
+                        row.setNull(row[1])
+                    else:
+                        row[1] = numpy.log10(row[0])
+
+                    # 更新行信息
+                    cursor.updateRow(row)
+
+            # 调用do_point_center_assign
+            self.do_point_center_assign(emission_center_list=emission_cneter_list,
+                                        inPoint=inPoint,
+                                        log_emission_field=log_emission_field,
+                                        output_field_name=output_field_name,
+                                        year=year)
+        else:
+            self.do_point_center_assign(emission_center_list=emission_cneter_list,
+                                        inPoint=inPoint,
+                                        log_emission_field=log_emission_field,
+                                        output_field_name=output_field_name,
+                                        year=year)
+
     # 在点数据中为每个点标记所属的中心
     def do_point_center_assign(self, emission_center_list, inPoint, log_emission_field, output_field_name, year):
         # 检查输入是否为空。为空则直接返回。
@@ -1800,7 +1865,6 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.error('emission center list is empty.')
 
-        # TODO
         # 这里要生成一个peaks值的列表，用于筛选每一个栅格应该归属于哪个范围。
         # 这里可能要从emission_center 类中重新写一个返回函数，返回一个方便使用的字典。
         temp_peaks = []
@@ -1824,11 +1888,19 @@ class EDGAR_spatial(object):
         with arcpy.da.UpdateCursor(inPoint, temp_working_fields) as cursor:
             for row in tqdm(cursor):
                 for peak in temp_peaks:
+                    # 检查是否属于该中心
                     if row[0] in peak['peak_range']:
+                        # 如果属于中心则为名称字段更新中心名字
                         row[1] = peak['center_name']
-
                         # 更新行信息
                         cursor.updateRow(row)
+                        # 跳出查找所属中心的循环
+                        break
+
+                    # 如果不属于某个中心则保留中心名称字段为NULL
+                    row.setNull(row[1])
+                    # 更新行信息
+                    cursor.updateRow(row)
 
     def extract_point_center_basic_info(self, emission_center, isLog):
         pass
@@ -3213,11 +3285,9 @@ class EDGAR_spatial(object):
                 temp_raster_name = wild_card_fmt % (center.return_center(
                 )[year]['peak_name'], center.return_center()[year]['year'])
             except Exception as e:
-                temp_raster_name = wild_card_fmt
-
                 # logger output
                 self.ES_logger.info(
-                    'temp raster name fomatting failed. raster name was %s.' % temp_raster_name)
+                    'temp raster name fomatting failed. raster name was %s.' % wild_card_fmt)
 
             temp_center_peaks.append(temp_raster_name)
 
@@ -3341,56 +3411,12 @@ class EDGAR_spatial(object):
 # ======================================================================
 # ======================================================================
 if __name__ == '__main__':
-    # test contents
-    # test_es = {'E2A':'E2A','E1A1A':'E1A1A','E1A4':'E1A4'}
-    # test_esc = {'E2A':1,'E1A1A':2,'E1A4':3}
-
-    # aaa = EDGAR_spatial('D:\\workplace\\geodatabase\\EDGAR_test_42.gdb',st_year=2012,en_year=2012,sector=test_es,colormap=test_esc,background_flag=True, background_flag_label='')
-    # aaa.prepare_raster()
-    # print aaa.working_rasters
-    # aaa.year_total_sectors_merge(2012)
-    # aaa.sector_emission_percentage('E2A',2012,'test_e2a_weight')
-
-    # test_es = {'AGS': 'AGS', 'ENE': 'ENE', 'RCO': 'RCO', 'IND': 'IND',
-    #            'REF_TRF': 'REF_TRF', 'SWD_INC': 'SWD_INC', 'TNR_Ship': 'TNR_Ship'}
-    # test_esc = {'AGS': 1, 'ENE': 2, 'RCO': 3, 'IND': 4,
-    #             'REF_TRF': 5, 'SWD_INC': 6, 'TNR_Ship': 7}
-    # test_es = {'AGS': 'AGS', 'ENE': 'ENE', 'RCO': 'RCO'}
-    # test_esc = {'AGS': 1, 'ENE': 2, 'RCO': 3}
-
-    #calculate_fields = ['wmax','wmaxid','wraster','sector_counts']
     # merge_sectors test
     # aaa = EDGAR_spatial.merge_sectors('D:\\workplace\\geodatabase\\EDGAR_test.gdb',
     #    st_year=2018, en_year=2018, sectors=test_es, colormap=test_esc)
     # cProfile.run('aaa = EDGAR_spatial.merge_sectors(\'D:\\workplace\\geodatabase\\EDGAR_test.gdb\',st_year=2018, en_year=2018, sectors=test_es, colormap=test_esc)', 'merge_sector_init_profile.prof')
-
-    # extract_center test
-    # aaa = EDGAR_spatial.data_analyze(workspace='D:\\workplace\\geodatabase\\EDGAR_test.gdb',st_year=2010, en_year=2018)
-    # cProfile.run('aaa = EDGAR_spatial.data_analyze(workspace=\'D:\\workplace\\geodatabase\\EDGAR_test.gdb\',st_year=2010, en_year=2018)','extract_center_init_profilel.prof')
-
-    # aaa.prepare_raster()
-    # print aaa.working_rasters
-    # aaa.year_total_sectors_merge(2018)
-    # aaa.year_sector_emission_percentage(2018)
-    # aaa.year_weight_joint(2018, list(test_es.values()))
-    # aaa.max_weight_rasterize(2018)
-    # aaa.proccess_year(start_year=1980, end_year=1989)
-    # aaa.extract_center_area(center_range=(3.5, 4.5),
-    #                         year_range=(2010, 2018), isLog=True)
-    # merge_sectors test
     # aaa.proccess_year(start_year=2018, end_year=2018)
     # cProfile.run('aaa.proccess_year(start_year=2018, end_year=2018)','merge_sector_init_profile.prof')
 
-    # extract_center test
-    # aaa.extract_center_area(center_range=(3.5, 4.5),year_range=(2018, 2018), isLog=False)
-    # extract_center test
-    aaa = EDGAR_spatial.data_analyze(
-        workspace='F:\\workplace\\geodatabase\\EDGAR_test.gdb', st_year=2010, en_year=2018)
-    temp_inPoint = 'sectoral_weights_2015'
-    temp_gen_fieldList = [{'field_name': 'sorted_sectors', 'field_type': 'LONG'}, {'field_name': 'G_TRA', 'field_type': 'FLOAT'}, {'field_name': 'G_IND', 'field_type': 'FLOAT'}, {
-        'field_name': 'G_WST', 'field_type': 'FLOAT'}, {'field_name': 'G_AGS', 'field_type': 'FLOAT'}, {'field_name': 'G_ENE', 'field_type': 'FLOAT'}, {'field_name': 'G_RCO', 'field_type': 'FLOAT'}]
-    temp_gen_handle = {'ENE': 'G_ENE', 'REF_TRF': 'G_IND', 'IND': 'G_IND', 'RCO': 'G_RCO', 'PRO': 'G_ENE', 'NMM': 'G_IND', 'CHE': 'G_IND', 'IRO': 'G_IND',
-                       'NFE': 'G_IND', 'NEU': 'G_IND', 'PRU_SOL': 'G_IND', 'AGS': 'G_AGS', 'SWD_INC': 'G_WST', 'FFF': 'G_ENE', 'TRO_noRES': 'G_TRA', 'TNR_Other': 'G_TRA'}
 
-    aaa.sectors_generalize(inPoint=temp_inPoint,
-                           gen_handle=temp_gen_handle, gen_fieldList=[])
+    print 'main process'
