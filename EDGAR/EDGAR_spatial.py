@@ -1824,11 +1824,13 @@ class EDGAR_spatial(object):
 
             # 构造游标计算log值
             temp_field_names = [total_emission_field, log_emission_field]
+
             with arcpy.da.UpdateCursor(inPoint, temp_field_names) as cursor:
                 for row in tqdm(cursor):
                     # 检查栅格排放值是否为0，为0则直接将所有值赋值为0
                     if row[0] == 0 or not row[0]:
-                        row.setNull(row[1])
+                        # row.setNull(row[1])
+                        row[1] = None
                     else:
                         row[1] = numpy.log10(row[0])
 
@@ -1898,7 +1900,8 @@ class EDGAR_spatial(object):
                         break
 
                     # 如果不属于某个中心则保留中心名称字段为NULL
-                    row.setNull(row[1])
+                    # row.setNull(row[1])
+                    row[1] = None
                     # 更新行信息
                     cursor.updateRow(row)
 
@@ -2721,6 +2724,9 @@ class EDGAR_spatial(object):
 
     # 执行添加字段时使用的字段属性检查函数
     def field_attributes_checker(self, fields):
+        # 保存返回数据的列表
+        return_fields = []
+
         if not fields:
             print 'ERROR: fields are empty. Please check input.'
 
@@ -2734,12 +2740,12 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.info('Checking fields attributes.')
             for field in tqdm(fields):
-                self.do_field_attributes_check(field)
+                return_fields.append(self.do_field_attributes_check(field))
         # 处理单个字典形式的添加字段属性的合规性
         elif type(fields) == dict:
-            self.do_field_attributes_check(fields)
+            return_fields.append(self.do_field_attributes_check(fields))
 
-        return fields
+        return return_fields
 
     # 如果需要添加多个字段，则可以利用以下这个函数生成一个待添加字段列表
     # 直接调用这个函数将返回现有的字段列表
