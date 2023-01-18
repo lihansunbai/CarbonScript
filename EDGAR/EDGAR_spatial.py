@@ -816,8 +816,10 @@ class EDGAR_spatial(object):
     def do_arcpy_list_raster_list(self, wildcard_list):
         # 逐年份生成需要处理的数据列表
         for i in wildcard_list:
-            if arcpy.Exists(i):
-                self.working_rasters.extend(arcpy.ListRasters(wild_card=i))
+            temp_raster_list = arcpy.ListRasters(wild_card=i)
+
+            if temp_raster_list:
+                self.working_rasters.extend(temp_raster_list)
             else:
                 print 'WARNING: cant add raster to working_rasters list.'
 
@@ -856,15 +858,10 @@ class EDGAR_spatial(object):
         self.prepare_working_rasters(self.raster_filter)
 
     # 栅格叠加的实际执行函数
-    # 这个函数用到了tqdm显示累加进度
-    def do_raster_add(self, raster_list, result_raster):
-        if type(result_raster) != str:
-            print 'Raster add: The output result raster path error.'
-
-            # logger output
-            self.ES_logger.error('The output result raster path error.')
-            return
-
+    # 改进1：这个函数用到了tqdm显示累加进度
+    # 改进2：修改参数的功能，如果提供了result_raster参数则保存到对应位置；
+    #       如果不提供则只将生成的栅格返回。
+    def do_raster_add(self, raster_list, result_raster=None):
         # 将列表中的第一个栅格作为累加的起始栅格
         temp_raster = arcpy.Raster(raster_list[0])
         raster_list.pop(0)
@@ -878,7 +875,23 @@ class EDGAR_spatial(object):
 
         # logger output
         self.ES_logger.info('Rasters added: %s' % raster_list)
-        return temp_raster.save(result_raster)
+
+        # 如果提供了result_raster，则进行栅格保存操作。
+        if result_raster:
+            if type(result_raster) != str:
+                print 'Raster add: The output result raster path error.'
+
+                # logger output
+                self.ES_logger.error('The output result raster path error.')
+                return
+
+            # 保存生成的栅格
+            temp_raster.save(result_raster)
+
+            # logger output
+            self.ES_logger.error('Raster saved: %s' % result_raster)
+
+        return temp_raster
 
     # 函数需要传入一个包含需要叠加的部门列表list，
     # 以及执行操作的年份
@@ -1370,10 +1383,23 @@ class EDGAR_spatial(object):
     # 类定义
     ############################################################################
     class emission_center(object):
+        '''
+        Description of emission_center:
+            A emission_center contains a ordered dictionary of sets of center peaks, which ascendent indexed by year as dictionary keys.
+            User can customize a name to a emission_center, which the `emission_center.center_name` will return the string of center name.
+
+        Structure of center peaks:
+            The center peak is a dictionary contains following elements:
+                {'peak_max': maximum emission,
+                'peak_min': minimum emission,
+                'peak_name': the middle point of peak_max value and peak_main value, which is a string that expressed with number characters,
+                'year': year}
+        '''
+
         # 初始化函数
         # 创建一个emission_center类必须提供一个名称用于标识类
         def __init__(self, outer_class, center_name='default_center'):
-            # 需要检查是否出入EDGAR_spatial类,出入类的作用是保证共享的参数可以获取
+            # 需要检查是否输入EDGAR_spatial类,输入类的作用是保证共享的参数可以获取
             if not outer_class:
                 print 'ERROR: please input a EDGAR_spatial class.'
 
@@ -1961,6 +1987,87 @@ class EDGAR_spatial(object):
             temp_categories_center.save(temp_categories_center_output)
 
         pass
+
+    # 根据提供的排放中心生成该中心的全部排放的分布
+    def gengerate_center_geographical_extend(self, raster_list, emission_center_list, background_raster):
+        if not raster_list or not emission_center_list or not background_raster:
+            print 'ERROR: input argument is empty, please check the input'
+
+            # logger output
+            self.ES_logger.error('raster list is empty')
+            return
+        
+        # 传入一个包括中心的列表
+        if type(emission_center_list) == list:
+            # 逐个处理传入的排放中心
+            for emission_center in emission_center_list:
+                # 生成输出栅格的文件名
+                temp_output_name_fmt = '%s_extend_%%s' % emission_center.center_name
+
+                # 如果看不懂下面的python解包操作，就看注释里的这段代码。
+                # If developers were confused about the following unpack list, please read the code block in following comments.
+                #
+                #     for (year, peak) in emission_center.return_center().items():
+                #         temp_raster = 'center_mask_%s_%s' % (peak['peak_name'], year)
+                
+                # 列出该中心的所有栅格
+                temp_raster_list = ['center_mask_%s_%s' % (peak['peak_name'], year) for (year, peak) in emission_center.return_center().items()]
+
+                # 执行生成范围的
+                self.do_generate_geographical_extend(raster_list=temp_raster_list,
+                                                    background_raster=background_raster,
+                                                    output_name_fmt=temp_output_name_fmt)
+        else: # 如果只是传入单一中心，且没有用列表包括该中心
+            # 生成输出栅格的文件名
+            temp_output_name_fmt = '%s_extend_%%s' % emission_center_list.center_name
+            # 列出该中心的所有栅格
+            temp_raster_list = ['center_mask_%s_%s' % (peak['peak_name'], year) for (year, peak) in emission_center_list.return_center().items()]
+            # 调用实际执行的do_generate_extend函数
+            self.do_generate_geographical_extend(raster_list=temp_raster_list,
+                                                background_raster=background_raster,
+                                                output_name_fmt=temp_output_name_fmt)
+
+    # 叠加时间序列上所有发生排放的区域得到全部排放的分布
+    def do_generate_geographical_extend(self, raster_list, background_raster, output_name_fmt='extend_%s'):
+        # 测试生成的文件名是否可用
+        # 列出待计算栅格的列表
+        self.do_arcpy_list_raster_list(raster_list)
+
+        # 第一步：为栅格mosaic零值背景
+        for raster in tqdm(self.working_rasters):
+            self.mosaic_background_to_raster(inRaster=raster, background=background_raster)
+
+        # 第二步：叠加所有栅格
+        temp_extend = self.do_raster_add(self.working_rasters) 
+
+        # 第三步：栅格非零值赋值为1
+        temp_extend = Con(temp_extend != 0, 1, 0)
+        
+        # logger output
+        self.ES_logger.info('extend set to 1 mask')
+
+        # 第四步：零值设为空值
+        temp_null_extend = SetNull(temp_extend, 0, "VALUE = 0")
+        self.ES_logger.info('extend set to backgroud mask')
+
+        # 保存生成的两个结果
+        # 生成待统计的栅格名称
+        try:
+            temp_save_extend = output_name_fmt % 'extend_mask'
+            temp_save_null_extend = output_name_fmt % 'extend_null_mask'
+        except Exception as e:
+            # logger output
+            self.ES_logger.error(
+                'save raster name fomatting failed. raster name formate was %s.' % output_name_fmt)
+            
+            return
+
+        # 执行保存
+        temp_extend.save(temp_save_extend)
+        temp_null_extend.save(temp_save_null_extend)
+
+        # 清空working_rasters
+        self.working_rasters = []
 
     # 旧函数不建议使用！！！
     # 提取总排放量、最大排放部门和最大排放部门比例的函数
