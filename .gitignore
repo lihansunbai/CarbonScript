@@ -35,3 +35,7 @@ EDGAR/test_quick_export_raster.py
 EDGAR/test_extract_total_emission_to_point.py
 EDGAR/EDGAR_spatial.pyc
 merge_sectoral_2nd_test.log
+center_emission_extend
+.gitignore
+test_extend
+emission_geographical_extend
