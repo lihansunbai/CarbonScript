@@ -3,6 +3,8 @@
 # 路径处理模块
 # Systerm path proccessing module
 import os
+from turtle import back
+from xml.sax.handler import EntityResolver
 
 # Arcpy 相关模块
 # Arcpy module
@@ -2072,9 +2074,11 @@ class EDGAR_spatial(object):
         # 保存生成的两个结果
         # 生成待统计的栅格名称
         try:
-            temp_save_extend = output_name_fmt % 'extend_mask'
-            temp_save_null_extend = output_name_fmt % 'extend_null_mask'
+            temp_save_extend = output_name_fmt % 'mask'
+            temp_save_null_extend = output_name_fmt % 'null_mask'
         except Exception as e:
+            print 'background formatting failed.'
+
             # logger output
             self.ES_logger.error('save raster name fomatting failed. raster name formate was %s.' %
                                  output_name_fmt)
@@ -3519,15 +3523,120 @@ class EDGAR_spatial(object):
     ############################################################################
     ############################################################################
     # 为特定的排放中心栅格叠加历史排放区域
-    def EOF_center_mosaic_extend(self, center_list, background):
-        pass
+    def EOF_center_mosaic_extend(self, center_list, center_raster_fmt='center_%s_%s'):
+        if not center_list:
+            print 'ERROR: input arguments does not exist, please check the inputs.'
+
+            # logger output
+            self.ES_logger.error('input arguments does not exist.')
+            return
+
+        # 传入一个包括中心的列表
+        if type(center_list) == list:
+            # 逐个处理传入的排放中心
+            for emission_center in center_list:
+                # 获得中心的背景栅格
+                temp_background = '%s_geographical_extend_null_mask' % emission_center.center_name
+
+                # 如果看不懂下面的python解包操作，就看注释里的这段代码。
+                # If developers were confused about the following unpack list, please read the code block in following comments.
+                #
+                #     for (year, peak) in emission_center.return_center().items():
+                #         temp_raster = 'center_mask_%s_%s' % (peak['peak_name'], year)
+                # 列出该中心的所有栅格
+                try:
+                    temp_raster_list = [
+                        center_raster_fmt % (peak['peak_name'], year)
+                        for (year, peak) in emission_center.return_center().items()
+                    ]
+                except Exception as e:
+                    print 'center raster formatting failed.'
+                    # logger output
+                    self.ES_logger.error('mosaicing center raster name fomatting failed. raster name formate was %s.' %
+                                        output_name_fmt)
+
+                    return
+
+                # 执行叠加背景
+                self.do_EOF_mosaic_extend(raster_list=temp_raster_list,
+                                        background=temp_background)
+        else:    # 如果只是传入单一中心，且没有用列表包括该中心
+            # 获得中心的背景栅格
+            temp_background = '%s_geographical_extend_null_mask' % emission_center.center_name
+
+            # 如果看不懂下面的python解包操作，就看注释里的这段代码。
+            # If developers were confused about the following unpack list, please read the code block in following comments.
+            #
+            #     for (year, peak) in emission_center.return_center().items():
+            #         temp_raster = 'center_mask_%s_%s' % (peak['peak_name'], year)
+            # 列出该中心的所有栅格
+            try:
+                temp_raster_list = [
+                    center_raster_fmt % (peak['peak_name'], year)
+                    for (year, peak) in emission_center.return_center().items()
+                ]
+            except Exception as e:
+                print 'center raster formatting failed.'
+                # logger output
+                self.ES_logger.error('mosaicing center raster name fomatting failed. raster name formate was %s.' %
+                                    output_name_fmt)
+
+                return
+
+            # 执行叠加背景
+            self.do_EOF_mosaic_extend(raster_list=temp_raster_list,
+                                    background=temp_background)
 
     # 执行为任意栅格叠加背景值的
+    # 注意！
+    # 执行这个操作将改变输入栅格。请不要在原始数据上执行！
     def do_EOF_mosaic_extend(self, raster_list, background):
-        pass
+        if not raster_list or not background:
+            print 'ERROR: input arguments does not exist, please check the inputs.'
 
-    def EOF_export_raster(self):
-        pass
+            # logger output
+            self.ES_logger.error('input arguments does not exist.')
+            return
+
+        # 列出待补充背景的栅格
+        self.do_arcpy_list_raster_list(wildcard_list=raster_list)
+
+        # 逐个对栅格执行mosaic背景栅格
+        for raster in tqdm(self.working_rasters):
+            self.mosaic_background_to_raster(inRaster=raster, background=background)
+        
+        # 需要清空working_rasters
+        self.working_rasters = []
+
+    # 快速导出叠加了背景的栅格
+    def EOF_export_raster(self, raster_wildcard, output_path):
+        # 检查输出路径是否存在
+        if not output_path:
+            print 'ERROR: output path does not exist, please check the input.'
+
+            # logger output
+            self.ES_logger.error('output path does not exist.')
+            return
+
+        # 检查输入参数是否存在
+        if not raster_wildcard:
+            print 'WARNING: raster_wildcard is empty, which will export all rasters in database!'
+
+            # logger output
+            self.ES_logger.warning('raster wildcard is empty! All rasters will be export.')
+            raster_wildcard = '*'
+        
+        # 列出待导出栅格
+        self.do_arcpy_list_raster_str(wildcard_str=raster_wildcard)
+
+        # 执行导出
+        self.raster_quick_export(raster_list=self.working_rasters,
+                                nodata_value=-999,
+                                output_path=output_path,
+                                output_formate='TIFF')
+        
+        # 需要清空working_rasters
+        self.working_rasters = []
 
 
 # ======================================================================
