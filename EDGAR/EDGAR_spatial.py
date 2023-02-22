@@ -2982,6 +2982,7 @@ class EDGAR_spatial(object):
     # 生成排序后的列表是多余的。
     # 应该利用arcpy.listFields的结果，从这里确定位置和序列。
     # 所以不需要排序，只需要知道位置。
+    #
     # 生成需要统计的部门排序后的列表
     # @property
     # def generalization_fields(self):
@@ -2998,13 +2999,11 @@ class EDGAR_spatial(object):
 
     @generalization_results.setter
     def generalization_results(self, gen_handle):
+        # 利用set方法可以去重复的属性，将gen_handle中的唯一值都列出。
         handle_fields = list(set(gen_handle.values()))
+        # 将每个唯一值作为字段名添加到结果列表中。
         self.gen_results = ['sorted_sectors'] + handle_fields
 
-    # 这里似乎写了一个重复的方法，
-    # 生成排序后的列表是多余的。
-    # 应该利用arcpy.listFields的结果，从这里确定位置和序列。
-    # 所以不需要排序，只需要知道位置。
     # 生成需要统计的部门分类字段和排序后字段的名称
     @property
     def generalization_method(self):
@@ -3013,13 +3012,24 @@ class EDGAR_spatial(object):
     # 需要为setter函数传入一个字典，字典中需要包含两个键值对：
     # 第一个键值对：key：‘gen_handle’；value: 一个字典其需要符合__default_gen_handle。
     # 第二个键值对：key：‘FieldsinTable’；value：一个列表其是获得的数据表中的所有已有的字段。
+    # setter函数实质上实现了如下功能：
+    # 1、生成一个gen_method字典；
+    # 2、为该字典中添加需要若干组键值对（key-value），
+    #   每一个键值对中的键（key）为分类的名称，
+    #   值（value）为构成这个分类的每个部门（sector）在一个arcpy.cursor游标中的位置，这些位置通过列表的方式保存。
     @generalization_method.setter
     def generalization_method(self, args):
+        # 创建一个新的gen_method字典
         self.gen_method = {}
 
+        # 在gen_handle字典中逐个处理
+        # gen_handle字典的内容：键是部门（sector）、值是分类（category），
+        # 因此这里可以直接由items()方法获得所需信息
         for sector, category in args['gen_handle'].items():
+            # 如果分类还未创建则添加一个新项到字典中
             if not category in self.gen_method:
                 self.gen_method[category] = [args['FieldsinTable'].index(sector)]
+            # 分类已存在则在值中追加一个新的部门（sector）位置
             else:
                 self.gen_method[category].append(args['FieldsinTable'].index(sector))
 
@@ -3061,7 +3071,7 @@ class EDGAR_spatial(object):
             headers=temp_table_header_fmt,
             tablefmt="grid")
 
-    # 这里需要传入第一个参数已经统计得到的分类和对应的排放量比例字典；第二个参数自定义的编码方式
+    # 这里需要传入两个参数：第一个参数，已经统计得到的分类和对应的排放量比例字典；第二个参数，自定义的编码方式
     # 函数将返回一个整数，这个整数的不同位置上的数字代表了对应部门的代码，同时整数的位数也表明了栅格部门的排放有多少个分类。
     def generalization_category_encoding(self, category_percentages, encode):
         # 检查两个输入变量是否为空，若为空则直接返回空字典
@@ -3196,7 +3206,7 @@ class EDGAR_spatial(object):
                             row[field_names.index(result)] = 0
                 else:
                     temp_generalization = self.sectors_generalize_processe(row)
-                    # 对genField给出的所有位置都赋值
+                    # 对genField得到结果中给出的所有位置都赋值
                     for result, value in temp_generalization.items():
                         row[field_names.index(result)] = value
 
@@ -3231,8 +3241,7 @@ class EDGAR_spatial(object):
             self.ES_logger.info('Year setting type error.')
             self.ES_logger.error('Year setting error!')
             return
-        elif min(year_range) < self.__default_start_year or max(
-                year_range) > self.__default_end_year:
+        elif min(year_range) < self.__default_start_year or max(year_range) > self.__default_end_year:
             print 'Error! Proccessing year range out of data support! The year must containt in 1970 to 2018'
             self.ES_logger.info('Year settings are out of range.')
             self.ES_logger.error('Year setting error!')
