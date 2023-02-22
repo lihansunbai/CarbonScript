@@ -3528,11 +3528,11 @@ class EDGAR_spatial(object):
 
     ############################################################################
     ############################################################################
-    # 为MATLAB EOF分析进行的栅格数据准备
+    # 为EOF分析进行的栅格数据准备
     ############################################################################
     ############################################################################
     # 为特定的排放中心栅格叠加历史排放区域
-    def EOF_center_mosaic_extend(self, center_list, center_raster_fmt='center_%s_%s'):
+    def EOF_center_mosaic_extend(self, center_list, center_raster_fmt='center_%s_%s', background_fmt='%s_geographical_extend_null_mask'):
         if not center_list:
             print 'ERROR: input arguments does not exist, please check the inputs.'
 
@@ -3545,10 +3545,17 @@ class EDGAR_spatial(object):
             # 逐个处理传入的排放中心
             for emission_center in center_list:
                 # 获得中心的背景栅格
-                temp_background = '%s_geographical_extend_null_mask' % emission_center.center_name
+                try:
+                    temp_background = background_fmt % emission_center.center_name
+                except Exception as e:
+                    print 'background raster formatting failed.'
+                    # logger output
+                    self.ES_logger.error('get background raster name fomatting failed. raster name formate was %s.' % temp_background)
+
+                    return
 
                 # 如果看不懂下面的python解包操作，就看注释里的这段代码。
-                # If developers were confused about the following unpack list, please read the code block in following comments.
+                # If developers were confused about the following python unpacking list, please read the code block in following comments.
                 #
                 #     for (year, peak) in emission_center.return_center().items():
                 #         temp_raster = 'center_mask_%s_%s' % (peak['peak_name'], year)
@@ -3571,7 +3578,14 @@ class EDGAR_spatial(object):
                                         background=temp_background)
         else:    # 如果只是传入单一中心，且没有用列表包括该中心
             # 获得中心的背景栅格
-            temp_background = '%s_geographical_extend_null_mask' % emission_center.center_name
+            try:
+                temp_background = background_fmt % emission_center.center_name
+            except Exception as e:
+                print 'background raster formatting failed.'
+                # logger output
+                self.ES_logger.error('get background raster name fomatting failed. raster name formate was %s.' % temp_background)
+
+                return
 
             # 如果看不懂下面的python解包操作，就看注释里的这段代码。
             # If developers were confused about the following unpack list, please read the code block in following comments.
@@ -3617,6 +3631,49 @@ class EDGAR_spatial(object):
         # 需要清空working_rasters
         self.working_rasters = []
 
+    # 从点数据中生成各个中心中的不同分类的排放分量栅格
+    def EOF_generate_center_categories_emission_raster(self, center_list, category_list):
+        pass
+
+    # 实际执行从点数据中生成各个中心中的不同分类的排放分量栅格
+    def do_EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_list):
+        if not center_list or not category_list :
+            print 'ERROR: please specify the center_list and the category_list'
+
+            # logger output
+            self.ES_logger.error('input center list or category list does not exist.')
+
+            return
+
+        if not arcpy.Exists(inPoint):
+            print 'ERROR: input point data does not exist"
+
+            # logger output
+            self.ES_logger.error('input point data does not exist.')
+
+            return
+
+        # 向点数据中添加一个临时栅格
+
+        # 准备需要列出的字段的名称
+        # 创建一个arcpy游标，
+        # 通过whereclause筛选中心,游标检查点是否符合需要提取的中心，
+        # 然后通过“总量*分类比例”得到需要值。
+        for center in center_list:
+            pass
+       
+    
+    # 将arcgis栅格数据转换成Numpy格式
+    def EOF_raster_to_numpy(self, raster_list, multivariante, export_path):
+        pass
+
+    def do_EOF_raster_to_numpy(self):
+        pass
+
+    def do_EOF_raster_to_numpy_multivariante(self):
+        pass
+
+    
     # 快速导出叠加了背景的栅格
     def EOF_export_raster(self, raster_wildcard, output_path):
         # 检查输出路径是否存在
