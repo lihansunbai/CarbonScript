@@ -132,7 +132,6 @@ class EDGAR_spatial(object):
         arcpy.env.overwriteOutput = True
         self.ES_logger.info('arcpy overwriteOutput set to True.')
 
-        print 'More debug information please check the log file.'
         self.ES_logger.info('Root initialization finished.')
 
     # 只进行合并分部门栅格为点数据时的构造函数
@@ -596,6 +595,7 @@ class EDGAR_spatial(object):
                 print 'Background flag set failed! Please check the flag argument input.'
                 self.ES_logger.error(
                     'Background flag set failed! Please check the flag argument input.')
+                exit(1)
 
             # 检查flag_label参数并赋值
             if type(flag_label_raster_dict['label']) == str:
@@ -608,6 +608,7 @@ class EDGAR_spatial(object):
                 print 'Background flag label set failed! Please check the flag argument input.'
                 self.ES_logger.error(
                     'Background flag set failed! Please check the flag argument input.')
+                exit(1)
 
             # 检查raster参数并赋值
             if type(flag_label_raster_dict['raster']) == str:
@@ -621,11 +622,12 @@ class EDGAR_spatial(object):
                     print 'Background raster set failed! The background raster dose not exits.'
                     self.ES_logger.error(
                         'Background raster set failed! The background raster dose not exits.')
-                    return
+                    exit(1)
             else:
                 print 'Background flag label set failed! Please check the flag argument input.'
                 self.ES_logger.error(
                     'Background flag set failed! Please check the flag argument input.')
+                exit(1)
 
     # filter_label 构造方法：
     # filter_label字典组的结构如下：
@@ -828,10 +830,19 @@ class EDGAR_spatial(object):
 
     # 准备栅格时实际执行列出栅格的方法，这个为list方式
     def do_prepare_arcpy_list_raster_list(self, wildcard_list):
-        # 逐年份生成需要处理的数据列表
-        for i in wildcard_list:
-            self.all_prepare_working_rasters.extend(arcpy.ListRasters(wild_card=i))
+        # 列出所有数据库中的栅格进行匹配
+        temp_all_rasters_in_path = arcpy.ListRasters()
 
+        # 通过正则表达在列表中搜索的方式筛选要进行操作的栅格
+        for wildcard in wildcard_list:
+            # 替换wildcard中的通配符*为正则表达的通配符‘.’
+            # 然后构造正则表达匹配模式
+            temp_wildcard_re = re.compile(wildcard.replace('*','.*'))
+            # filter函数会返回一个列表，所以这里要用extend()方法
+            self.all_prepare_working_rasters.extend(filter(temp_wildcard_re.match, temp_all_rasters_in_path))
+            # 直接的对逐个项使用ListRasters()方法可能会消耗大量的时间，导致程序假死
+            # 放弃使用以下方法！
+            # self.all_prepare_working_rasters.extend(arcpy.ListRasters(wild_card=i))
         # logger output
         self.ES_logger.debug('working rasters chenged to:%s' % self.all_prepare_working_rasters)
 
@@ -3661,9 +3672,9 @@ class EDGAR_spatial(object):
         # 所以采取统一添加统一删除的策略
         try:
             # 逐一添加临时字段
-            for category in category_field_list:
-                temp_field_name = 'EOF_%s' % category
-                arcpy.AddField_management(intable=inPoint, filed_name=temp_field_name, field_type='DOUBLE', field_precision='#', field_scale='#', field_length='#', field_alias='#',field_is_nullable='NULLABLE', field_is_required='#', field_domain='#')
+            temp_add_field = ['EOF_%s' % category for category in category_field_list]
+            for field in temp_add_field:
+                arcpy.AddField_management(intable=inPoint, filed_name=field, field_type='DOUBLE', field_precision='#', field_scale='#', field_length='#', field_alias='#',field_is_nullable='NULLABLE', field_is_required='#', field_domain='#')
 
             # logger output
             self.ES_logger.debug('EOF: temporary field added.')
@@ -3675,6 +3686,9 @@ class EDGAR_spatial(object):
 
             print arcpy.GetMessages()
             return
+        # 这里应该用我自己封装的添加列函数来操作
+        
+        self.addField_to_inPoint(inPoint=inPoint, genFieldList=temp_add_field)
         
         for category in category_field_list:
             # 构造游标需要的列名称
@@ -3717,6 +3731,8 @@ class EDGAR_spatial(object):
 
                 print arcpy.GetMessages()
 
+        # 从点数据中删除添加的临时列
+        self.delete_temporary_feature_classes(feature_list=temp_add_field)
             
     # 将arcgis栅格数据转换成Numpy格式
     def EOF_raster_to_numpy(self, raster_list, multivariante, export_path):
