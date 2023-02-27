@@ -829,15 +829,25 @@ class EDGAR_spatial(object):
         self.ES_logger.debug('working rasters chenged to:%s' % self.all_prepare_working_rasters)
 
     # 准备栅格时实际执行列出栅格的方法，这个为list方式
-    def do_prepare_arcpy_list_raster_list(self, wildcard_list):
+    # 这里需要注意第三个参数`wildcard_mode`：
+    #       当该参数为True时，将认为wildcard_list中的元素为arcgis默认的wildcard，即查询条件，此时将
+    #           会在使用时替换wildcard中的`*`为正则表达式的`.*`模式。
+    #       当该参数为False时，将认为wildcard_list中的元素为正则表达式，此时将直接用该元素进行匹配。
+    def do_prepare_arcpy_list_raster_list(self, wildcard_list, wildcard_mode=True):
         # 列出所有数据库中的栅格进行匹配
         temp_all_rasters_in_path = arcpy.ListRasters()
 
         # 通过正则表达在列表中搜索的方式筛选要进行操作的栅格
         for wildcard in wildcard_list:
-            # 替换wildcard中的通配符*为正则表达的通配符‘.’
-            # 然后构造正则表达匹配模式
-            temp_wildcard_re = re.compile(wildcard.replace('*','.*'))
+            # 检查wildcard_mode并指定合适的正则表达式编译模式
+            if wildcard_mode:
+                # 替换wildcard中的通配符*为正则表达的通配符‘.’
+                # 然后构造正则表达匹配模式
+                temp_wildcard_re = re.compile(wildcard.replace('*','.*'))
+            else:
+                # 直接使用wildcard_list中的元素构造正则表达式匹配模式
+                temp_wildcard_re = re.compile(wildcard)o
+
             # filter函数会返回一个列表，所以这里要用extend()方法
             self.all_prepare_working_rasters.extend(filter(temp_wildcard_re.match, temp_all_rasters_in_path))
             # 直接的对逐个项使用ListRasters()方法可能会消耗大量的时间，导致程序假死
@@ -3686,9 +3696,6 @@ class EDGAR_spatial(object):
 
             print arcpy.GetMessages()
             return
-        # 这里应该用我自己封装的添加列函数来操作
-        
-        self.addField_to_inPoint(inPoint=inPoint, genFieldList=temp_add_field)
         
         for category in category_field_list:
             # 构造游标需要的列名称
