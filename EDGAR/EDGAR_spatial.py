@@ -780,7 +780,11 @@ class EDGAR_spatial(object):
         self.ES_logger.debug('raster_filter set by costum.')
 
     # 生成需要处理数据列表
-    def prepare_working_rasters(self, raster_filter_wildcard):
+    # 这里需要注意第三个参数`wildcard_mode`：
+    #       当该参数为True时，将认为wildcard_list中的元素为arcgis默认的wildcard，即查询条件，此时将
+    #           会在使用时替换wildcard中的`*`为正则表达式的`.*`模式。
+    #       当该参数为False时，将认为wildcard_list中的元素为正则表达式，此时将直接用该元素进行匹配。
+    def prepare_working_rasters(self, raster_filter_wildcard, wildcard_mode=True):
         # 涉及arcpy操作，且所有数据都基于这步筛选，
         # 所以需要进行大量的数据检查。
         temp_type_check = type(raster_filter_wildcard)
@@ -800,7 +804,7 @@ class EDGAR_spatial(object):
             # 列表不为空的情况
             else:
                 # 直接将参数传入list方式的方法列出需要栅格
-                self.do_prepare_arcpy_list_raster_list(wildcard_list=raster_filter_wildcard)
+                self.do_prepare_arcpy_list_raster_list(wildcard_list=raster_filter_wildcard, wildcard_mode=wildcard_mode)
 
                 # logger output
                 self.ES_logger.debug('rasters listed.')
@@ -846,7 +850,7 @@ class EDGAR_spatial(object):
                 temp_wildcard_re = re.compile(wildcard.replace('*','.*'))
             else:
                 # 直接使用wildcard_list中的元素构造正则表达式匹配模式
-                temp_wildcard_re = re.compile(wildcard)o
+                temp_wildcard_re = re.compile(wildcard)
 
             # filter函数会返回一个列表，所以这里要用extend()方法
             self.all_prepare_working_rasters.extend(filter(temp_wildcard_re.match, temp_all_rasters_in_path))
@@ -858,27 +862,54 @@ class EDGAR_spatial(object):
 
     # 实际执行列出栅格的方法，这个为str方式
     def do_arcpy_list_raster_str(self, wildcard_str):
-        self.working_rasters.extend(arcpy.ListRasters(wild_card=wildcard_str))
+        temp_working_rasters = []
+        temp_working_rasters.extend(arcpy.ListRasters(wild_card=wildcard_str))
 
         # logger output
-        self.ES_logger.debug('working rasters chenged to:%s' % self.working_rasters)
+        self.ES_logger.debug('working rasters chenged to:%s' % temp_working_rasters)
+        return temp_working_rasters
 
     # 实际执行列出栅格的方法，这个为list方式
-    def do_arcpy_list_raster_list(self, wildcard_list):
-        # 逐年份生成需要处理的数据列表
-        for i in wildcard_list:
-            temp_raster_list = arcpy.ListRasters(wild_card=i)
+    def do_arcpy_list_raster_list(self, wildcard_list, wildcard_mode=True):
+        # 临时存储列出的栅格
+        temp_result_rasters = []
 
-            if temp_raster_list:
-                self.working_rasters.extend(temp_raster_list)
+        # 列出所有数据库中的栅格进行匹配
+        temp_all_rasters_in_path = arcpy.ListRasters()
+
+        # 通过正则表达在列表中搜索的方式筛选要进行操作的栅格
+        for wildcard in wildcard_list:
+            # 检查wildcard_mode并指定合适的正则表达式编译模式
+            if wildcard_mode:
+                # 替换wildcard中的通配符*为正则表达的通配符‘.’
+                # 然后构造正则表达匹配模式
+                temp_wildcard_re = re.compile(wildcard.replace('*','.*'))
             else:
-                print 'WARNING: cant add raster to working_rasters list.'
+                # 直接使用wildcard_list中的元素构造正则表达式匹配模式
+                temp_wildcard_re = re.compile(wildcard)
 
-                # logger output
-                self.ES_logger.warning('raster not exists! raster name: %s' % i)
+            # filter函数会返回一个列表，所以这里要用extend()方法
+            temp_result_rasters.extend(filter(temp_wildcard_re.match, temp_all_rasters_in_path))
+
+        # # 直接的对逐个项使用ListRasters()方法可能会消耗大量的时间，导致程序假死
+        # # 放弃使用以下方法！
+        # # 逐年份生成需要处理的数据列表
+        # for i in wildcard_list:
+        #     temp_raster_list = arcpy.ListRasters(wild_card=i)
+
+        #     if temp_raster_list:
+        #         self.working_rasters.extend(temp_raster_list)
+        #     else:
+        #         print 'WARNING: cant add raster to working_rasters list.'
+
+        #         # logger output
+        #         self.ES_logger.warning('raster not exists! raster name: %s' % i)
 
         # logger output
-        self.ES_logger.debug('working rasters chenged to:%s' % self.working_rasters)
+        self.ES_logger.debug('working rasters chenged to:%s' % temp_result_rasters)
+
+        # 返回生成的结果
+        return temp_result_rasters
 
     # 将部门key和对应的栅格文件组合为一个字典
     # 注意这个函数只能使用在确定了年份的列表中。
@@ -1159,11 +1190,10 @@ class EDGAR_spatial(object):
 
         # 筛选需要计算的部门
         # 列出提取值的栅格
-        # do_arcpy_list_raster_list的结果会保存到self.working_rasters
         temp_wildcard_pair = zip(sectors_list, [str(year)] * len(sectors_list))
         temp_wildcard = ['%s_weight_raster_%s' % i for i in temp_wildcard_pair]
-        self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard)
-        temp_extract_raster = self.zip_sectors_rasters_to_dict(sectors_list, self.working_rasters)
+        temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard)
+        temp_extract_raster = self.zip_sectors_rasters_to_dict(sectors_list, temp_working_rasters)
 
         # logger output
         self.ES_logger.debug('Calculate weight in: %s' % str(temp_extract_raster))
@@ -1244,9 +1274,6 @@ class EDGAR_spatial(object):
 
         # 删除临时生成的迭代变量
         self.delete_temporary_feature_classes(delete_temporary)
-
-        # 清空全局working_rasters变量，防止突发bug
-        self.working_rasters = []
 
         # logger output
         self.ES_logger.debug('working_rasters cleaned!')
@@ -2075,14 +2102,14 @@ class EDGAR_spatial(object):
                                         output_name_fmt='extend_%s'):
         # 测试生成的文件名是否可用
         # 列出待计算栅格的列表
-        self.do_arcpy_list_raster_list(raster_list)
+        temp_working_rasters = self.do_arcpy_list_raster_list(raster_list)
 
         # 第一步：为栅格mosaic零值背景
-        for raster in tqdm(self.working_rasters):
+        for raster in tqdm(temp_working_rasters):
             self.mosaic_background_to_raster(inRaster=raster, background=background_raster)
 
         # 第二步：叠加所有栅格
-        temp_extend = self.do_raster_add(self.working_rasters)
+        temp_extend = self.do_raster_add(temp_working_rasters)
 
         # 第三步：栅格非零值赋值为1
         temp_extend = Con(temp_extend != 0, 1, 0)
@@ -2111,9 +2138,6 @@ class EDGAR_spatial(object):
         # 执行保存
         temp_extend.save(temp_save_extend)
         temp_null_extend.save(temp_save_null_extend)
-
-        # 清空working_rasters
-        self.working_rasters = []
 
     # 旧函数不建议使用！！！
     # 提取总排放量、最大排放部门和最大排放部门比例的函数
@@ -2261,17 +2285,14 @@ class EDGAR_spatial(object):
             return
 
         # 列出需要的total emission 栅格
-        self.do_arcpy_list_raster_list(temp_wild_card)
+        temp_working_rasters = self.do_arcpy_list_raster_list(temp_wild_card)
 
         # 逐年处理
         for yr in tqdm(range(temp_start_year, temp_end_year + 1)):
-            temp_total_emission = [s for s in self.working_rasters if str(yr) in s].pop()
+            temp_total_emission = [s for s in temp_working_rasters if str(yr) in s].pop()
 
             self.do_extract_center_area(
                 center_range=center_range, total_emission_raster=temp_total_emission, year=yr)
-
-        # 清空使用的working_rasters变量
-        self.working_rasters = []
 
     ############################################################################
     # 表转CSV相关功能
@@ -3432,7 +3453,7 @@ class EDGAR_spatial(object):
             temp_center_peaks.append(temp_raster_name)
 
         # 列出需要合并的栅格列表
-        self.do_arcpy_list_raster_list(temp_center_peaks)
+        temp_working_rasters = self.do_arcpy_list_raster_list(temp_center_peaks)
 
         # 这里需要用try...catch...来处理输入的output_fmt是无法格式化的。
         try:
@@ -3447,20 +3468,17 @@ class EDGAR_spatial(object):
         # 进行合并之前需要先获得原始栅格的像素深度参数。
         # 原因如下：MosaicToNewRaster_management（）函数中如果不设置像素类型，将使用默认值 8 位，而输出结果可能会不正确。
 
-        temp_pixel_type = self.__raster_pixel_type[arcpy.Raster(self.working_rasters[0]).pixelType]
+        temp_pixel_type = self.__raster_pixel_type[arcpy.Raster(temp_working_rasters[0]).pixelType]
 
         # Mosaic 所有中心的结果到新的栅格中
         arcpy.MosaicToNewRaster_management(
-            input_rasters=self.working_rasters,
+            input_rasters=temp_working_rasters,
             output_location=self.__workspace,
             raster_dataset_name_with_extension=temp_output,
             pixel_type=temp_pixel_type,
             number_of_bands=1,
             mosaic_method="FIRST",
             mosaic_colormap_mode="FIRST")
-
-        # 清空使用的self.working_rasters变量
-        self.working_rasters = []
 
     # 这里需要传入一个center_colormap字典
     def year_emission_center_mask_raster_merge(self, wild_card_fmt, emission_center_list,
@@ -3511,12 +3529,12 @@ class EDGAR_spatial(object):
                 )[yr]['center_name']
 
             # 列出需要合并的栅格列表
-            self.do_arcpy_list_raster_list(temp_center_peaks)
+            temp_working_rasters = self.do_arcpy_list_raster_list(temp_center_peaks)
 
             # 这里将修改每个中心的栅格值为传入的color_map 中的对应值；
             # 同时生成真正待合并的栅格列表
             temp_mosaic_list = []
-            for raster in self.working_rasters:
+            for raster in temp_working_rasters:
                 temp_false_value = center_colormap[temp_raster_centers_name[raster]]
                 temp_con = Con(raster, temp_false_value)
 
@@ -3545,9 +3563,6 @@ class EDGAR_spatial(object):
                 number_of_bands=1,
                 mosaic_method="FIRST",
                 mosaic_colormap_mode="FIRST")
-
-            # 一定要记得清空working_rasters参数
-            self.working_rasters = []
 
     ############################################################################
     ############################################################################
@@ -3645,18 +3660,29 @@ class EDGAR_spatial(object):
             return
 
         # 列出待补充背景的栅格
-        self.do_arcpy_list_raster_list(wildcard_list=raster_list)
+        temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=raster_list)
 
         # 逐个对栅格执行mosaic背景栅格
-        for raster in tqdm(self.working_rasters):
+        for raster in tqdm(temp_working_rasters):
             self.mosaic_background_to_raster(inRaster=raster, background=background)
-        
-        # 需要清空working_rasters
-        self.working_rasters = []
 
     # 从点数据中生成各个中心中的不同分类的排放分量栅格
-    def EOF_generate_center_categories_emission_raster(self, center_list, category_field_list):
-        pass
+    # 这里的设计思路是只传入一个点数据。因为，如果一次传入一组点数据，很可能导致这个函数一旦进入就
+    # 无法停止下来。
+    def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list):
+        if not inPoint or not center_list or not category_field_list:
+            print 'ERROR: The inputs does not exist. Please check the inputs.'  
+
+            # logger output
+            self.ES_logger.error('input does not exist.')
+            return
+
+        # 逐个对中心处理
+        for center in center_list:
+            # 逐个对中心进行分类EOF提取的操作
+            self.do_EOF_generate_center_categories_emission_raster(inPoint=inPoint,
+                                                                    center=center,
+                                                                    category_field_list=category_field_list)
 
     # 实际执行从点数据中生成各个中心中的不同分类的排放分量栅格
     def do_EOF_generate_center_categories_emission_raster(self, inPoint, center, category_field_list):
@@ -3771,16 +3797,13 @@ class EDGAR_spatial(object):
             raster_wildcard = '*'
         
         # 列出待导出栅格
-        self.do_arcpy_list_raster_str(wildcard_str=raster_wildcard)
+        temp_working_rasters = self.do_arcpy_list_raster_str(wildcard_str=raster_wildcard)
 
         # 执行导出
-        self.raster_quick_export(raster_list=self.working_rasters,
+        self.raster_quick_export(raster_list=temp_working_rasters,
                                 nodata_value=-999,
                                 output_path=output_path,
                                 output_formate='TIFF')
-        
-        # 需要清空working_rasters
-        self.working_rasters = []
 
 
 # ======================================================================
