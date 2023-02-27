@@ -2061,7 +2061,7 @@ class EDGAR_spatial(object):
             # 逐个处理传入的排放中心
             for emission_center in emission_center_list:
                 # 生成输出栅格的文件名
-                temp_output_name_fmt = '%s_geographical_extend_%%s' % emission_center.center_name
+                temp_output_name_fmt = '%s_geographical_extend' % emission_center.center_name
 
                 # 如果看不懂下面的python解包操作，就看注释里的这段代码。
                 # If developers were confused about the following unpack list, please read the code block in following comments.
@@ -2082,7 +2082,7 @@ class EDGAR_spatial(object):
                     output_name_fmt=temp_output_name_fmt)
         else:    # 如果只是传入单一中心，且没有用列表包括该中心
             # 生成输出栅格的文件名
-            temp_output_name_fmt = '%s_extend_%%s' % emission_center_list.center_name
+            temp_output_name_fmt = '%s_geographical_extend' % emission_center_list.center_name
             # 列出该中心的所有栅格
             temp_raster_list = [
                 'center_mask_%s_%s' % (peak['peak_name'], year)
@@ -3667,7 +3667,7 @@ class EDGAR_spatial(object):
     # 从点数据中生成各个中心中的不同分类的排放分量栅格
     # 这里的设计思路是只传入一个点数据。因为，如果一次传入一组点数据，很可能导致这个函数一旦进入就
     # 无法停止下来。
-    def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list):
+    def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list, add_background=True, background_raster='background', duplicate_numpy=True):
         if not inPoint or not center_list or not category_field_list:
             print 'ERROR: The inputs does not exist. Please check the inputs.'  
 
@@ -3677,13 +3677,39 @@ class EDGAR_spatial(object):
 
         # 逐个对中心处理
         for center in center_list:
-            # 逐个对中心进行分类EOF提取的操作
-            self.do_EOF_generate_center_categories_emission_raster(inPoint=inPoint,
-                                                                    center=center,
-                                                                    category_field_list=category_field_list)
+            if add_background:
+                # 逐个对中心进行分类EOF提取的操作
+                # 这里通过return_results参数直接获得生成的结果列表
+                temp_raw_center = self.do_EOF_generate_center_categories_emission_raster(inPoint=inPoint,
+                                                                        center=center,
+                                                                        category_field_list=category_field_list,
+                                                                        return_results=True)
+                
+                # TODO:
+                # 
+                # 为生成的初步提取栅格生成背景
+                self.EOF_generate_center_categories_geographical_extend(center=center,
+                                                                        category_list=category_field_list,
+                                                                        background_raster='background')
+
+                # 为生成的初步提取栅格添加背景，并组合成EOF分析可用的数据
+                self.do_EOF_mosaic_extend(raster_list=temp_center_rasters,
+                                            center_raster_fmt='',
+                                            background_fmt='')
+            else:
+                self.do_EOF_generate_center_categories_emission_raster(inPoint=inPoint,
+                                                                        center=center,
+                                                                        category_field_list=category_field_list,
+                                                                        return_results=True)
 
     # 实际执行从点数据中生成各个中心中的不同分类的排放分量栅格
-    def do_EOF_generate_center_categories_emission_raster(self, inPoint, center, category_field_list):
+    # 注意！！！
+    # 这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`centerName_category_year`。
+    # 如果要使用这里的栅格结果请参考以上命名逻辑找到所需栅格
+    # 
+    # 注意第四个参数`return_results`，当此参数为True时函数会返回一个生成栅格的结果的列表；
+    # 当此参数为False时，函数将不返回任何结果而结束。
+    def do_EOF_generate_center_categories_emission_raster(self, inPoint, center, category_field_list, return_results=True):
         if not center or not category_field_list :
             print 'ERROR: please specify the center_list and the category_list'
 
@@ -3721,6 +3747,10 @@ class EDGAR_spatial(object):
             print arcpy.GetMessages()
             return
         
+        # 储存可能需要返回的结果列表
+        temp_return_rasters = []
+
+        # 对每个分类进行中心提取操作
         for category in category_field_list:
             # 构造游标需要的列名称
             # 注意：
@@ -3748,9 +3778,12 @@ class EDGAR_spatial(object):
                     cursor.updateRow(row)
 
             # 保存列数据为栅格
-            save_raster = '%s_%s_%s' % (temp_field_list, center, inPoint[-4:])
+            save_raster = '%s_%s_%s' % (center, temp_field_list, inPoint[-4:])
             try:
                 arcpy.PointToRaster_conversion(inPoint,temp_result_field, save_raster,'MOST_FREQUENT', '#', '0.1')
+
+                # 添加转换结果到待返回列表
+                temp_return_rasters.append(save_raster)
 
                 # logger output
                 self.ES_logger.debug('EOF rasterize finished:%s' % save_raster)
@@ -3764,7 +3797,42 @@ class EDGAR_spatial(object):
 
         # 从点数据中删除添加的临时列
         self.delete_temporary_feature_classes(feature_list=temp_add_field)
+
+        # 决定返回模式
+        if return_results:
+            # 返回一个包含生成栅格名称的列表
+            return temp_return_rasters
+        else:
+            return
             
+    def EOF_generate_center_categories_geographical_extend(self, center, category_list, background_raster='background'):
+        if not center or not category_list or not background_raster:
+            print 'ERROR: The inputs does not exist. Please check the inputs.'  
+
+            # logger output
+            self.ES_logger.error('input does not exist.')
+            return
+
+        # 逐个处理分类
+        for category in category_list:
+            # 生成输出栅格的文件名
+            temp_output_name_fmt = '%s_%s_geographical_extend' % (center, category)
+
+            # 列出该中心里该分类的所有栅格
+            # 注意：
+            #       这里的正则表达式很暴力，需要再考虑……
+            temp_wildcard_list = ['%s_%s_\d+' % (center, category)]
+            temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard_list, wildcard_mode=False)
+
+            # 生成输出栅格的文件名
+            temp_output_name_fmt = '%s_%s_geographical_extend' % (center, category)
+            
+            # 调用实际执行的do_generate_extend函数
+            self.do_generate_geographical_extend(
+                raster_list=temp_working_rasters,
+                background_raster=background_raster,
+                output_name_fmt=temp_output_name_fmt)
+
     # 将arcgis栅格数据转换成Numpy格式
     def EOF_raster_to_numpy(self, raster_list, multivariante, export_path):
         pass
