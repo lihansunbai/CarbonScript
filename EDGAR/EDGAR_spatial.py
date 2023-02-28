@@ -3,6 +3,7 @@
 # 路径处理模块
 # System path processing module
 import os
+from tkinter import W
 # from tkinter import W
 # from turtle import back
 # from xml.sax.handler import EntityResolver
@@ -508,6 +509,8 @@ class EDGAR_spatial(object):
             self.ES_logger.debug('New raster was mosaiced with background: %s' % output_Raster)
 
         else:
+            # 因为这个函数设计的作用是添加背景，即要求背景值不影响其他值的所发挥的作用。
+            # 综合意义和统计学上的考虑需要将背景值设定为`0`。
             arcpy.Mosaic_management(
                 inputs=[inRaster, background],
                 target=inRaster,
@@ -2095,6 +2098,9 @@ class EDGAR_spatial(object):
                 output_name_fmt=temp_output_name_fmt)
 
     # 叠加时间序列上所有发生排放的区域得到全部排放的分布
+    # 这个方法会生成两个类型的栅格：
+    #   1、输出文件名加后缀`mask`，该栅格中`1`值表示排放范围，`0`值表示其他；
+    #   2、输出文件名加后缀`null_mask`，该栅格中`1`值表示排放范围，nodata值表示其他；
     def do_generate_geographical_extend(self,
                                         raster_list,
                                         background_raster,
@@ -3646,6 +3652,35 @@ class EDGAR_spatial(object):
             self.do_EOF_mosaic_extend(raster_list=temp_raster_list,
                                     background=temp_background)
 
+    # 为一个中心里所有分类单独添加该分类对应的空间围背景
+    def EOF_center_category_mosaic_extend(self, center, category_list, background_fmt='%s_%s_geographical_extend_null_mask'):
+        if not center or not category_list:
+            print 'ERROR: input arguments does not exist, please check the inputs.'
+
+            # logger output
+            self.ES_logger.error('input arguments does not exist.')
+            return
+
+        for category in category_list:
+            # 获得中心的背景栅格
+            try:
+                temp_background = background_fmt % (center, category)
+            except Exception as e:
+                print 'background raster formatting failed.'
+
+                # logger output
+                self.ES_logger.error('get background raster name formatting failed. raster name formate was %s.' % temp_background)
+
+                return
+
+            # 列出所有需要添加背景的栅格
+            temp_wildcard = ['%s_%s_\d+' % (center, category)]
+            temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard, wildcard_mode=False)
+
+            # 执行叠加背景
+            self.do_EOF_mosaic_extend(raster_list=temp_working_rasters,
+                                    background=temp_background)
+
     # 执行为任意栅格叠加背景值的
     # 注意！
     # 执行这个操作将改变输入栅格。请不要在原始数据上执行！
@@ -3677,32 +3712,29 @@ class EDGAR_spatial(object):
 
         # 逐个对中心处理
         for center in center_list:
+            # 临时存储倒出到numpy的栅格列表
+            temp_duplicate_numpy = []
+            
+            # 逐个对中心进行分类EOF提取的操作
+            temp_duplicate_numpy = self.do_EOF_generate_center_categories_emission_raster(inPoint=inPoint,
+                                                                    center=center,
+                                                                    category_field_list=category_field_list,
+                                                                    return_results=True)
+            # 按需要为数据添加历史排放背景
             if add_background:
-                # 逐个对中心进行分类EOF提取的操作
-                # 这里通过return_results参数直接获得生成的结果列表
-                temp_raw_center = self.do_EOF_generate_center_categories_emission_raster(inPoint=inPoint,
-                                                                        center=center,
-                                                                        category_field_list=category_field_list,
-                                                                        return_results=True)
-                
-                # TODO:
-                # 
                 # 为生成的初步提取栅格生成背景
                 self.EOF_generate_center_categories_geographical_extend(center=center,
                                                                         category_list=category_field_list,
                                                                         background_raster='background')
 
                 # 为生成的初步提取栅格添加背景，并组合成EOF分析可用的数据
-                self.do_EOF_mosaic_extend(raster_list=temp_center_rasters,
-                                            center_raster_fmt='',
-                                            background_fmt='')
-            else:
-                self.do_EOF_generate_center_categories_emission_raster(inPoint=inPoint,
-                                                                        center=center,
-                                                                        category_field_list=category_field_list,
-                                                                        return_results=True)
+                self.EOF_center_category_mosaic_extend(center=center,
+                                                        category_list=category_field_list)
 
-    # 实际执行从点数据中生成各个中心中的不同分类的排放分量栅格
+            if duplicate_numpy:
+                pass
+
+    # 实际执行从点数据中生成某一个中心里的不同分类的排放量栅格
     # 注意！！！
     # 这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`centerName_category_year`。
     # 如果要使用这里的栅格结果请参考以上命名逻辑找到所需栅格
@@ -3805,6 +3837,7 @@ class EDGAR_spatial(object):
         else:
             return
             
+    # 通过给定中心和分类的列表，生成一个中心里所有分类的空间分布范围
     def EOF_generate_center_categories_geographical_extend(self, center, category_list, background_raster='background'):
         if not center or not category_list or not background_raster:
             print 'ERROR: The inputs does not exist. Please check the inputs.'  
