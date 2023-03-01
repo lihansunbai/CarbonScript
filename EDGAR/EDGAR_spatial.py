@@ -3,10 +3,6 @@
 # 路径处理模块
 # System path processing module
 import os
-from tkinter import W
-# from tkinter import W
-# from turtle import back
-# from xml.sax.handler import EntityResolver
 
 # Arcpy 相关模块
 # Arcpy module
@@ -28,6 +24,7 @@ import math
 import collections
 import numpy
 import interval
+import numbers
 
 # # 性能测试相关模块
 # import cProfile
@@ -474,7 +471,7 @@ class EDGAR_spatial(object):
                 format=output_formate)
 
     # 为栅格添加背景值
-    # 用途：添加一个背景值以消除NULL值栅格的影响。
+    # 用途：添加一个背景值以保持栅格数据历史范围稳定。
     # 注意：如果指定了output_Raster参数，则会输出到该参数指定的栅格中。
     def mosaic_background_to_raster(self, inRaster, background, output_Raster=None):
         if not inRaster or not background:
@@ -496,7 +493,7 @@ class EDGAR_spatial(object):
             # 确定输出栅格的pixel_type
             temp_pixel_type = self.__raster_pixel_type[arcpy.Raster(inRaster).pixelType]
 
-            # Mosaic 所有中心的结果到新的栅格中
+            # Mosaic 所有背景值栅格和原始数据栅格到新栅格中
             arcpy.MosaicToNewRaster_management(
                 input_rasters=[inRaster, background],
                 output_location=self.__workspace,
@@ -505,12 +502,10 @@ class EDGAR_spatial(object):
                 number_of_bands=1,
                 mosaic_method="FIRST",
                 mosaic_colormap_mode="FIRST")
+            print 'Raster %s added background.' % output_Raster
             # logger output
             self.ES_logger.debug('New raster was mosaiced with background: %s' % output_Raster)
-
         else:
-            # 因为这个函数设计的作用是添加背景，即要求背景值不影响其他值的所发挥的作用。
-            # 综合意义和统计学上的考虑需要将背景值设定为`0`。
             arcpy.Mosaic_management(
                 inputs=[inRaster, background],
                 target=inRaster,
@@ -518,7 +513,152 @@ class EDGAR_spatial(object):
                 colormap="FIRST",
                 mosaicking_tolerance=0.5)
 
+            print 'Raster %s added background.' % inRaster 
+            # logger output
             self.ES_logger.debug('Background was mosaiced into raster: %s' % inRaster)
+
+    # 以下三个函数为神奇的、不知道为什么要写的函数、但是既然已经写了就不删除了
+    # 为栅格添加背景值
+    # 用途：添加一个背景值以保持栅格数据历史范围稳定。
+    # 注意：如果指定了output_Raster参数，则会输出到该参数指定的栅格中。
+    # 注意：
+    #       函数可以通过两种方式完成添加背景：
+    #       1、如果背景栅格通过nodata值和其他值区分，则直接为数据添加背景。使用该方法时，无需设置`null_background`和`background_value`两个参数。
+    #       2、如果不是通过nodata进行区分，则需要在传入参数中指定背景值。使用该方法时，需设置`null_background`参数为False，并在`background_value`参数中提供要作为背景的值。
+    def mosaic_background_to_raster_switcher(self, inRaster, background, null_background=True, background_value=None, output_Raster=None):
+        if not inRaster or not background:
+            print 'ERROR: raster or background does not exist. Please check the input.'
+
+            # logger output
+            self.ES_logger.error(
+                'Input raster or background does not exist. inRaster:%s; background:%s.' %
+                (inRaster, background))
+            return
+
+        if null_background:
+            self.do_mosaic_null_background_to_raster(inRaster=inRaster,
+                                                    background=background,
+                                                    output_Raster=output_Raster)
+        else:
+            self.do_mosaic_value_background_to_raster(inRaster=inRaster,
+                                                    background=background,
+                                                    background_value=background_value,
+                                                    output_Raster=output_Raster)
+
+    # 以下为神奇的、不知道为什么要写的函数
+    def do_mosaic_null_background_to_raster(self, inRaster, background, output_Raster=None):
+        if output_Raster:
+            if type(output_Raster) != str:
+                print 'ERROR: output raster name does not exist.'
+
+                # logger output
+                self.ES_logger.error('output raster name does not exist.')
+
+            # 确定输出栅格的pixel_type
+            temp_pixel_type = self.__raster_pixel_type[arcpy.Raster(inRaster).pixelType]
+
+            # Mosaic 所有背景值栅格和原始数据栅格到新栅格中
+            arcpy.MosaicToNewRaster_management(
+                input_rasters=[inRaster, background],
+                output_location=self.__workspace,
+                raster_dataset_name_with_extension=output_Raster,
+                pixel_type=temp_pixel_type,
+                number_of_bands=1,
+                mosaic_method="FIRST",
+                mosaic_colormap_mode="FIRST")
+            print 'Raster %s added background.' % output_Raster
+            # logger output
+            self.ES_logger.debug('New raster was mosaiced with background: %s' % output_Raster)
+        else:
+            arcpy.Mosaic_management(
+                inputs=[inRaster, background],
+                target=inRaster,
+                mosaic_type="FIRST",
+                colormap="FIRST",
+                mosaicking_tolerance=0.5)
+
+            print 'Raster %s added background.' % inRaster 
+            # logger output
+            self.ES_logger.debug('Background was mosaiced into raster: %s' % inRaster)
+
+    # 以下为神奇的、不知道为什么要写的函数
+    # 注意以下这个方法可能会消耗大量的时间！
+    # 请谨慎使用！
+    # 这个方法有极大可能造成程序假死。
+    # 相比于上一个null方法，这个方法可能会多处至少4*N的时间消耗。
+    def do_mosaic_value_background_to_raster(self, inRaster, background, background_value, output_Raster=None):
+        if not isinstance(background_value, numbers.Number):
+            print 'ERROR: backgound value must be a number.'
+
+            # logger output
+            self.ES_logger.error('background value type error.')
+            return
+
+        # 从输入背景栅格生成不影响原始数据的背景值,
+        # 即是获得一个背景值区域为0，其他区域为nodata的栅格。
+        temp_setnull_where_clause = 'VALUE <> %s' % background_value
+        newBackground = SetNull(in_conditional_raster=background,
+                                in_false_raster_or_constant=0,
+                                where_clause=temp_setnull_where_clause)        
+
+        # logger output
+        self.ES_logger.debug('New background raster was built: %s' % newBackground)
+
+        # 因为考虑到保护原始数据和运行效率的原因，从这里开始就要分是否将结果保存到新栅格的问题：
+        #   1、首先是保护原始数据的问题。如果不需要保存到新栅格，即意味着所有改动都发生在原始的数据栅格上，所以可以对原始数据进行操作。相反，如果要保存到新栅格即意味着使用者并不期望原始数据被修改，所以不能对原始数据进行操作。
+        #   2、考虑到运行效率问题。保存到新栅格的操作比在原始数据上操作需要经历更多的步骤，且二者的很多操作是相互独立的，在并不通用的操作上都执行一遍会造成大量的时间浪费。
+        if output_Raster:
+            if type(output_Raster) != str:
+                print 'ERROR: output raster name does not exist.'
+
+                # logger output
+                self.ES_logger.error('output raster name does not exist.')
+
+            # 确定输出栅格的pixel_type
+            temp_pixel_type = self.__raster_pixel_type[arcpy.Raster(inRaster).pixelType]
+
+            # 保存结果的临时栅格
+            temp_result_raster = output_Raster
+
+            # Mosaic 原始数据和新背景
+            arcpy.MosaicToNewRaster_management(
+                input_rasters=[inRaster, newBackground],
+                output_location=self.__workspace,
+                raster_dataset_name_with_extension=temp_result_raster,
+                pixel_type=temp_pixel_type,
+                number_of_bands=1,
+                mosaic_method="FIRST",
+                mosaic_colormap_mode="FIRST")
+
+            # logger output
+            self.ES_logger.debug('Raster was mosaiced with new background: %s' % temp_result_raster)
+        else:
+            # 保存结果的临时栅格
+            temp_result_raster = inRaster
+
+            arcpy.Mosaic_management(
+                inputs=[temp_result_raster, newBackground],
+                target=temp_result_raster,
+                mosaic_type="FIRST",
+                colormap="FIRST",
+                mosaicking_tolerance=0.5)
+
+            # logger output
+            self.ES_logger.debug('Raster was mosaiced with new background: %s' % temp_result_raster)
+
+        # 在新栅格中恢复背景值
+        temp_result_raster = Con(temp_result_raster, temp_result_raster, 'VALUE = 0')
+        
+        # 补充原始背景中的其他像素信息，得到最终结果
+        arcpy.Mosaic_management(inputs=[temp_result_raster, background],
+                                target=temp_result_raster,
+                                mosaic_type="FIRST",
+                                colormap="FIRST",
+                                mosaicking_tolerance=0.5)
+
+        print 'Raster %s added background.' % temp_result_raster 
+        # logger output
+        self.ES_logger.debug('Raster was mosaiced with new background: %s' % temp_result_raster)
 
     ############################################################################
     ############################################################################
