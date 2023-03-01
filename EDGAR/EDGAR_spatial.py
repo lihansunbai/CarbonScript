@@ -3842,7 +3842,7 @@ class EDGAR_spatial(object):
     # 从点数据中生成各个中心中的不同分类的排放分量栅格
     # 这里的设计思路是只传入一个点数据。因为，如果一次传入一组点数据，很可能导致这个函数一旦进入就
     # 无法停止下来。
-    def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list, add_background=True, background_raster='background', duplicate_numpy=True):
+    def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list, add_background=True, background_raster='background', duplicate_numpy=True, numpy_output_path=None):
         if not inPoint or not center_list or not category_field_list:
             print 'ERROR: The inputs does not exist. Please check the inputs.'  
 
@@ -4007,11 +4007,50 @@ class EDGAR_spatial(object):
                 output_name_fmt=temp_output_name_fmt)
 
     # 将arcgis栅格数据转换成Numpy格式
-    def EOF_raster_to_numpy(self, raster_list, multivariante, export_path):
+    def EOF_raster_to_numpy(self, raster_list, multivariante, nodata_to_value, export_to_npz=True, export_path=None):
         pass
 
-    def do_EOF_raster_to_numpy(self):
-        pass
+    # 函数将输入的栅格转换为numpy数组, 同时返回转换成功的numpy 数组。
+    # 可以通过export_to_npz参数控制是否将numpy数组保存为文件，若设定此参数请提供保存路径
+    def do_EOF_raster_to_numpy(self, inRaster, export_path, export_to_npz=True, lower_left_corner=None, ncols=None, nrows=None, nodata_to_value=None):
+        if not inRaster:
+            print 'ERROR: convert to numpy array failed! input raster does not exist: %s' % inRaster
+
+            # logger output
+            self.ES_logger.error('input raster does not exist: %s' % inRaster)
+            return
+
+        # 执行转换为numpy array
+        temp_numpy_arr = arcpy.RasterToNumPyArray(inRaster=inRaster,
+                                                lower_left_corner=lower_left_corner,
+                                                ncols=ncols,
+                                                nrows=nrows,
+                                                nodata_to_value=nodata_to_value)
+        
+        # logger output
+        self.ES_logger.debug('Raster converted to numpy array: %s' % inRaster)
+
+        # 保存结果到NPZ文件
+        if export_to_npz:
+            if not export_path:
+                print 'ERROR: export NPZ file path does not exist: %s' % export_path
+
+                # logger output
+                self.ES_logger.error('Path does not exist: %s' % export_path)
+                break
+
+            # 设置保存路径
+            temp_save_name = '%s.npz' % inRaster
+            temp_save_name = os.path.join(export_path, temp_save_name)
+
+            # 执行保存
+            numpy.savez_compressed(temp_save_name, temp_numpy_arr)
+
+            # logger output 
+            self.ES_logger.debug('Numpy array saved to NPZ: %s' % temp_save_name)
+    
+        # 返回结果
+        return temp_numpy_arr
 
     def do_EOF_raster_to_numpy_multivariante(self):
         pass
