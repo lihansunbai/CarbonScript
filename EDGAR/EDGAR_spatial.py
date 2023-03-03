@@ -1113,7 +1113,7 @@ class EDGAR_spatial(object):
             temp_raster.save(result_raster)
 
             # logger output
-            self.ES_logger.error('Raster saved: %s' % result_raster)
+            self.ES_logger.debug('Raster saved: %s' % result_raster)
 
         return temp_raster
 
@@ -3844,7 +3844,10 @@ class EDGAR_spatial(object):
     # 从点数据中生成各个中心中的不同分类的排放分量栅格
     # 这里的设计思路是只传入一个点数据。因为，如果一次传入一组点数据，很可能导致这个函数一旦进入就
     # 无法停止下来。
-    def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list, add_background=True, background_raster='background', duplicate_numpy=True, numpy_output_path=None):
+    # 这里可以使用return_results参数来控制是否返回一个结果的字典。
+    #   这个字典的键为中心名字，值为该中心下所有分类的生成栅格的列表。
+    #   注意字典值中的列表不再做进一步划分，将包含所有的栅格。
+    def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list, add_background=True, background_raster='background', return_result=True):
         if not inPoint or not center_list or not category_field_list:
             print 'ERROR: The inputs does not exist. Please check the inputs.'  
 
@@ -3852,13 +3855,16 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input does not exist.')
             return
 
+        # 存储待返回结果的字典
+        temp_return = {}
+
         # 逐个对中心处理
         for center in center_list:
             # 临时存储倒出到numpy的栅格列表
-            temp_duplicate_numpy = []
+            temp_results = []
             
             # 逐个对中心进行分类EOF提取的操作
-            temp_duplicate_numpy = self.do_EOF_generate_center_categories_emission_raster(inPoint=inPoint,
+            temp_results = self.do_EOF_generate_center_categories_emission_raster(inPoint=inPoint,
                                                                     center=center,
                                                                     category_field_list=category_field_list,
                                                                     return_results=True)
@@ -3867,14 +3873,20 @@ class EDGAR_spatial(object):
                 # 为生成的初步提取栅格生成背景
                 self.EOF_generate_center_categories_geographical_extend(center=center,
                                                                         category_list=category_field_list,
-                                                                        background_raster='background')
+                                                                        background_raster=background_raster)
 
                 # 为生成的初步提取栅格添加背景，并组合成EOF分析可用的数据
                 self.EOF_center_category_mosaic_extend(center=center,
                                                         category_list=category_field_list)
 
-            if duplicate_numpy:
-                pass
+            # 如果函数需要返回一组结果则需要在这里把结果保存到字典的对应键中
+            if return_result:
+                temp_return[center] = temp_results
+        
+        # 如果需要函数返回则在这里返回字典，如果不需要返回则函数直接跳过后结束。
+        if return_result:
+            return temp_return
+        
 
     # 实际执行从点数据中生成某一个中心里的不同分类的排放量栅格
     # 注意！！！
@@ -4070,16 +4082,17 @@ class EDGAR_spatial(object):
         # 返回结果
         return temp_numpy_arr
 
-    # 将arcgis栅格数据转换成Numpy multivariates-EOF计算所用的格式
-    def EOF_raster_to_numpy_multivariates(self, raster_list, nodata_to_value, export_to_npz=True, export_path=None):
-        pass
+    # # 将arcgis栅格数据转换成Numpy multivariates-EOF计算所用的格式
+    # def EOF_raster_to_numpy_multivariates(self, raster_list, nodata_to_value, export_to_npz=True, export_path=None):
+    #     pass
 
     # 函数将输入的栅格转换为numpy数组, 同时返回转换成功的numpy 数组。
     # 注意：
     #       使用这个函数要求传入一个字典，位于字典一个键下的所有栅格将被按列合并到同一个numpy 数组中。
+    #       同时，这个字典应该是有序的，键的顺序就是每个numpy 数组的排列顺序。
     # 如果不确定应该输入一个怎样的字典，可以使用EOF_multivariates_input_rasters_example()查看示例
     # 可以通过export_to_npz参数控制是否将numpy数组保存为文件，若设定此参数请提供保存路径
-    def do_EOF_raster_to_numpy_multivariates(self, inRasterDict, export_path, export_to_npz=True, lower_left_corner=None, ncols=None, nrows=None, nodata_to_value=None):
+    def EOF_raster_to_numpy_multivariates(self, inRasterDict, export_path, export_to_npz=True, lower_left_corner=None, ncols=None, nrows=None, nodata_to_value=None):
         if not inRasterDict:
             # 按照字典中的键值生成
             print 'ERROR: incorrect inputs'
@@ -4104,7 +4117,7 @@ class EDGAR_spatial(object):
 
                 # 如果是存在结果数组则执行追加模式
                 if isinstance(temp_result_arr, numpy.ndarray)
-                    temp_result_arr.append(temp_numpy_arr) 
+                    numpy.append(temp_result_arr, temp_result_arr, 1)
                 # 如果是第一次循环则
                 else:
                     delete(temp_result_arr)
@@ -4132,8 +4145,12 @@ class EDGAR_spatial(object):
                 # logger output 
                 self.ES_logger.debug('Numpy array saved to NPZ: %s' % temp_save_name)
     
-
-    # 通过分类名称归类同一年份栅格
+    # 生成一个可供EOF_raster_to_numpy_multivariates()使用的字典
+    # 使用`分类`和`名称`归类同一年份栅格
+    # 通过`category_list`参数给出的顺序，确定最终生成的字典的。
+    # 注意：
+    #       使用这个函数的时候一定要确定category_list 列表的顺序是期望的顺序。之后的所有函数执行
+    #       过程都将保持这个列表中元素的顺序。
     def category_year_organize(self, raster_list, category_list, year_range):
         if not raster_list or not category_list or not year_range:
             print 'ERROR: incorrect inputs'
@@ -4157,6 +4174,8 @@ class EDGAR_spatial(object):
             temp_start_year, temp_end_year = min(year_range), max(year_range)
             self.ES_logger.info('Year has set.')
 
+        # 保存输入category_list的顺序
+        category_ordered_list = enumerate(category_list)
         # 结果字典的键名格式
         temp_prefix = 'EOF_multivariates_%s'
 
@@ -4164,11 +4183,22 @@ class EDGAR_spatial(object):
         temp_result_dict = {}
 
         # 注意：！！！
-        #   这里存在一个重大问题，python的列表是无序的，也就是说每次生成的内容不能保证完全一致。
-        #   所以这里可能要用到OrderedDictionary，或者其他能保序的数据结构储存数据。
+        #   为了保持顺序，需要先使用enumerate()函数确认列表元素顺序。
         for year in range(temp_start_year, temp_end_year + 1):
             # 通过python解包获得同年份的分类栅格
-            temp_rasters = [r for r in raster_list if int(r[-4:]) == year]
+            temp_search = [r for r in raster_list if int(r[-4:]) == year]
+
+            # 保存临时结果
+            temp_rasters = temp_search
+
+            # 按照category_list 的顺序对栅格在列表中的顺序进行排序
+            for cate in category_ordered_list:
+                # 以下这个操作有点匪夷所思，但是复杂执行的原因是为了严格保持列表的顺序
+                # 首先找到对应位置的栅格名称
+                # 这里用到了列表的解包操作。主要是不想写搜索……
+                temp_r = [r for r in temp_search if cate[1] in r]
+                # 手动将栅格名摆放到category_list规定的位置
+                temp_rasters[cate[0]] = temp_r[0]
 
             # 生成键名
             temp_key = temp_prefix % year
@@ -4177,7 +4207,6 @@ class EDGAR_spatial(object):
             temp_result_dict[temp_key] = temp_rasters
         
         return temp_result_dict
-
 
     # 打印一个EOF multivariates推荐的输入数组样式
     def EOF_multivariates_input_rasters_example(self):
