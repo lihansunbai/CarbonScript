@@ -3,7 +3,6 @@
 # 路径处理模块
 # System path processing module
 import os
-from unicodedata import category
 
 # Arcpy 相关模块
 # Arcpy module
@@ -15,7 +14,6 @@ from arcpy.sa import *
 # other functional modules
 import re
 import copy
-from requests import delete
 import tqdm
 from tqdm import tqdm
 import tabulate
@@ -30,6 +28,11 @@ import numbers
 
 # # 性能测试相关模块
 # import cProfile
+import pytest
+import faulthandler
+
+faulthandler.enable()
+
 
 __metaclass__ = type
 
@@ -125,7 +128,7 @@ class EDGAR_spatial(object):
         self.ES_logger.info('arcpy Spatial extension checked.')
         # 将多线程处理设置为100%
         #   吐槽：虽然没什么用，cpu利用率最多也只能达到5%
-        arcpy.env.parallelProcessingFactor = "200%"
+        arcpy.env.parallelProcessingFactor = "100%"
         self.ES_logger.info('arcpy parallelProcessingFactor set to 200%.')
 
         arcpy.env.overwriteOutput = True
@@ -3806,7 +3809,7 @@ class EDGAR_spatial(object):
         for category in category_list:
             # 获得中心的背景栅格
             try:
-                temp_background = background_fmt % (center, category)
+                temp_background = background_fmt % (center.center_name, category)
             except Exception as e:
                 print 'background raster formatting failed.'
 
@@ -3816,7 +3819,7 @@ class EDGAR_spatial(object):
                 return
 
             # 列出所有需要添加背景的栅格
-            temp_wildcard = ['%s_%s_\d+' % (center, category)]
+            temp_wildcard = ['%s_%s_\d+' % (center.center_name, category)]
             temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard, wildcard_mode=False)
 
             # 执行叠加背景
@@ -3881,7 +3884,7 @@ class EDGAR_spatial(object):
 
             # 如果函数需要返回一组结果则需要在这里把结果保存到字典的对应键中
             if return_result:
-                temp_return[center] = temp_results
+                temp_return[center.center_name] = temp_results
         
         # 如果需要函数返回则在这里返回字典，如果不需要返回则函数直接跳过后结束。
         if return_result:
@@ -3910,7 +3913,7 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.error('input point data does not exist.')
 
-            return
+            exit(1)
         
         # 向点数据中添加临时字段
         # 这里选择一次性添加所有临时字段。
@@ -3920,7 +3923,7 @@ class EDGAR_spatial(object):
             # 逐一添加临时字段
             temp_add_field = ['EOF_%s' % category for category in category_field_list]
             for field in temp_add_field:
-                arcpy.AddField_management(intable=inPoint, filed_name=field, field_type='DOUBLE', field_precision='#', field_scale='#', field_length='#', field_alias='#',field_is_nullable='NULLABLE', field_is_required='#', field_domain='#')
+                arcpy.AddField_management(inPoint, field, 'DOUBLE', '#', '#', '#', '#','NULLABLE', '#', '#')
 
             # logger output
             self.ES_logger.debug('EOF: temporary field added.')
@@ -3931,7 +3934,7 @@ class EDGAR_spatial(object):
             self.ES_logger.error( 'EOF Add field to point failed in: %s' % inPoint)
 
             print arcpy.GetMessages()
-            return
+            exit()
         
         # 储存可能需要返回的结果列表
         temp_return_rasters = []
@@ -3949,22 +3952,51 @@ class EDGAR_spatial(object):
             temp_field_list = ['grid_log_total_emission', category, temp_result_field] 
 
             # 构建筛选中心的表达式
-            temp_where_clause = '"center_type"=\'%s\'' % center
+            temp_where_clause = '"center_type"=\'%s\'' % center.center_name
 
             with arcpy.da.UpdateCursor(in_table=inPoint, field_names=temp_field_list, where_clause=temp_where_clause) as cursor:
                 for row in tqdm(cursor):
                     # 计算每个每个分类的排放量，通过“总量*分类比例”得到需要值。
                     # 注意:
-                    #     这里由于使用的是对数值，所以实际的进行的运算是加法运算。
-                    temp_category_property = numpy.log10(row[2])
-                    row[3] = row[1] + temp_category_property
+                    #       这里由于使用的是对数值，所以实际的进行的运算是加法运算。
+                    # 注意2:
+                    #       由于很多部门的排放是0，在计算log10的时候会出错。
+                    #       并且就现实中的情况来说，一个区域的某一部门排放是0那就意味着这个地区没有这个部门，
+                    #       也就没有必要对这个部门进行计算了
+                    
+                    # 该栅格没有某一部门排放的情况
+                    if row[1] == 0:
+                        continue
+                    # 该栅格存在某一部门排放
+                    else:
+                        temp_category_property = numpy.log10(row[1])
+                        row[2] = row[0] + temp_category_property
 
-
-                    # 更新行信息
-                    cursor.updateRow(row)
+                        # 更新行信息
+                        cursor.updateRow(row)
 
             # 保存列数据为栅格
-            save_raster = '%s_%s_%s' % (center, temp_field_list, inPoint[-4:])
+            save_raster = '%s_%s_%s' % (center.center_name, temp_result_field, inPoint[-4:])
+
+            ################################################################################
+            ################################################################################
+            # 以下部分是一段python segmentation fault debug 使用的代码
+            # arcpy.PointToRaster_conversion(inPoint,temp_result_field, save_raster,'MOST_FREQUENT', '#', '0.1')
+            # arcpy.PointToRaster_conversion(in_features=inPoint,
+            #                                 value_field=temp_result_field,
+            #                                 out_rasterdataset=save_raster,
+            #                                 cell_assignment="MOST_FREQUENT",
+            #                                 cellsize=0.1)
+
+            # # 添加转换结果到待返回列表
+            # temp_return_rasters.append(save_raster)
+
+            # # logger output
+            # self.ES_logger.debug('EOF rasterize finished:%s' % save_raster)
+            # debug 结束
+            ################################################################################
+            ################################################################################
+
             try:
                 arcpy.PointToRaster_conversion(inPoint,temp_result_field, save_raster,'MOST_FREQUENT', '#', '0.1')
 
@@ -4003,16 +4035,16 @@ class EDGAR_spatial(object):
         # 逐个处理分类
         for category in category_list:
             # 生成输出栅格的文件名
-            temp_output_name_fmt = '%s_%s_geographical_extend' % (center, category)
+            temp_output_name_fmt = '%s_%s_geographical_extend' % (center.center_name, category)
 
             # 列出该中心里该分类的所有栅格
             # 注意：
             #       这里的正则表达式很暴力，需要再考虑……
-            temp_wildcard_list = ['%s_%s_\d+' % (center, category)]
+            temp_wildcard_list = ['%s_EOF_%s_\d+' % (center.center_name, category)]
             temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard_list, wildcard_mode=False)
 
             # 生成输出栅格的文件名
-            temp_output_name_fmt = '%s_%s_geographical_extend' % (center, category)
+            temp_output_name_fmt = '%s_EOF_%s_geographical_extend_\%\s' % (center.center_name, category)
             
             # 调用实际执行的do_generate_extend函数
             self.do_generate_geographical_extend(
@@ -4021,7 +4053,7 @@ class EDGAR_spatial(object):
                 output_name_fmt=temp_output_name_fmt)
 
     # 将arcgis栅格数据转换成Numpy EOF计算所用的格式
-    def EOF_raster_to_numpy(self, raster_list, nodata_to_value, export_to_npz=True, export_path=None):
+    def EOF_raster_to_numpy(self, raster_list, nodata_to_value=None, export_to_npz=True, export_path=None):
         if not raster_list:
             print 'ERROR: input rasters do not exist. Please check the inputs.'
 
@@ -4067,7 +4099,7 @@ class EDGAR_spatial(object):
 
                 # logger output
                 self.ES_logger.error('Path does not exist: %s' % export_path)
-                break
+                return
 
             # 设置保存路径
             temp_save_name = '%s.npz' % inRaster
@@ -4116,7 +4148,7 @@ class EDGAR_spatial(object):
                                                         nodata_to_value=nodata_to_value)
 
                 # 如果是存在结果数组则执行追加模式
-                if isinstance(temp_result_arr, numpy.ndarray)
+                if isinstance(temp_result_arr, numpy.ndarray):
                     numpy.append(temp_result_arr, temp_result_arr, 1)
                 # 如果是第一次循环则
                 else:
