@@ -39,3 +39,4 @@ center_emission_extend
 .gitignore
 test_extend
 emission_geographical_extend
+eof_raster_prepare
