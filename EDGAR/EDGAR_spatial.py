@@ -3819,7 +3819,7 @@ class EDGAR_spatial(object):
                 return
 
             # 列出所有需要添加背景的栅格
-            temp_wildcard = ['%s_%s_\d+' % (center.center_name, category)]
+            temp_wildcard = ['%s_EOF_%s_\d+' % (center.center_name, category)]
             temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard, wildcard_mode=False)
 
             # 执行叠加背景
@@ -3871,20 +3871,23 @@ class EDGAR_spatial(object):
                                                                     center=center,
                                                                     category_field_list=category_field_list,
                                                                     return_results=True)
-            # 按需要为数据添加历史排放背景
-            if add_background:
-                # 为生成的初步提取栅格生成背景
-                self.EOF_generate_center_categories_geographical_extend(center=center,
-                                                                        category_list=category_field_list,
-                                                                        background_raster=background_raster)
 
-                # 为生成的初步提取栅格添加背景，并组合成EOF分析可用的数据
-                self.EOF_center_category_mosaic_extend(center=center,
-                                                        category_list=category_field_list)
+            # 把结果保存到字典的对应键中
+            temp_return[center.center_name] = temp_results
 
-            # 如果函数需要返回一组结果则需要在这里把结果保存到字典的对应键中
-            if return_result:
-                temp_return[center.center_name] = temp_results
+        # TODO 这里存在重大逻辑问题！
+        # 应该是给每个生成的栅格加一次背景，还是针对所有时间的同一排放类型的栅格进行背景叠加操作？
+        # 按需要为数据添加历史排放背景
+        if add_background:
+            # 为生成的初步提取栅格生成背景
+            self.EOF_generate_center_categories_geographical_extend(center=center,
+                                                                    category_list=category_field_list,
+                                                                    background_raster=background_raster)
+
+            # 为生成的初步提取栅格添加背景，并组合成EOF分析可用的数据
+            self.EOF_center_category_mosaic_extend(center=center,
+                                                    category_list=category_field_list,
+                                                    background_fmt='%s_EOF_geographical_extend_null_mask')
         
         # 如果需要函数返回则在这里返回字典，如果不需要返回则函数直接跳过后结束。
         if return_result:
@@ -4014,8 +4017,12 @@ class EDGAR_spatial(object):
                 print arcpy.GetMessages()
 
         # 从点数据中删除添加的临时列
-        self.delete_temporary_feature_classes(feature_list=temp_add_field)
-
+        print 'Deleting temporary fields...'
+        arcpy.DeleteField_management(inPoint, temp_add_field)
+        # logger output
+        self.ES_logger.info('Deleted temporary fields.')
+        print 'Deleted temporary fields.'
+        
         # 决定返回模式
         if return_results:
             # 返回一个包含生成栅格名称的列表
@@ -4032,25 +4039,41 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input does not exist.')
             return
 
-        # 逐个处理分类
-        for category in category_list:
-            # 生成输出栅格的文件名
-            temp_output_name_fmt = '%s_%s_geographical_extend' % (center.center_name, category)
+        # 生成筛选排放中心的全部分类栅格的正则表达式列表
+        temp_wildcard_center_re = ('%s_EOF_' % center.center_name) + r'%s_\d+'
+        temp_wildcard_list = [temp_wildcard_center_re % category for category in category_list]
+        # 列出该中心里该分类的所有栅格作为待添加背景的栅格
+        temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard_list, wildcard_mode=False)
 
-            # 列出该中心里该分类的所有栅格
-            # 注意：
-            #       这里的正则表达式很暴力，需要再考虑……
-            temp_wildcard_list = ['%s_EOF_%s_\d+' % (center.center_name, category)]
-            temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard_list, wildcard_mode=False)
+        # 生成输出栅格的文件名
+        temp_output_name_fmt = ('%s_EOF_geographical_extend_' % center.center_name) + r'%s'
+        
+        # 调用实际执行的do_generate_extend函数
+        self.do_generate_geographical_extend(
+            raster_list=temp_working_rasters,
+            background_raster=background_raster,
+            output_name_fmt=temp_output_name_fmt)
 
-            # 生成输出栅格的文件名
-            temp_output_name_fmt = '%s_EOF_%s_geographical_extend_\%\s' % (center.center_name, category)
+        # # 旧代码备份
+        # # 逐个处理分类
+        # for category in category_list:
+        #     # 生成输出栅格的文件名
+        #     temp_output_name_fmt = '%s_%s_geographical_extend' % (center.center_name, category)
+
+        #     # 列出该中心里该分类的所有栅格
+        #     # 注意：
+        #     #       这里的正则表达式很暴力，需要再考虑……
+        #     temp_wildcard_list = ['%s_EOF_%s_\d+' % (center.center_name, category)]
+        #     temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard_list, wildcard_mode=False)
+
+        #     # 生成输出栅格的文件名
+        #     temp_output_name_fmt = ('%s_EOF_%s_geographical_extend_' % (center.center_name, category)) + r'%s'
             
-            # 调用实际执行的do_generate_extend函数
-            self.do_generate_geographical_extend(
-                raster_list=temp_working_rasters,
-                background_raster=background_raster,
-                output_name_fmt=temp_output_name_fmt)
+        #     # 调用实际执行的do_generate_extend函数
+        #     self.do_generate_geographical_extend(
+        #         raster_list=temp_working_rasters,
+        #         background_raster=background_raster,
+        #         output_name_fmt=temp_output_name_fmt)
 
     # 将arcgis栅格数据转换成Numpy EOF计算所用的格式
     def EOF_raster_to_numpy(self, raster_list, nodata_to_value=None, export_to_npz=True, export_path=None):
