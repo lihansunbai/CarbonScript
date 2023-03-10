@@ -2932,6 +2932,9 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input field is empty.')
             return
 
+        # 保存返回值的字典
+        return_fieldAttributes = {}
+
         # 一系列类型检查，检查的基于arcpy中的定义
         # field name check
         if fieldAttributes['field_name'] == '' or type(fieldAttributes['field_name']) != str:
@@ -2940,6 +2943,9 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.error('Field name type error.')
             return {}
+        else:
+            return_fieldAttributes['field_name'] = fieldAttributes['field_name'] 
+
 
         # field type check
         if fieldAttributes['field_type'] == '' or type(fieldAttributes['field_type']) != str:
@@ -2948,6 +2954,8 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.error('Field type argument type error.')
             return {}
+        else:
+            return_fieldAttributes['field_type'] = fieldAttributes['field_type'] 
 
         # field precision check
         if 'field_precision' in fieldAttributes:
@@ -2958,8 +2966,11 @@ class EDGAR_spatial(object):
                 # logger output
                 self.ES_logger.error('Field precision argument type error.')
                 return {}
+            else:
+                return_fieldAttributes['filed_precision'] = fieldAttributes['field_precision'] 
         else:
-            fieldAttributes['field_precision'] = '#'
+            return_fieldAttributes['field_precision'] = ''
+            # fieldAttributes['field_precision'] = '#'
 
         # field scale check
         if 'field_scale' in fieldAttributes:
@@ -2969,8 +2980,11 @@ class EDGAR_spatial(object):
                 # logger output
                 self.ES_logger.error('Field scale argument type error.')
                 return {}
+            else:
+                return_fieldAttributes['filed_scale'] = fieldAttributes['field_scale'] 
         else:
-            fieldAttributes['field_scale'] = '#'
+            return_fieldAttributes['field_scale'] = ''
+            #fieldAttributes['field_scale'] = '#'
 
         # field length check
         if 'field_length' in fieldAttributes:
@@ -2980,8 +2994,11 @@ class EDGAR_spatial(object):
                 # logger output
                 self.ES_logger.error('Field length argument type error.')
                 return
+            else:
+                return_fieldAttributes['filed_length'] = fieldAttributes['field_length'] 
         else:
-            fieldAttributes['field_length'] = '#'
+            return_fieldAttributes['field_length'] = ''
+            #fieldAttributes['field_length'] = '#'
 
         # field alias check
         if 'field_alias' in fieldAttributes:
@@ -2991,8 +3008,11 @@ class EDGAR_spatial(object):
                 # logger output
                 self.ES_logger.error('Field alias argument type error.')
                 return {}
+            else:
+                return_fieldAttributes['filed_alias'] = fieldAttributes['field_alias'] 
         else:
-            fieldAttributes['field_alias'] = '#'
+            return_fieldAttributes['field_alias'] = ''
+            #fieldAttributes['field_alias'] = '#'
 
         # field is nullable check
         if 'field_is_nullable' in fieldAttributes:
@@ -3003,8 +3023,11 @@ class EDGAR_spatial(object):
                 # logger output
                 self.ES_logger.error('Field is nullable argument type error.')
                 return {}
+            else:
+                return_fieldAttributes['filed_is_nullable'] = fieldAttributes['field_is_nullable'] 
         else:
-            fieldAttributes['field_is_nullable'] = '#'
+            return_fieldAttributes['field_is_nullable'] = ''
+            #fieldAttributes['field_is_nullable'] = '#'
 
         # field is required check
         if 'field_is_required' in fieldAttributes:
@@ -3015,8 +3038,11 @@ class EDGAR_spatial(object):
                 # logger output
                 self.ES_logger.error('Field is required argument type error.')
                 return {}
+            else:
+                return_fieldAttributes['filed_is_required'] = fieldAttributes['field_is_required'] 
         else:
-            fieldAttributes['field_is_required'] = '#'
+            return_fieldAttributes['field_is_required'] = ''
+            #fieldAttributes['field_is_required'] = '#'
 
         if 'field_domain' in fieldAttributes:
             if fieldAttributes['field_domain'] == '' or type(
@@ -3026,10 +3052,13 @@ class EDGAR_spatial(object):
                 # logger output
                 self.ES_logger.error('Field domain argument type error.')
                 return {}
+            else:
+                return_fieldAttributes['filed_domain'] = fieldAttributes['field_domain'] 
         else:
-            fieldAttributes['field_domain'] = '#'
+            return_fieldAttributes['field_domain'] = ''
+            #fieldAttributes['field_domain'] = '#'
 
-        return fieldAttributes
+        return return_fieldAttributes
 
     # 执行添加字段时使用的字段属性检查函数
     def field_attributes_checker(self, fields):
@@ -3087,7 +3116,7 @@ class EDGAR_spatial(object):
                 field['in_table'] = args['in_table']
                 self.addField_list.append(field)
         elif type(args['field_attributes_checker']) == dict:
-            args['field_attributes_checker']['in_table'] = in_table
+            args['field_attributes_checker']['in_table'] = args['in_table']
             self.addField_list.append(args['field_attributes_checker'])
 
     @addField_list_assembler.deleter
@@ -3445,7 +3474,7 @@ class EDGAR_spatial(object):
             self.ES_logger.info('Year has set.')
 
         for year in range(temp_start_year, temp_end_year + 1):
-            temp_inPoint = 'sectoral_weights_%s' + year
+            temp_inPoint = 'sectoral_weights_%s' % year
             self.print_start_year(year=year)
             self.sectors_generalize(
                 inPoint=temp_inPoint, gen_handle=gen_handle, gen_fieldList=gen_fieldList)
@@ -3881,7 +3910,7 @@ class EDGAR_spatial(object):
         if add_background:
             # 为生成的初步提取栅格生成背景
             self.EOF_generate_center_categories_geographical_extend(center=center,
-                                                                    category_list=category_field_list,
+                                                                    category_field_list=category_field_list,
                                                                     background_raster=background_raster)
 
             # 为生成的初步提取栅格添加背景，并组合成EOF分析可用的数据
@@ -4031,8 +4060,8 @@ class EDGAR_spatial(object):
             return
             
     # 通过给定中心和分类的列表，生成一个中心里所有分类的空间分布范围
-    def EOF_generate_center_categories_geographical_extend(self, center, category_list, background_raster='background'):
-        if not center or not category_list or not background_raster:
+    def EOF_generate_center_categories_geographical_extend(self, center, category_field_list, background_raster='background'):
+        if not center or not category_field_list or not background_raster:
             print 'ERROR: The inputs does not exist. Please check the inputs.'  
 
             # logger output
@@ -4041,7 +4070,8 @@ class EDGAR_spatial(object):
 
         # 生成筛选排放中心的全部分类栅格的正则表达式列表
         temp_wildcard_center_re = ('%s_EOF_' % center.center_name) + r'%s_\d+'
-        temp_wildcard_list = [temp_wildcard_center_re % category for category in category_list]
+        # 以下使用了解包操作，如果调试有困难就该写成for...loop
+        temp_wildcard_list = [temp_wildcard_center_re % category for category in category_field_list]
         # 列出该中心里该分类的所有栅格作为待添加背景的栅格
         temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard_list, wildcard_mode=False)
 
@@ -4175,7 +4205,7 @@ class EDGAR_spatial(object):
                     numpy.append(temp_result_arr, temp_result_arr, 1)
                 # 如果是第一次循环则
                 else:
-                    delete(temp_result_arr)
+                    del temp_result_arr
                     temp_result_arr = temp_numpy_arr
 
             # logger output
