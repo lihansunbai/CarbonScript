@@ -3879,7 +3879,8 @@ class EDGAR_spatial(object):
     # 这里可以使用return_results参数来控制是否返回一个结果的字典。
     #   这个字典的键为中心名字，值为该中心下所有分类的生成栅格的列表。
     #   注意字典值中的列表不再做进一步划分，将包含所有的栅格。
-    def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list, add_background=True, background_raster='background', return_result=True):
+    # def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list, add_background=True, background_raster='background', return_result=True):
+    def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list,  return_result=True):
         if not inPoint or not center_list or not category_field_list:
             print 'ERROR: The inputs does not exist. Please check the inputs.'  
 
@@ -3904,19 +3905,19 @@ class EDGAR_spatial(object):
             # 把结果保存到字典的对应键中
             temp_return[center.center_name] = temp_results
 
-        # TODO 这里存在重大逻辑问题！
-        # 应该是给每个生成的栅格加一次背景，还是针对所有时间的同一排放类型的栅格进行背景叠加操作？
-        # 按需要为数据添加历史排放背景
-        if add_background:
-            # 为生成的初步提取栅格生成背景
-            self.EOF_generate_center_categories_geographical_extend(center=center,
-                                                                    category_field_list=category_field_list,
-                                                                    background_raster=background_raster)
+        # # TODO 这里存在重大逻辑问题！
+        # # 应该是给每个生成的栅格加一次背景，还是针对所有时间的同一排放类型的栅格进行背景叠加操作？
+        # # 按需要为数据添加历史排放背景
+        # if add_background:
+        #     # 为生成的初步提取栅格生成背景
+        #     self.EOF_generate_center_categories_geographical_extend(center=center,
+        #                                                             category_field_list=category_field_list,
+        #                                                             background_raster=background_raster)
 
-            # 为生成的初步提取栅格添加背景，并组合成EOF分析可用的数据
-            self.EOF_center_category_mosaic_extend(center=center,
-                                                    category_list=category_field_list,
-                                                    background_fmt='%s_EOF_geographical_extend_null_mask')
+        #     # 为生成的初步提取栅格添加背景，并组合成EOF分析可用的数据
+        #     self.EOF_center_category_mosaic_extend(center=center,
+        #                                             category_list=category_field_list,
+        #                                             background_fmt='%s_EOF_geographical_extend_null_mask')
         
         # 如果需要函数返回则在这里返回字典，如果不需要返回则函数直接跳过后结束。
         if return_result:
@@ -4060,8 +4061,8 @@ class EDGAR_spatial(object):
             return
             
     # 通过给定中心和分类的列表，生成一个中心里所有分类的空间分布范围
-    def EOF_generate_center_categories_geographical_extend(self, center, category_field_list, background_raster='background'):
-        if not center or not category_field_list or not background_raster:
+    def EOF_generate_center_categories_geographical_extend(self, center_name, category_field_list, background_raster='background'):
+        if not center_name or not category_field_list or not background_raster:
             print 'ERROR: The inputs does not exist. Please check the inputs.'  
 
             # logger output
@@ -4069,14 +4070,14 @@ class EDGAR_spatial(object):
             return
 
         # 生成筛选排放中心的全部分类栅格的正则表达式列表
-        temp_wildcard_center_re = ('%s_EOF_' % center.center_name) + r'%s_\d+'
+        temp_wildcard_center_re = ('%s_EOF_' % center_name) + r'%s_\d+'
         # 以下使用了解包操作，如果调试有困难就该写成for...loop
         temp_wildcard_list = [temp_wildcard_center_re % category for category in category_field_list]
         # 列出该中心里该分类的所有栅格作为待添加背景的栅格
         temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard_list, wildcard_mode=False)
 
         # 生成输出栅格的文件名
-        temp_output_name_fmt = ('%s_EOF_geographical_extend_' % center.center_name) + r'%s'
+        temp_output_name_fmt = ('%s_EOF_geographical_extend_' % center_name) + r'%s'
         
         # 调用实际执行的do_generate_extend函数
         self.do_generate_geographical_extend(
@@ -4106,7 +4107,9 @@ class EDGAR_spatial(object):
         #         output_name_fmt=temp_output_name_fmt)
 
     # 将arcgis栅格数据转换成Numpy EOF计算所用的格式
-    def EOF_raster_to_numpy(self, raster_list, nodata_to_value=None, export_to_npz=True, export_path=None):
+    # TODO
+    # 需要为这个函数加一个返回flag，控制是否返回一个numpy array的列表。
+    def EOF_raster_to_numpy(self, raster_list, return_results=True, nodata_to_value=None, export_to_npz=True, export_path=None):
         if not raster_list:
             print 'ERROR: input rasters do not exist. Please check the inputs.'
 
@@ -4114,16 +4117,23 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input rasters do not exist.')
             return
 
-        # 保存结果的临时变量
-        temp_results = []
+        # 由于可能存在需要返回一个异常巨大的numpy array构成的列表，所以这里需要进行特殊处理，
+        # 保证程序不会耗尽计算机资源而崩溃
 
-        for raster in raster_list:
-            temp_results = self.do_EOF_raster_to_numpy(inRaster=raster,
-                                                        export_path=export_path,
-                                                        export_to_npz=export_to_npz,
-                                                        nodata_to_value=nodata_to_value)
-    
-        return temp_results
+        # 改进思路；
+        # 需要确认eofs能否处理直接输入dask数组，如果可以则不在这个函数里提供保存numpy array列表的功能，
+        # 而是在计算EOF的脚本中直接读取外部的数据进入dask，再通过dask传递给eofs函数.
+
+        if return_results:
+            # 保存结果的临时变量
+            temp_results = []
+            return temp_results
+        else:
+            for raster in raster_list:
+                self.do_EOF_raster_to_numpy(inRaster=raster,
+                                            export_path=export_path,
+                                            export_to_npz=export_to_npz,
+                                            nodata_to_value=nodata_to_value)
 
     # 函数将输入的栅格转换为numpy数组, 同时返回转换成功的numpy 数组。
     # 可以通过export_to_npz参数控制是否将numpy数组保存为文件，若设定此参数请提供保存路径
@@ -4135,14 +4145,23 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input raster does not exist: %s' % inRaster)
             return
 
+        # 检查待转换的栅格是否存在
+        if not arcpy.Exists(inRaster):
+            print 'ERROR: convert to numpy array failed! input raster does not exist: %s' % inRaster
+
+            # logger output
+            self.ES_logger.error('input raster does not exist: %s' % inRaster)
+            return
+
         # 执行转换为numpy array
-        temp_numpy_arr = arcpy.RasterToNumPyArray(inRaster=inRaster,
+        temp_numpy_arr = arcpy.RasterToNumPyArray(in_raster=inRaster,
                                                 lower_left_corner=lower_left_corner,
                                                 ncols=ncols,
                                                 nrows=nrows,
                                                 nodata_to_value=nodata_to_value)
         
         # logger output
+        self.ES_logger.debug('The numpy array size in memory are: %s' % temp_numpy_arr.nbytes)
         self.ES_logger.debug('Raster converted to numpy array: %s' % inRaster)
 
         # 保存结果到NPZ文件
