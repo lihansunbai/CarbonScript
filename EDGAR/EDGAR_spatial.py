@@ -4107,7 +4107,14 @@ class EDGAR_spatial(object):
         #         output_name_fmt=temp_output_name_fmt)
 
     # 将arcgis栅格数据转换成Numpy EOF计算所用的格式
+
+
     # TODO
+    # 这个函数需要完全重写，因为保存为一个numpy数组对于0.1度的数据来说会占据很大的空间，极其有可能导致程序假死或者崩溃。
+    # 所以，这里不再采取保存numpy数组的形式，只通过固定参数将数据保存到一个HDF5 格式的文件中。
+    def EOF_raster_to_hdf5(self, raster_list, output_name=None, nodata_to_value=None):
+        pass
+
     # 需要为这个函数加一个返回flag，控制是否返回一个numpy array的列表。
     def EOF_raster_to_numpy(self, raster_list, return_results=True, nodata_to_value=None, export_to_npz=True, export_path=None):
         if not raster_list:
