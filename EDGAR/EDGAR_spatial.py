@@ -4112,11 +4112,14 @@ class EDGAR_spatial(object):
     # TODO
     # 这个函数需要完全重写，因为保存为一个numpy数组对于0.1度的数据来说会占据很大的空间，极其有可能导致程序假死或者崩溃。
     # 所以，这里不再采取保存numpy数组的形式，只通过固定参数将数据保存到一个HDF5 格式的文件中。
+    def do_EOF_numpy_to_hdf5(self):
+        pass
+
     def EOF_raster_to_hdf5(self, raster_list, output_name=None, nodata_to_value=None):
         pass
 
-    # 需要为这个函数加一个返回flag，控制是否返回一个numpy array的列表。
-    def EOF_raster_to_numpy(self, raster_list, return_results=True, nodata_to_value=None, export_to_npz=True, export_path=None):
+    # 可以考虑把这个函数和上面的那个函数合并
+    def EOF_raster_to_numpy(self, raster_list,  nodata_to_value=None):
         if not raster_list:
             print 'ERROR: input rasters do not exist. Please check the inputs.'
 
@@ -4124,27 +4127,14 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input rasters do not exist.')
             return
 
-        # 由于可能存在需要返回一个异常巨大的numpy array构成的列表，所以这里需要进行特殊处理，
-        # 保证程序不会耗尽计算机资源而崩溃
+        for raster in raster_list:
+            self.do_EOF_raster_to_numpy(inRaster=raster,
+                                        nodata_to_value=nodata_to_value)
 
-        # 改进思路；
-        # 需要确认eofs能否处理直接输入dask数组，如果可以则不在这个函数里提供保存numpy array列表的功能，
-        # 而是在计算EOF的脚本中直接读取外部的数据进入dask，再通过dask传递给eofs函数.
-
-        if return_results:
-            # 保存结果的临时变量
-            temp_results = []
-            return temp_results
-        else:
-            for raster in raster_list:
-                self.do_EOF_raster_to_numpy(inRaster=raster,
-                                            export_path=export_path,
-                                            export_to_npz=export_to_npz,
-                                            nodata_to_value=nodata_to_value)
-
+    # 这个函数返回一个numpy数组，有且只能返回一个numpy数组。
     # 函数将输入的栅格转换为numpy数组, 同时返回转换成功的numpy 数组。
     # 可以通过export_to_npz参数控制是否将numpy数组保存为文件，若设定此参数请提供保存路径
-    def do_EOF_raster_to_numpy(self, inRaster, export_path, export_to_npz=True, lower_left_corner=None, ncols=None, nrows=None, nodata_to_value=None):
+    def do_EOF_raster_to_numpy(self, inRaster, lower_left_corner=None, ncols=None, nrows=None, nodata_to_value=None):
         if not inRaster:
             print 'ERROR: convert to numpy array failed! input raster does not exist: %s' % inRaster
 
@@ -4168,28 +4158,9 @@ class EDGAR_spatial(object):
                                                 nodata_to_value=nodata_to_value)
         
         # logger output
-        self.ES_logger.debug('The numpy array size in memory are: %s' % temp_numpy_arr.nbytes)
+        # self.ES_logger.debug('The numpy array size in memory are: %s' % temp_numpy_arr.nbytes)
         self.ES_logger.debug('Raster converted to numpy array: %s' % inRaster)
 
-        # 保存结果到NPZ文件
-        if export_to_npz:
-            if not export_path:
-                print 'ERROR: export NPZ file path does not exist: %s' % export_path
-
-                # logger output
-                self.ES_logger.error('Path does not exist: %s' % export_path)
-                return
-
-            # 设置保存路径
-            temp_save_name = '%s.npz' % inRaster
-            temp_save_name = os.path.join(export_path, temp_save_name)
-
-            # 执行保存
-            numpy.savez_compressed(temp_save_name, temp_numpy_arr)
-
-            # logger output 
-            self.ES_logger.debug('Numpy array saved to NPZ: %s' % temp_save_name)
-    
         # 返回结果
         return temp_numpy_arr
 
