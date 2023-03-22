@@ -9,6 +9,7 @@
 ################################################################################
 ################################################################################
 
+import itertools
 import collections
 import logging
 
@@ -58,6 +59,8 @@ class EDGAR_eof():
             self.year_range = (st_year, en_year)
             self.EE_logger.info('Year has set.')
 
+        # 初始化numpy文件的过滤标签
+        self.numpy_filter = []
 
     # 默认时间范围
     __default_start_year = 1970
@@ -69,10 +72,50 @@ class EDGAR_eof():
     # 默认HDF5元数据
     __default_eof_hdf_meta_data = {'attrs_title':'Categored emission for EOF'}
 
-    # TODO
+    ############################################################################
+    ############################################################################
+    # 通用参数、属性和方法
+    ############################################################################
+    ############################################################################
+
+    # 想要自定义或者修改数据处理的年份时间范围的特殊property函数
+    @property
+    def year_range(self):
+        return (self.start_year, self.end_year)
+
+    @year_range.setter
+    def year_range(self, start_end=(1970, 2018)):
+        self.start_year, self.end_year = start_end
+
+        # logger output
+        self.EE_logger.debug('year range changed to:%s to %s', start_end)
+
+    def print_start_year(self, year):
+
+        # logger output
+        self.EE_logger.debug('Processing start of year %s', year)
+
+        print('==============================')
+        print('==============================')
+        print('Processing start of year %s', year)
+        print('==============================')
+        print('==============================')
+
+    def print_finish_year(self, year):
+
+        # logger output
+        self.EE_logger.debug('Finished processing data of year %s', year)
+
+        print('==============================')
+        print('==============================')
+        print('Congratulations!')
+        print('Finished processing data of year %s', year)
+        print('==============================')
+        print('==============================')
+
     # 这个函数需要完全重写，因为保存为一个numpy数组对于0.1度的数据来说会占据很大的空间，极其有可能导致程序假死或者崩溃。
     # 所以，这里不再采取保存numpy数组的形式，只通过固定参数将数据保存到一个HDF5 格式的文件中。
-    def do_EOF_numpy_to_hdf5(self, raster, hdf_full_path_name=None):
+    def do_numpy_to_hdf5(self, numpy_array, hdf_full_path_name=None):
         if hdf_full_path_name:
             print('ERROR: save HDF5 file does not exist. Please check the input.')
 
@@ -81,8 +124,8 @@ class EDGAR_eof():
             return
         pass
 
-    def EOF_raster_to_hdf5(self, raster_list, output_name=None, nodata_to_value=None):
-        if not raster_list:
+    def numpy_to_hdf5(self, numpy_list, output_name=None, nodata_to_value=None):
+        if not numpy_list:
             print('ERROR: input rasters do not exist. Please check the inputs.')
 
             # logger output
@@ -96,11 +139,68 @@ class EDGAR_eof():
             pass
 
         # 对输入的栅格列表中的栅格执行转换为numpy array再写入hdf
-        for raster in raster_list:
-            temp_numpy = self.do_EOF_raster_to_numpy(inRaster=raster,nodata_to_value=nodata_to_value)
+        for numpy_array in numpy_list:
+            temp_numpy = self.do_numpy_to_hdf5(numpy_array=raster)
 
+    # numpy_filter_label 构造方法
+    # numpy_filter_label 字典由以下键结构组成：
+    #   必要键值：
+    #       'category'：一个包含指定排放分类名称的列表。
+    #       'time'：一个确定的时间范围元组，注意，这个值只能是元组。
+    #       'filter_fmt'：一个用于组合filter_label的可格式化字符串，这个字符串必须符合python格式化字符串的要求。
+    #   可选键值
+    #       'prefix'：用于填充到filter_fmt中的可选参数
+    #       'suffix'：用于填充到filter_fmt中的可选参数
+    #       'costume_label'：可选自定义字段，用于填充到filter_fmt中的可选参数
+    #   注意在构造numpy_filter_label的时候会强制检查必要键值，若不符合要求则无法构造并返回一个空列表；如果符合构造要求，
+    #   则迭代展开键值中的每一个包含列表元素的键值，返回包含所有numpy名称的列表。
+    @property
+    def numpy_filter_label(self):
+        return self.numpy_filter
+
+    @numpy_filter_label.setter
+    def numpy_filter_label(self, filter_label):
+        # 检查必要键值是否存在，若不存在则直接返回空列表
+        if not filter_label['category'] or not filter_label['time'] or not filter_label['filter_fmt']:
+            print('ERROR: category and time and filter_fmt must be offered.')
+            
+            # logger output
+            self.EE_logger.error('can not found category or time or filter_fmt in input dict.')
+            return []
+
+        # 将时间转换为列表
+        if type(filter_label['time']) != tuple:
+            print('ERROR: time must be a tuple with a star year and a end year.')
+
+            # logger output
+            self.EE_logger.error('time is not a tuple.')
+            return []
+        else:
+            filter_label['time'] = ['{}'.format(i) for i in range(min(filter_label['time']), max(filter_label['time']) + 1)]
+        
+        # 单独保存filter_fmt
+        temp_filter_fmt = filter_label.pop('filter_fmt')
+
+        # 这里还存在几个问题：
+        #   1、应该如何在product后保持参数的顺序
+        #   2、如何保证在fmt语句中的顺序是使用者想要的格式化顺序。
+        # 
+        # 列出构造字典中需要迭代展开的项目
+        temp_iter_item = [it[0] for it in filter_label.items() if isinstance(it[1], collections.Iterable)]
+        # 构造所有展开值
+        temp_iter = itertools.product()
+    # 筛选必要的numpy数据
+    def select_numpy(self, numpy_filter):
+        if numpy_filter:
+            print('ERROR: none numpy filter!')
+
+            # logger output
+            self.EE_logger.error('numpy filter in empty.')
+            return
+    ############################################################################
     ############################################################################
     # emission_center 类和类相关的操作函数
+    ############################################################################
     ############################################################################
 
     ############################################################################
