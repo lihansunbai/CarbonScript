@@ -25,14 +25,14 @@ import collections
 import numpy
 import interval
 import numbers
+import h5py
 
 # # 性能测试相关模块
 # import cProfile
-import pytest
-import faulthandler
+# import pytest
+# import faulthandler
 
-faulthandler.enable()
-
+# faulthandler.enable()
 
 __metaclass__ = type
 
@@ -40,7 +40,6 @@ __metaclass__ = type
 # ======================================================================
 # Memorandum:
 # 备忘录：
-#       1. TODO
 # ======================================================================
 # ======================================================================
 
@@ -391,6 +390,9 @@ class EDGAR_spatial(object):
 
     # 默认部门编码
     __default_gen_encode_list = ['G_ENE', 'G_IND', 'G_TRA', 'G_RCO', 'G_AGS', 'G_WST']
+
+    # 默认HDF5元数据
+    __default_eof_hdf_meta_data = {'attrs_title':'Categored emission for EOF'}
 
     ############################################################################
     ############################################################################
@@ -4107,17 +4109,6 @@ class EDGAR_spatial(object):
         #         output_name_fmt=temp_output_name_fmt)
 
     # 将arcgis栅格数据转换成Numpy EOF计算所用的格式
-
-
-    # TODO
-    # 这个函数需要完全重写，因为保存为一个numpy数组对于0.1度的数据来说会占据很大的空间，极其有可能导致程序假死或者崩溃。
-    # 所以，这里不再采取保存numpy数组的形式，只通过固定参数将数据保存到一个HDF5 格式的文件中。
-    def do_EOF_numpy_to_hdf5(self):
-        pass
-
-    def EOF_raster_to_hdf5(self, raster_list, output_name=None, nodata_to_value=None):
-        pass
-
     # 可以考虑把这个函数和上面的那个函数合并
     def EOF_raster_to_numpy(self, raster_list,  nodata_to_value=None):
         if not raster_list:
@@ -4151,7 +4142,7 @@ class EDGAR_spatial(object):
             return
 
         # 执行转换为numpy array
-        temp_numpy_arr = arcpy.RasterToNumPyArray(in_raster=inRaster,
+        return_numpy_arr = arcpy.RasterToNumPyArray(in_raster=inRaster,
                                                 lower_left_corner=lower_left_corner,
                                                 ncols=ncols,
                                                 nrows=nrows,
@@ -4162,7 +4153,7 @@ class EDGAR_spatial(object):
         self.ES_logger.debug('Raster converted to numpy array: %s' % inRaster)
 
         # 返回结果
-        return temp_numpy_arr
+        return return_numpy_arr
 
     # # 将arcgis栅格数据转换成Numpy multivariates-EOF计算所用的格式
     # def EOF_raster_to_numpy_multivariates(self, raster_list, nodata_to_value, export_to_npz=True, export_path=None):
@@ -4174,58 +4165,59 @@ class EDGAR_spatial(object):
     #       同时，这个字典应该是有序的，键的顺序就是每个numpy 数组的排列顺序。
     # 如果不确定应该输入一个怎样的字典，可以使用EOF_multivariates_input_rasters_example()查看示例
     # 可以通过export_to_npz参数控制是否将numpy数组保存为文件，若设定此参数请提供保存路径
-    def EOF_raster_to_numpy_multivariates(self, inRasterDict, export_path, export_to_npz=True, lower_left_corner=None, ncols=None, nrows=None, nodata_to_value=None):
-        if not inRasterDict:
-            # 按照字典中的键值生成
-            print 'ERROR: incorrect inputs'
+    def deprecated_EOF_raster_to_numpy_multivariates(self, inRasterDict, export_path, export_to_npz=True, lower_left_corner=None, ncols=None, nrows=None, nodata_to_value=None):
+        # if not inRasterDict:
+        #     # 按照字典中的键值生成
+        #     print 'ERROR: incorrect inputs'
 
-            # logger output
-            self.ES_logger.error('incorrect inputs.')
-            return
+        #     # logger output
+        #     self.ES_logger.error('incorrect inputs.')
+        #     return
     
-        # 保存生成的结果
-        temp_result_arr = []
+        # # 保存生成的结果
+        # temp_result_arr = []
 
-        # 按照字典中的键值生成numpy 数组
-        # 注意：这里要特别小心处理每个字典键的值列表中元素的顺序，必须保证顺序——也就是分类排列顺序一致。
-        for key in inRasterDict.keys():
-            for raster in inRasterDict[key]:
-                # 执行转换为numpy array
-                temp_numpy_arr = arcpy.RasterToNumPyArray(inRaster=raster,
-                                                        lower_left_corner=lower_left_corner,
-                                                        ncols=ncols,
-                                                        nrows=nrows,
-                                                        nodata_to_value=nodata_to_value)
+        # # 按照字典中的键值生成numpy 数组
+        # # 注意：这里要特别小心处理每个字典键的值列表中元素的顺序，必须保证顺序——也就是分类排列顺序一致。
+        # for key in inRasterDict.keys():
+        #     for raster in inRasterDict[key]:
+        #         # 执行转换为numpy array
+        #         temp_numpy_arr = arcpy.RasterToNumPyArray(inRaster=raster,
+        #                                                 lower_left_corner=lower_left_corner,
+        #                                                 ncols=ncols,
+        #                                                 nrows=nrows,
+        #                                                 nodata_to_value=nodata_to_value)
 
-                # 如果是存在结果数组则执行追加模式
-                if isinstance(temp_result_arr, numpy.ndarray):
-                    numpy.append(temp_result_arr, temp_result_arr, 1)
-                # 如果是第一次循环则
-                else:
-                    del temp_result_arr
-                    temp_result_arr = temp_numpy_arr
+        #         # 如果是存在结果数组则执行追加模式
+        #         if isinstance(temp_result_arr, numpy.ndarray):
+        #             numpy.append(temp_result_arr, temp_result_arr, 1)
+        #         # 如果是第一次循环则
+        #         else:
+        #             del temp_result_arr
+        #             temp_result_arr = temp_numpy_arr
 
-            # logger output
-            self.ES_logger.debug('Raster converted to numpy array: %s' % inRaster)
+        #     # logger output
+        #     self.ES_logger.debug('Raster converted to numpy array: %s' % inRaster)
 
-            # 保存结果到NPZ文件
-            if export_to_npz:
-                if not export_path:
-                    print 'ERROR: export NPZ file path does not exist: %s' % export_path
+        #     # 保存结果到NPZ文件
+        #     if export_to_npz:
+        #         if not export_path:
+        #             print 'ERROR: export NPZ file path does not exist: %s' % export_path
 
-                    # logger output
-                    self.ES_logger.error('Path does not exist: %s' % export_path)
-                    break
+        #             # logger output
+        #             self.ES_logger.error('Path does not exist: %s' % export_path)
+        #             break
 
-                # 设置保存路径
-                temp_save_name = '%s.npz' % inRaster
-                temp_save_name = os.path.join(export_path, temp_save_name)
+        #         # 设置保存路径
+        #         temp_save_name = '%s.npz' % inRaster
+        #         temp_save_name = os.path.join(export_path, temp_save_name)
 
-                # 执行保存
-                numpy.savez_compressed(temp_save_name, temp_numpy_arr)
+        #         # 执行保存
+        #         numpy.savez_compressed(temp_save_name, temp_numpy_arr)
 
-                # logger output 
-                self.ES_logger.debug('Numpy array saved to NPZ: %s' % temp_save_name)
+        #         # logger output 
+        #         self.ES_logger.debug('Numpy array saved to NPZ: %s' % temp_save_name)
+        pass
     
     # 生成一个可供EOF_raster_to_numpy_multivariates()使用的字典
     # 使用`分类`和`名称`归类同一年份栅格
@@ -4233,65 +4225,66 @@ class EDGAR_spatial(object):
     # 注意：
     #       使用这个函数的时候一定要确定category_list 列表的顺序是期望的顺序。之后的所有函数执行
     #       过程都将保持这个列表中元素的顺序。
-    def category_year_organize(self, raster_list, category_list, year_range):
-        if not raster_list or not category_list or not year_range:
-            print 'ERROR: incorrect inputs'
+    def deprecated_category_year_organize(self, raster_list, category_list, year_range):
+        # if not raster_list or not category_list or not year_range:
+        #     print 'ERROR: incorrect inputs'
 
-            # logger output
-            self.ES_logger.error('incorrect inputs.')
-            return
+        #     # logger output
+        #     self.ES_logger.error('incorrect inputs.')
+        #     return
 
-        # 检查输入年份变量参数是否合规
-        if (type(year_range[0]) != int) or (type(year_range[1]) != int):
-            print 'Error! Processing starting year and ending year must be int value'
-            self.ES_logger.info('Year setting type error.')
-            self.ES_logger.error('Year setting error!')
-            return
-        elif min(year_range) < self.__default_start_year or max(year_range) > self.__default_end_year:
-            print 'Error! Processing year range out of data support! The year must contain in 1970 to 2018'
-            self.ES_logger.info('Year settings are out of range.')
-            self.ES_logger.error('Year setting error!')
-            return
-        else:
-            temp_start_year, temp_end_year = min(year_range), max(year_range)
-            self.ES_logger.info('Year has set.')
+        # # 检查输入年份变量参数是否合规
+        # if (type(year_range[0]) != int) or (type(year_range[1]) != int):
+        #     print 'Error! Processing starting year and ending year must be int value'
+        #     self.ES_logger.info('Year setting type error.')
+        #     self.ES_logger.error('Year setting error!')
+        #     return
+        # elif min(year_range) < self.__default_start_year or max(year_range) > self.__default_end_year:
+        #     print 'Error! Processing year range out of data support! The year must contain in 1970 to 2018'
+        #     self.ES_logger.info('Year settings are out of range.')
+        #     self.ES_logger.error('Year setting error!')
+        #     return
+        # else:
+        #     temp_start_year, temp_end_year = min(year_range), max(year_range)
+        #     self.ES_logger.info('Year has set.')
 
-        # 保存输入category_list的顺序
-        category_ordered_list = enumerate(category_list)
-        # 结果字典的键名格式
-        temp_prefix = 'EOF_multivariates_%s'
+        # # 保存输入category_list的顺序
+        # category_ordered_list = enumerate(category_list)
+        # # 结果字典的键名格式
+        # temp_prefix = 'EOF_multivariates_%s'
 
-        # 返回结果字典
-        temp_result_dict = {}
+        # # 返回结果字典
+        # temp_result_dict = {}
 
-        # 注意：！！！
-        #   为了保持顺序，需要先使用enumerate()函数确认列表元素顺序。
-        for year in range(temp_start_year, temp_end_year + 1):
-            # 通过python解包获得同年份的分类栅格
-            temp_search = [r for r in raster_list if int(r[-4:]) == year]
+        # # 注意：！！！
+        # #   为了保持顺序，需要先使用enumerate()函数确认列表元素顺序。
+        # for year in range(temp_start_year, temp_end_year + 1):
+        #     # 通过python解包获得同年份的分类栅格
+        #     temp_search = [r for r in raster_list if int(r[-4:]) == year]
 
-            # 保存临时结果
-            temp_rasters = temp_search
+        #     # 保存临时结果
+        #     temp_rasters = temp_search
 
-            # 按照category_list 的顺序对栅格在列表中的顺序进行排序
-            for cate in category_ordered_list:
-                # 以下这个操作有点匪夷所思，但是复杂执行的原因是为了严格保持列表的顺序
-                # 首先找到对应位置的栅格名称
-                # 这里用到了列表的解包操作。主要是不想写搜索……
-                temp_r = [r for r in temp_search if cate[1] in r]
-                # 手动将栅格名摆放到category_list规定的位置
-                temp_rasters[cate[0]] = temp_r[0]
+        #     # 按照category_list 的顺序对栅格在列表中的顺序进行排序
+        #     for cate in category_ordered_list:
+        #         # 以下这个操作有点匪夷所思，但是复杂执行的原因是为了严格保持列表的顺序
+        #         # 首先找到对应位置的栅格名称
+        #         # 这里用到了列表的解包操作。主要是不想写搜索……
+        #         temp_r = [r for r in temp_search if cate[1] in r]
+        #         # 手动将栅格名摆放到category_list规定的位置
+        #         temp_rasters[cate[0]] = temp_r[0]
 
-            # 生成键名
-            temp_key = temp_prefix % year
+        #     # 生成键名
+        #     temp_key = temp_prefix % year
 
-            # 将结果添加到返回字典中
-            temp_result_dict[temp_key] = temp_rasters
+        #     # 将结果添加到返回字典中
+        #     temp_result_dict[temp_key] = temp_rasters
         
-        return temp_result_dict
+        # return temp_result_dict
+        pass
 
     # 打印一个EOF multivariates推荐的输入数组样式
-    def EOF_multivariates_input_rasters_example(self):
+    def deprecated_EOF_multivariates_input_rasters_example(self):
         pass
 
     # 快速导出叠加了背景的栅格
