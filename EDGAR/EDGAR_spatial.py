@@ -25,7 +25,6 @@ import collections
 import numpy
 import interval
 import numbers
-import h5py
 
 # # 性能测试相关模块
 # import cProfile
@@ -3925,7 +3924,6 @@ class EDGAR_spatial(object):
         if return_result:
             return temp_return
         
-
     # 实际执行从点数据中生成某一个中心里的不同分类的排放量栅格
     # 注意！！！
     # 这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`centerName_category_year`。
@@ -4108,8 +4106,8 @@ class EDGAR_spatial(object):
         #         background_raster=background_raster,
         #         output_name_fmt=temp_output_name_fmt)
 
-    # 需要为这个函数加一个返回flag，控制是否返回一个numpy array的列表。
-    def EOF_raster_to_numpy(self, raster_list, return_results=True, nodata_to_value=None, export_to_npz=True, export_path=None):
+    # 将栅格数据转换为numpy压缩格式并导出
+    def EOF_raster_to_numpy(self, raster_list, nodata_to_value=None, export_to_npz=True, export_path=None):
         if not raster_list:
             print 'ERROR: input rasters do not exist. Please check the inputs.'
 
@@ -4117,23 +4115,15 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input rasters do not exist.')
             return
 
-        # 由于可能存在需要返回一个异常巨大的numpy array构成的列表，所以这里需要进行特殊处理，
-        # 保证程序不会耗尽计算机资源而崩溃
+        print 'Exporting rasters to npz...'
+        for raster in tqdm(raster_list):
+            self.do_EOF_raster_to_numpy(inRaster=raster,
+                                        export_path=export_path,
+                                        export_to_npz=export_to_npz,
+                                        nodata_to_value=nodata_to_value)
 
-        # 改进思路；
-        # 需要确认eofs能否处理直接输入dask数组，如果可以则不在这个函数里提供保存numpy array列表的功能，
-        # 而是在计算EOF的脚本中直接读取外部的数据进入dask，再通过dask传递给eofs函数.
-
-        if return_results:
-            # 保存结果的临时变量
-            temp_results = []
-            return temp_results
-        else:
-            for raster in raster_list:
-                self.do_EOF_raster_to_numpy(inRaster=raster,
-                                            export_path=export_path,
-                                            export_to_npz=export_to_npz,
-                                            nodata_to_value=nodata_to_value)
+            # logger output
+            self.ES_logger.info('Raster saved to npz: %s' % raster)
 
     # 函数将输入的栅格转换为numpy数组, 同时返回转换成功的numpy 数组。
     # 可以通过export_to_npz参数控制是否将numpy数组保存为文件，若设定此参数请提供保存路径
