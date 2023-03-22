@@ -390,9 +390,6 @@ class EDGAR_spatial(object):
     # 默认部门编码
     __default_gen_encode_list = ['G_ENE', 'G_IND', 'G_TRA', 'G_RCO', 'G_AGS', 'G_WST']
 
-    # 默认HDF5元数据
-    __default_eof_hdf_meta_data = {'attrs_title':'Categored emission for EOF'}
-
     ############################################################################
     ############################################################################
     # 通用参数、属性和方法
