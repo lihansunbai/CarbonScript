@@ -147,13 +147,13 @@ class EDGAR_eof():
     #   必要键值：
     #       'category'：一个包含指定排放分类名称的列表。
     #       'time'：一个确定的时间范围元组，注意，这个值只能是元组。
-    #       'filter_fmt'：一个用于组合filter_label的可格式化字符串，这个字符串必须符合python格式化字符串的要求。
+    #       'delimiter'：用于连接各个标签的自定义分隔符
     #   可选键值
     #       'prefix'：用于填充到filter_fmt中的可选参数
     #       'suffix'：用于填充到filter_fmt中的可选参数
-    #       'costume_label'：可选自定义字段，用于填充到filter_fmt中的可选参数
-    #   注意在构造numpy_filter_label的时候会强制检查必要键值，若不符合要求则无法构造并返回一个空列表；如果符合构造要求，
-    #   则迭代展开键值中的每一个包含列表元素的键值，返回包含所有numpy名称的列表。
+    #   注意在构造numpy_filter_label的时候会强制检查必要键值，若不符合要求则无法构造并返回一个空列表。
+    #   如果符合构造要求，函数会按照[prefix][delimiter][category][delimiter][time][suffix]的顺序，
+    #   迭代展开键值中的每一个包含列表元素的键值并连接，返回包含所有numpy名称的列表。
     @property
     def numpy_filter_label(self):
         return self.numpy_filter
@@ -161,7 +161,7 @@ class EDGAR_eof():
     @numpy_filter_label.setter
     def numpy_filter_label(self, filter_label):
         # 检查必要键值是否存在，若不存在则直接返回空列表
-        if not filter_label['category'] or not filter_label['time'] or not filter_label['filter_fmt']:
+        if not filter_label['category'] or not filter_label['time'] or not filter_label['delimiter']:
             print('ERROR: category and time and filter_fmt must be offered.')
             
             # logger output
@@ -177,18 +177,38 @@ class EDGAR_eof():
             return []
         else:
             filter_label['time'] = ['{}'.format(i) for i in range(min(filter_label['time']), max(filter_label['time']) + 1)]
-        
-        # 单独保存filter_fmt
-        temp_filter_fmt = filter_label.pop('filter_fmt')
 
-        # 这里还存在几个问题：
-        #   1、应该如何在product后保持参数的顺序
-        #   2、如何保证在fmt语句中的顺序是使用者想要的格式化顺序。
-        # 
-        # 列出构造字典中需要迭代展开的项目
-        temp_iter_item = [it[0] for it in filter_label.items() if isinstance(it[1], collections.Iterable)]
-        # 构造所有展开值
-        temp_iter = itertools.product()
+        # 检查是否存在可选字段
+        if filter_label.has_key('prefix'):
+            if not bool(filter_label['prefix']):
+                temp_has_prefix = '1'
+        else:
+            temp_has_prefix = '0'
+
+        if filter_label.has_key('suffix'):
+            if not bool(filter_label['suffix']):
+                tamp_has_suffix = '1'
+        else:
+            temp_has_suffix = '0'
+
+        # 保存可选字段检查结果
+        temp_has_costume = int(temp_has_prefix+temp_has_suffix,2)
+
+        # 针对包含可选字段的情况展开所有标签
+        if temp_has_costume == 0:
+            temp_iter = itertools.product(filter_label['category'],filter_label['delimiter'],filter_label['time'])
+        elif temp_has_costume == 1:
+            temp_iter = itertools.product(filter_label['category'],filter_label['delimiter'],filter_label['time'],filter_label['delimiter'],filter_label['suffix'])
+        elif temp_has_costume == 2:
+            temp_iter = itertools.product(filter_label['prefix'],filter_label['delimiter'],filter_label['category'],filter_label['delimiter'],filter_label['time'])
+        elif temp_has_costume == 3:
+            temp_iter = itertools.product(filter_label['prefix'],filter_label['delimiter'],filter_label['category'],filter_label['delimiter'],filter_label['time'],filter_label['delimiter'],filter_label['suffix'])
+
+        # list comprehensions生成返回结果列表
+        return_numpy_filter = [''.join(it) for it in list(temp_iter)]
+
+        return return_numpy_filter
+
     # 筛选必要的numpy数据
     def select_numpy(self, numpy_filter):
         if numpy_filter:
