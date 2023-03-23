@@ -9,6 +9,7 @@
 ################################################################################
 ################################################################################
 
+import os
 import itertools
 import collections
 import logging
@@ -155,11 +156,11 @@ class EDGAR_eof():
     #   如果符合构造要求，函数会按照[prefix][delimiter][category][delimiter][time][suffix]的顺序，
     #   迭代展开键值中的每一个包含列表元素的键值并连接，返回包含所有numpy名称的列表。
     @property
-    def numpy_filter_label(self):
+    def numpy_file_filter(self):
         return self.numpy_filter
 
-    @numpy_filter_label.setter
-    def numpy_filter_label(self, filter_label):
+    @numpy_file_filter.setter
+    def numpy_file_filter(self, filter_label):
         # 检查必要键值是否存在，若不存在则直接返回空列表
         if not filter_label['category'] or not filter_label['time'] or not filter_label['delimiter']:
             print('ERROR: category and time and filter_fmt must be offered.')
@@ -209,14 +210,35 @@ class EDGAR_eof():
 
         return return_numpy_filter
 
-    # 筛选必要的numpy数据
-    def select_numpy(self, numpy_filter):
-        if numpy_filter:
+    # 筛选需要的numpy数据
+    # 并通过一个列表返回numpy数据的完整路径。
+    def select_numpy(self, numpy_file_filter, search_path=None):
+        if not numpy_file_filter:
             print('ERROR: none numpy filter!')
 
             # logger output
             self.EE_logger.error('numpy filter in empty.')
             return
+    
+        if search_path:
+            print('ERROR: search path is empty, please check the input')
+
+            # logger output
+            self.EE_logger.error('search path does not exists')
+            
+            return
+        
+        # 列出search_path路径下的所有文件
+        temp_search_files = [f for f in os.listdir(search_path) if os.path.isfile(os.path.join(search_path, f))]
+
+        # 从当前路径的文件中找到标签指定的文件
+        numpy_files = list(set(temp_search_files).intersection(numpy_file_filter))
+        
+        # 构建完整numpy文件路径
+        numpy_files_path = [os.path.join(search_path, f) for f in numpy_files]
+
+        return numpy_files_path
+ 
     ############################################################################
     ############################################################################
     # emission_center 类和类相关的操作函数
