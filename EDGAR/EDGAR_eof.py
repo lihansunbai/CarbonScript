@@ -125,7 +125,7 @@ class EDGAR_eof():
             return
         pass
 
-    def numpy_to_hdf5(self, numpy_list, output_name=None, nodata_to_value=None):
+    def numpy_to_hdf5(self, numpy_list, output_name=None, output_path=None, nodata_to_value=None):
         if not numpy_list:
             print('ERROR: input rasters do not exist. Please check the inputs.')
 
@@ -133,15 +133,25 @@ class EDGAR_eof():
             self.EE_logger.error('input rasters do not exist.')
             return
 
-        # 检查输出目标的hdf文件是否存在，如果存在则打开，同时修改追加文件标识为；如果不存在则进行创建
-        if is_open(output_name):
-            append_flag = True
+        # 检查输入路径是否存在
+        # 如果路径存在则组合为HDF文件的绝对路径
+        if os.path.exists(output_path):
+            temp_full_path_name = os.path.join(output_path, output_name)
         else:
-            pass
+            print('ERROR: HDF file location does not exists, please check the input.')
 
-        # 对输入的栅格列表中的栅格执行转换为numpy array再写入hdf
-        for numpy_array in numpy_list:
-            temp_numpy = self.do_numpy_to_hdf5(numpy_array=raster)
+            # logger output
+            self.EE_logger.error('HDF file location does not exist.')
+            return
+         
+        # 使用a参数打开文件，如果文件存在则追加啊，如果文件不存在则创建新文件
+        with h5py.File(temp_full_path_name, 'a') as hdf:
+            # 对输入的栅格列表中的栅格执行转换为numpy array再写入hdf
+            for numpy_file in numpy_list:
+                temp_save_name = numpy_file[-4:]
+                hdf[temp_save_name] = self.do_numpy_to_hdf5(numpy_array=numpy_file)
+                
+
 
     # numpy_filter_label 构造方法
     # numpy_filter_label 字典由以下键结构组成：
