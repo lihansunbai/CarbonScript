@@ -21,7 +21,6 @@ import tqdm
 import xarray
 from tqdm import tqdm
 
-
 class EDGAR_eof():
     '''
     EOF analysis using EDGAR data
@@ -63,6 +62,9 @@ class EDGAR_eof():
         # 初始化numpy文件的过滤标签
         self.numpy_filter = []
 
+        # 初始化排放中心列表
+        self.emission_center_list = []
+
     # 默认时间范围
     __default_start_year = 1970
     __default_end_year = 2018
@@ -89,7 +91,7 @@ class EDGAR_eof():
         self.start_year, self.end_year = start_end
 
         # logger output
-        self.EE_logger.debug('year range changed to:%s to %s', start_end)
+        self.EE_logger.debug('year range changed to:%s to %s', start_end[0], start_end[1])
 
     def print_start_year(self, year):
 
@@ -150,8 +152,6 @@ class EDGAR_eof():
             for numpy_file in numpy_list:
                 temp_save_name = numpy_file[-4:]
                 hdf[temp_save_name] = self.do_numpy_to_hdf5(numpy_array=numpy_file)
-                
-
 
     # numpy_filter_label 构造方法
     # numpy_filter_label 字典由以下键结构组成：
@@ -406,7 +406,7 @@ class EDGAR_eof():
         if type(year) == int:
             return self.do_emission_peak(emission_peak_range=emission_peak_range, year=year)
         # 如果输入年份是一组年份，则逐个构建该组年份中的时间，并返回一个列表
-        elif isinstance(year, collections.Iterable):
+        elif isinstance(year, collections.abc.Iterable):
             temp_peaks_list = []
 
             for yr in year:
