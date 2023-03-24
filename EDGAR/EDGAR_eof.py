@@ -159,11 +159,12 @@ class EDGAR_eof():
     #       'category'：一个包含指定排放分类名称的列表。
     #       'time'：一个确定的时间范围元组，注意，这个值只能是元组。
     #       'delimiter'：用于连接各个标签的自定义分隔符
+    #       'append'：numpy文件的扩展名
     #   可选键值
     #       'prefix'：用于填充到filter_fmt中的可选参数
     #       'suffix'：用于填充到filter_fmt中的可选参数
     #   注意在构造numpy_filter_label的时候会强制检查必要键值，若不符合要求则无法构造并返回一个空列表。
-    #   如果符合构造要求，函数会按照[prefix][delimiter][category][delimiter][time][suffix]的顺序，
+    #   如果符合构造要求，函数会按照[prefix][delimiter][category][delimiter][time][delimiter][suffix][append]的顺序，
     #   迭代展开键值中的每一个包含列表元素的键值并连接，返回包含所有numpy名称的列表。
     @property
     def numpy_file_filter(self):
@@ -172,7 +173,7 @@ class EDGAR_eof():
     @numpy_file_filter.setter
     def numpy_file_filter(self, filter_label):
         # 检查必要键值是否存在，若不存在则直接返回空列表
-        if not filter_label['category'] or not filter_label['time'] or not filter_label['delimiter']:
+        if not filter_label['category'] or not filter_label['time'] or not filter_label['delimiter'] or not filter_label['append']:
             print('ERROR: category and time and filter_fmt must be offered.')
             
             # logger output
@@ -190,15 +191,13 @@ class EDGAR_eof():
             filter_label['time'] = ['{}'.format(i) for i in range(min(filter_label['time']), max(filter_label['time']) + 1)]
 
         # 检查是否存在可选字段
-        if filter_label.has_key('prefix'):
-            if not bool(filter_label['prefix']):
-                temp_has_prefix = '1'
+        if 'prefix' in filter_label and bool(filter_label['prefix']):
+            temp_has_prefix = '1'
         else:
             temp_has_prefix = '0'
 
-        if filter_label.has_key('suffix'):
-            if not bool(filter_label['suffix']):
-                tamp_has_suffix = '1'
+        if 'suffix' in filter_label and bool(filter_label['suffix']):
+            temp_has_suffix = '1'
         else:
             temp_has_suffix = '0'
 
@@ -217,8 +216,9 @@ class EDGAR_eof():
 
         # list comprehensions生成返回结果列表
         return_numpy_filter = [''.join(it) for it in list(temp_iter)]
+        return_numpy_filter = [it + '.' + filter_label['append'] for it in return_numpy_filter]
 
-        return return_numpy_filter
+        self.numpy_filter = return_numpy_filter
 
     # 筛选需要的numpy数据
     # 并通过一个列表返回numpy数据的完整路径。
@@ -230,7 +230,7 @@ class EDGAR_eof():
             self.EE_logger.error('numpy filter in empty.')
             return
     
-        if search_path:
+        if not search_path:
             print('ERROR: search path is empty, please check the input')
 
             # logger output
