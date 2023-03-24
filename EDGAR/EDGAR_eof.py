@@ -65,6 +65,9 @@ class EDGAR_eof():
         # 初始化排放中心列表
         self.emission_center_list = []
 
+        # 初始化分解文件名的metadata
+        self._metadata = {}
+
     # 默认时间范围
     __default_start_year = 1970
     __default_end_year = 2018
@@ -93,8 +96,41 @@ class EDGAR_eof():
         # logger output
         self.EE_logger.debug('year range changed to:%s to %s', start_end[0], start_end[1])
 
-    def print_start_year(self, year):
+    # 自定义metadata的属性
+    @property
+    def metadata_handler(self):
+        return self._metadata
 
+    @metadata_handler.setter
+    def metadata_handler(self, metadata):
+        if not metadata:
+            print('ERROR: the input is empty.')
+
+            # logger output
+            self.EE_logger.error('input metadata dict is empty.')
+            return
+
+        self._metadata = metadata
+
+    # 用以拆解文件名的函数
+    # 该函数会按照metadata字典中给出的键值，分析输入文件名的结构，并返回一个符合HDF层次结构的路径
+    def file_name_decomposer(self, filename, metadata):
+        '''
+        按照metadata字典中给出的键值，
+        分析输入文件名的结构，
+        并返回一个符合HDF层次结构的路径
+        '''
+        # 保存返回用结果字典
+        return_decomposed_parts = {}
+
+        for meta in metadata:
+            for value in meta[1]:
+                return_decomposed_parts[meta[0]] = [de for de in value if(de in filename)]
+
+        return return_decomposed_parts
+
+
+    def print_start_year(self, year):
         # logger output
         self.EE_logger.debug('Processing start of year %s', year)
 
@@ -115,6 +151,12 @@ class EDGAR_eof():
         print('Finished processing data of year %s', year)
         print('==============================')
         print('==============================')
+
+    ############################################################################
+    ############################################################################
+    # 将 numpy 数据保存为 hdf
+    ############################################################################
+    ############################################################################
 
     # 这个函数需要完全重写，因为保存为一个numpy数组对于0.1度的数据来说会占据很大的空间，极其有可能导致程序假死或者崩溃。
     # 所以，这里不再采取保存numpy数组的形式，只通过固定参数将数据保存到一个HDF5 格式的文件中。
