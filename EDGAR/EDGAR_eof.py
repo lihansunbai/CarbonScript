@@ -9,6 +9,7 @@
 ################################################################################
 ################################################################################
 
+import chunk
 import os
 import re
 import itertools
@@ -192,14 +193,29 @@ class EDGAR_eof():
 
         # 使用a参数打开文件，如果文件存在则追加啊，如果文件不存在则创建新文件
         with h5py.File(temp_full_path_name, 'a') as hdf:
-            # 为HDF数据创建dataset，如果存在则跳过创建
             # 对输入的栅格列表中的栅格执行转换为numpy array再写入hdf
             for numpy_file in numpy_list:
-                temp_save_name_info = self.file_name_decomposer(filename=numpy_file,
-                                                                metadata=file_name_metadata)
-                temp_save_name = '{}/{}/{}/grid_co2'.format(temp_save_name_info['year'], temp_save_name_info['emission_categories'],temp_save_name_info['centers'])
+                # 构建hdf5_hierarchical_path生成需要的传入参数                
+                temp_save_name = {'file_name':numpy_file,
+                                    'metadata':file_name_metadata}
+                
+                # 通过属性的生成方法生成hdf5_hierarchical_path
+                self.hdf5_hierarchical_path = temp_save_name
+
+                # 从numpy npz文件读取数据
                 temp_numpy_array = numpy.load(numpy_file)
-                hdf[temp_save_name] = temp_numpy_array
+                temp_numpy_array_dtype = temp_numpy_array['arr_0'].dtype
+
+                # 设置保存的hdf 组的路径
+                temp_group = hdf.create_group(name=self.hdf5_data_hierarchical_path)
+                # 保存数据
+                temp_group.create_dataset(name='grid_co2',
+                                          data=temp_numpy_array['arr_0'],
+                                          dtype=temp_numpy_array_dtype,
+                                          chunks=True,
+                                          compression="gzip")
+
+
 
     @property
     def hdf5_hierarchical_path(self):
@@ -265,18 +281,17 @@ class EDGAR_eof():
         # 以下构建路径的逻辑是从子路径向父路径逐层构建。
         # 采用这个方式构建的优点是最多只需要进行三层构建。
         # 不采用迭代的方式进行构建的原因是：尚未发现更简单或者更由效率的方法。
-
         # 判断是否需要构建中心
         if 'centers' in data['metadata']:
-            temp_hierarchical_path = temp_hierarchical_path.join('{}/grid_co2'.format(return_decomposed_parts['centers']))
+            temp_hierarchical_path = temp_hierarchical_path.join('{}'.format(return_decomposed_parts['centers']))
         else:
-            temp_hierarchical_path = 'global/grid_co2'
+            temp_hierarchical_path = 'global'
 
         # 判断是否需要构建总量、部门或分类排放
         if 'emission_categories' in data['metadata']:
-            temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['EDGAR_sectors'], temp_hierarchical_path)
+            temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['emission_categories'], temp_hierarchical_path)
         elif 'EDGAR_sectors' in data['metadata']:  
-            temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['categories'], temp_hierarchical_path)
+            temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['EDGAR_sectors'], temp_hierarchical_path)
         else:
             temp_hierarchical_path = '{}/{}'.format('total', temp_hierarchical_path)
         
