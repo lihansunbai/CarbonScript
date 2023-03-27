@@ -10,6 +10,7 @@
 ################################################################################
 
 import os
+import re
 import itertools
 import collections
 import logging
@@ -112,9 +113,11 @@ class EDGAR_eof():
 
         self._metadata = metadata
 
+    # 以下函数已被弃用
+    # 以下函数功能整合到hdf5_hierarchical_path属性中
     # 用以拆解文件名的函数
     # 该函数会按照metadata字典中给出的键值，分析输入文件名的结构，并返回一个符合HDF层次结构的路径
-    def file_name_decomposer(self, filename, metadata):
+    def deprecated_file_name_decomposer(self, filename, metadata):
         '''
         按照metadata字典中给出的键值，
         分析输入文件名的结构，
@@ -123,9 +126,8 @@ class EDGAR_eof():
         # 保存返回用结果字典
         return_decomposed_parts = {}
 
-        for meta in metadata:
-            for value in meta[1]:
-                return_decomposed_parts[meta[0]] = [de for de in value if(de in filename)]
+        for meta in metadata.items():
+            return_decomposed_parts[meta[0]] = [value for value in meta[1] if(value in filename)]
 
         return return_decomposed_parts
 
@@ -161,7 +163,7 @@ class EDGAR_eof():
     # 这个函数需要完全重写，因为保存为一个numpy数组对于0.1度的数据来说会占据很大的空间，极其有可能导致程序假死或者崩溃。
     # 所以，这里不再采取保存numpy数组的形式，只通过固定参数将数据保存到一个HDF5 格式的文件中。
     def do_numpy_to_hdf5(self, numpy_array, hdf_full_path_name=None):
-        if hdf_full_path_name:
+        if not hdf_full_path_name:
             print('ERROR: save HDF5 file does not exist. Please check the input.')
 
             # logger output
@@ -169,12 +171,12 @@ class EDGAR_eof():
             return
         pass
 
-    def numpy_to_hdf5(self, numpy_list, output_name=None, output_path=None, nodata_to_value=None):
-        if not numpy_list:
-            print('ERROR: input rasters do not exist. Please check the inputs.')
+    def numpy_to_hdf5(self, numpy_list, file_name_metadata, output_name=None, output_path=None, nodata_to_value=None):
+        if not numpy_list or not file_name_metadata:
+            print('ERROR: input rasters or file name metadata do not exist. Please check the inputs.')
 
             # logger output
-            self.EE_logger.error('input rasters do not exist.')
+            self.EE_logger.error('input rasters or file name metadata do not exist.')
             return
 
         # 检查输入路径是否存在
@@ -187,13 +189,102 @@ class EDGAR_eof():
             # logger output
             self.EE_logger.error('HDF file location does not exist.')
             return
-         
+
         # 使用a参数打开文件，如果文件存在则追加啊，如果文件不存在则创建新文件
         with h5py.File(temp_full_path_name, 'a') as hdf:
+            # 为HDF数据创建dataset，如果存在则跳过创建
             # 对输入的栅格列表中的栅格执行转换为numpy array再写入hdf
             for numpy_file in numpy_list:
-                temp_save_name = numpy_file[-4:]
-                hdf[temp_save_name] = self.do_numpy_to_hdf5(numpy_array=numpy_file)
+                temp_save_name_info = self.file_name_decomposer(filename=numpy_file,
+                                                                metadata=file_name_metadata)
+                temp_save_name = '{}/{}/{}/grid_co2'.format(temp_save_name_info['year'], temp_save_name_info['emission_categories'],temp_save_name_info['centers'])
+                temp_numpy_array = numpy.load(numpy_file)
+                hdf[temp_save_name] = temp_numpy_array
+
+    @property
+    def hdf5_hierarchical_path(self):
+        if not self.hdf5_data_hierarchical_path:
+            return ''
+        else:
+            return self.hdf5_data_hierarchical_path
+
+    @hdf5_hierarchical_path.setter
+    def hdf5_hierarchical_path(self, data):
+        '''
+        在传入的data中，按照metadata字典中给出的键值，在file_name中，
+        通过正则表达式匹配输入文件名的结构，
+        并返回一个符合HDF层次结构的路径。
+
+        metadata字典中必须包含年份'year'键值，其他可选的键值为'emission_coponents', 'region', 'centers', 'emission_categories', or 'EDGAR_sectors'。
+        示例：
+        传入的data字典结构示例：
+        {'file_name': 'a string of npz file name',
+         'metadata':{'year':['1970',...,'2018'],
+                     'emission_categories':['G_IND',...,'G_WST'],
+                     ... : ...}
+        }
+        '''
+        if not data:
+            print('ERROR: input metadata dose not exist. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('input metadata does not exist.')
+            self.hdf5_data_hierarchical_path = ''
+            return
+        
+        if not data['metadata']['year']:
+            print('ERROR: year must contained in metadata. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('year is empty in metadata')
+            self.hdf5_data_hierarchical_path = ''
+            return
+
+        # 保存返回的结果路径
+        temp_hierarchical_path = ''
+
+        # 保存返回用结果字典
+        return_decomposed_parts = {}
+
+        # 从文件名中，按照meta字典给出的键值拆解路径信息
+        for meta in data['metadata'].items():
+            for value in meta[1]:
+                meta_match = re.search(re.compile(value), data['file_name'])
+                if meta_match:
+                    return_decomposed_parts[meta[0]] = meta_match[0]
+
+        # 检查年份匹配结果，如果没有匹配到年份信息则直接退出
+        if not return_decomposed_parts['year']:
+            print('ERROR: No input year was found in file name. Please check the input')
+
+            # logger output
+            self.EE_logger.error('no year information was found.')
+            self.hdf5_data_hierarchical_path = ''
+            return
+            
+        # 以下构建路径的逻辑是从子路径向父路径逐层构建。
+        # 采用这个方式构建的优点是最多只需要进行三层构建。
+        # 不采用迭代的方式进行构建的原因是：尚未发现更简单或者更由效率的方法。
+
+        # 判断是否需要构建中心
+        if 'centers' in data['metadata']:
+            temp_hierarchical_path = temp_hierarchical_path.join('{}/grid_co2'.format(return_decomposed_parts['centers']))
+        else:
+            temp_hierarchical_path = 'global/grid_co2'
+
+        # 判断是否需要构建总量、部门或分类排放
+        if 'emission_categories' in data['metadata']:
+            temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['EDGAR_sectors'], temp_hierarchical_path)
+        elif 'EDGAR_sectors' in data['metadata']:  
+            temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['categories'], temp_hierarchical_path)
+        else:
+            temp_hierarchical_path = '{}/{}'.format('total', temp_hierarchical_path)
+        
+        # 构建年份路径
+        temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['year'], temp_hierarchical_path)
+
+        # 保存最终结果
+        self.hdf5_data_hierarchical_path = temp_hierarchical_path
 
     # numpy_filter_label 构造方法
     # numpy_filter_label 字典由以下键结构组成：
