@@ -2267,6 +2267,7 @@ class EDGAR_spatial(object):
 
         # 第四步：零值设为空值
         temp_null_extend = SetNull(temp_extend, 0, "VALUE = 0")
+        temp_null_extend = Con(temp_null_extend == 1, 0, temp_null_extend)
         self.ES_logger.info('extend set to background mask')
 
         # 保存生成的两个结果
@@ -3825,7 +3826,7 @@ class EDGAR_spatial(object):
                                     background=temp_background)
 
     # 为一个中心里所有分类单独添加该分类对应的空间围背景
-    def EOF_center_category_mosaic_extend(self, center, category_list, background_fmt='%s_%s_geographical_extend_null_mask'):
+    def EOF_center_category_mosaic_extend(self, center, category_list, background_fmt='%s_EOF_%s_geographical_extend_null_mask'):
         if not center or not category_list:
             print 'ERROR: input arguments does not exist, please check the inputs.'
 
