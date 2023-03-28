@@ -2222,7 +2222,7 @@ class EDGAR_spatial(object):
                 ]
 
                 # 执行生成范围的
-                self.do_generate_geographical_extend(
+                self.do_generate_center_geographical_extend(
                     raster_list=temp_raster_list,
                     background_raster=background_raster,
                     output_name_fmt=temp_output_name_fmt)
@@ -2235,7 +2235,7 @@ class EDGAR_spatial(object):
                 for (year, peak) in emission_center_list.return_center().items()
             ]
             # 调用实际执行的do_generate_extend函数
-            self.do_generate_geographical_extend(
+            self.do_generate_center_geographical_extend(
                 raster_list=temp_raster_list,
                 background_raster=background_raster,
                 output_name_fmt=temp_output_name_fmt)
@@ -2244,7 +2244,7 @@ class EDGAR_spatial(object):
     # 这个方法会生成两个类型的栅格：
     #   1、输出文件名加后缀`mask`，该栅格中`1`值表示排放范围，`0`值表示其他；
     #   2、输出文件名加后缀`null_mask`，该栅格中`1`值表示排放范围，nodata值表示其他；
-    def do_generate_geographical_extend(self,
+    def do_generate_center_geographical_extend(self,
                                         raster_list,
                                         background_raster,
                                         output_name_fmt='extend_%s'):
@@ -3826,7 +3826,7 @@ class EDGAR_spatial(object):
                                     background=temp_background)
 
     # 为一个中心里所有分类单独添加该分类对应的空间围背景
-    def EOF_center_category_mosaic_extend(self, center, category_list, background_fmt='%s_EOF_%s_geographical_extend_null_mask'):
+    def EOF_center_category_mosaic_extend(self, center, category_list, background_fmt='%s_EOF_geographical_extend_null_mask'):
         if not center or not category_list:
             print 'ERROR: input arguments does not exist, please check the inputs.'
 
@@ -3837,7 +3837,7 @@ class EDGAR_spatial(object):
         for category in category_list:
             # 获得中心的背景栅格
             try:
-                temp_background = background_fmt % (center.center_name, category)
+                temp_background = background_fmt % center.center_name
             except Exception as e:
                 print 'background raster formatting failed.'
 
@@ -4078,7 +4078,7 @@ class EDGAR_spatial(object):
         temp_output_name_fmt = ('%s_EOF_geographical_extend_' % center_name) + r'%s'
         
         # 调用实际执行的do_generate_extend函数
-        self.do_generate_geographical_extend(
+        self.do_EOF_generate_center_geographical_extend(
             raster_list=temp_working_rasters,
             background_raster=background_raster,
             output_name_fmt=temp_output_name_fmt)
@@ -4103,6 +4103,59 @@ class EDGAR_spatial(object):
         #         raster_list=temp_working_rasters,
         #         background_raster=background_raster,
         #         output_name_fmt=temp_output_name_fmt)
+
+    def do_EOF_generate_center_geographical_extend(self,
+                                        raster_list,
+                                        background_raster,
+                                        output_name_fmt='extend_%s'):
+        # 测试生成的文件名是否可用
+        # 列出待计算栅格的列表
+        temp_working_rasters = self.do_arcpy_list_raster_list(raster_list)
+
+        # 用于保存临时数据的列表
+        temp_mosaic_background = []
+
+        # 相比于非EOF中心的范围提取，这里把第一步mosaic的栅格结果保存到了新
+        # 栅格中进行操作，这样将不会影响原始数据，可以保证EOF计算的合理性。
+        # 第一步：为栅格mosaic零值背景并保存到新栅格中
+        for raster in tqdm(temp_working_rasters):
+            temp_new_mosaic = 'temp_new_mosaic_%s' % raster
+            
+            self.mosaic_background_to_raster(inRaster=raster, background=background_raster,output_Raster=temp_new_mosaic)
+
+            temp_mosaic_background.append(temp_new_mosaic)
+
+        # 第二步：叠加所有栅格
+        temp_extend = self.do_raster_add(temp_mosaic_background)
+
+        # 第三步：栅格非零值赋值为1
+        temp_extend = Con(temp_extend != 0, 1, 0)
+
+        # logger output
+        self.ES_logger.info('extend set to 1 mask')
+
+        # 第四步：零值设为空值
+        temp_null_extend = SetNull(temp_extend, 0, "VALUE = 0")
+        temp_null_extend = Con(temp_null_extend == 1, 0, temp_null_extend)
+        self.ES_logger.info('extend set to background mask')
+
+        # 保存生成的两个结果
+        # 生成待统计的栅格名称
+        try:
+            temp_save_extend = output_name_fmt % 'mask'
+            temp_save_null_extend = output_name_fmt % 'null_mask'
+        except Exception as e:
+            print 'background formatting failed.'
+
+            # logger output
+            self.ES_logger.error('save raster name formatting failed. raster name formate was %s.' %
+                                 output_name_fmt)
+
+            return
+
+        # 执行保存
+        temp_extend.save(temp_save_extend)
+        temp_null_extend.save(temp_save_null_extend)
 
     # 将栅格数据转换为numpy压缩格式并导出
     def EOF_raster_to_numpy(self, raster_list, nodata_to_value=None, export_to_npz=True, export_path=None):
