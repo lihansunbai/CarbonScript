@@ -4,18 +4,15 @@
 ################################################################################
 ## 备忘录：
 ## TODO
-##  1. 这个类中需要重写EDGAR_spatial中的emission_center类
-##  2. 类构造函数中还是需要定义一个log日志记录工具
 ################################################################################
 ################################################################################
 
-import chunk
+from math import hypot
 import os
 import re
 import itertools
 import collections
 import logging
-import string
 
 import eofs
 import h5py
@@ -185,8 +182,15 @@ class EDGAR_eof():
 
         # 使用a参数打开文件，如果文件存在则追加啊，如果文件不存在则创建新文件
         with h5py.File(temp_full_path_name, 'a') as hdf:
+            # 创建维度标尺信息
+            hdf.create_dataset('lat', data=numpy.arange(-90,90,0.1))
+            hdf.create_dataset('lon', data=numpy.arange(-180,180,0.1))
+            hdf['lat'].make_scale('latitude')
+            hdf['lon'].make_scale('longitude')
+
+            print('Saving HDF5 file...')
             # 对输入的栅格列表中的栅格执行转换为numpy array再写入hdf
-            for numpy_file in numpy_list:
+            for numpy_file in tqdm(numpy_list):
                 # 构建hdf5_hierarchical_path生成需要的传入参数                
                 temp_save_name = {'file_name':numpy_file,
                                     'metadata':file_name_metadata}
@@ -207,6 +211,10 @@ class EDGAR_eof():
                                           chunks=True,
                                           compression="gzip")
                 
+                # 绑定维度标尺信息
+                temp_dataset.dims[0].attach_scale(hdf['lat'])
+                temp_dataset.dims[1].attach_scale(hdf['lon'])
+
                 # 为dataset添加属性信息
                 temp_dataset.attrs['DimensionNames'] = 'nlat,nlon'
                 temp_dataset.attrs['units'] = 't/grid'
@@ -396,6 +404,26 @@ class EDGAR_eof():
 
         return numpy_files_path
  
+    ############################################################################
+    ############################################################################
+    # 执行multivariates-EOF
+    ############################################################################
+    ############################################################################
+    # 将hdf5中的数据组合为eofs库需要的(time, lat, lon)数组数据
+    def hdf_to_efos_arrray(self, state_vector=[]):
+        pass
+
+    # 实际执行eofs计算
+    def EOF_run(self, input_data, state_vector=[]):
+        if not input_data or not os.path.exists(input_data) :
+            print('ERROR: input data does not exist. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('input data does not exist.')
+            return
+
+        temp_hdf_in = h5py.File(input_data, 'r')
+
     ############################################################################
     ############################################################################
     # emission_center 类和类相关的操作函数
