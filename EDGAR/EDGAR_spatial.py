@@ -520,6 +520,46 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.debug('Background was mosaiced into raster: %s' % inRaster)
 
+    # 删除临时生成的图层文件
+    def delete_temporary_feature_classes(self, feature_list):
+        print 'Deleting temporary files'
+
+        prepare_feature = [
+            s for s in feature_list if arcpy.ListFeatureClasses(wild_card=s, feature_type=Point)
+        ]
+
+        for f in tqdm(prepare_feature):
+            # 这里可能涉及一个arcpy的BUG。在独立脚本中使用删除图层工具时
+            # 需要提供完整路径，即使你已经设置了env.workspace。
+            # 而且在删除的时候不能使用deletefeature！
+            # 需要使用delete_management.
+            feature_fullpath = os.path.join(self.__workspace, f)
+            arcpy.Delete_management(feature_fullpath)
+
+            # logger output
+            self.ES_logger.debug('Deleted feature:%s' % f)
+
+        print 'Deleting temporary files finished!'
+
+    # 删除临时生成的图层文件
+    def delete_temporary_raster(self, raster_list):
+        print 'Deleting temporary files'
+
+        prepare_feature = self.do_arcpy_list_raster_list(wildcard_list=raster_list, wildcard_mode=False)
+
+        for f in tqdm(prepare_feature):
+            # 这里可能涉及一个arcpy的BUG。在独立脚本中使用删除图层工具时
+            # 需要提供完整路径，即使你已经设置了env.workspace。
+            # 而且在删除的时候不能使用deletefeature！
+            # 需要使用delete_management.
+            feature_fullpath = os.path.join(self.__workspace, f)
+            arcpy.Delete_management(feature_fullpath)
+
+            # logger output
+            self.ES_logger.debug('Deleted feature:%s' % f)
+
+        print 'Deleting temporary files finished!'
+
     # 以下三个函数为神奇的、不知道为什么要写的函数、但是既然已经写了就不删除了
     # 为栅格添加背景值
     # 用途：添加一个背景值以保持栅格数据历史范围稳定。
@@ -1160,26 +1200,6 @@ class EDGAR_spatial(object):
         # logger output
         self.ES_logger.info('All sectors merged!')
 
-    # 删除临时生成的图层文件
-    def delete_temporary_feature_classes(self, feature_list):
-        print 'Deleting temporary files'
-
-        prepare_feature = [
-            s for s in feature_list if arcpy.ListFeatureClasses(wild_card=s, feature_type=Point)
-        ]
-
-        for f in tqdm(prepare_feature):
-            # 这里可能涉及一个arcpy的BUG。在独立脚本中使用删除图层工具时
-            # 需要提供完整路径，即使你已经设置了env.workspace。
-            # 而且在删除的时候不能使用deletefeature！
-            # 需要使用delete_management.
-            feature_fullpath = os.path.join(self.__workspace, f)
-            arcpy.Delete_management(feature_fullpath)
-
-            # logger output
-            self.ES_logger.debug('Deleted feature:%s' % f)
-
-        print 'Deleting temporary files finished!'
 
     ######################################
     ######################################
@@ -2252,12 +2272,19 @@ class EDGAR_spatial(object):
         # 列出待计算栅格的列表
         temp_working_rasters = self.do_arcpy_list_raster_list(raster_list)
 
+        # 用于保存临时数据的列表
+        temp_mosaic_background = []
+
         # 第一步：为栅格mosaic零值背景
         for raster in tqdm(temp_working_rasters):
-            self.mosaic_background_to_raster(inRaster=raster, background=background_raster)
+            temp_new_mosaic = 'temp_new_mosaic_%s' % raster
+            
+            self.mosaic_background_to_raster(inRaster=raster, background=background_raster,output_Raster=temp_new_mosaic)
+
+            temp_mosaic_background.append(temp_new_mosaic)
 
         # 第二步：叠加所有栅格
-        temp_extend = self.do_raster_add(temp_working_rasters)
+        temp_extend = self.do_raster_add(temp_mosaic_background)
 
         # 第三步：栅格非零值赋值为1
         temp_extend = Con(temp_extend != 0, 1, 0)
@@ -2287,6 +2314,11 @@ class EDGAR_spatial(object):
         # 执行保存
         temp_extend.save(temp_save_extend)
         temp_null_extend.save(temp_save_null_extend)
+        # logger output
+        self.ES_logger.info('geographical extend generated')
+
+        # 删除临时栅格
+        self.delete_temporary_raster(temp_mosaic_background)
 
     # 旧函数不建议使用！！！
     # 提取总排放量、最大排放部门和最大排放部门比例的函数
@@ -4078,7 +4110,7 @@ class EDGAR_spatial(object):
         temp_output_name_fmt = ('%s_EOF_geographical_extend_' % center_name) + r'%s'
         
         # 调用实际执行的do_generate_extend函数
-        self.do_EOF_generate_center_geographical_extend(
+        self.do_generate_center_geographical_extend(
             raster_list=temp_working_rasters,
             background_raster=background_raster,
             output_name_fmt=temp_output_name_fmt)
@@ -4103,59 +4135,6 @@ class EDGAR_spatial(object):
         #         raster_list=temp_working_rasters,
         #         background_raster=background_raster,
         #         output_name_fmt=temp_output_name_fmt)
-
-    def do_EOF_generate_center_geographical_extend(self,
-                                        raster_list,
-                                        background_raster,
-                                        output_name_fmt='extend_%s'):
-        # 测试生成的文件名是否可用
-        # 列出待计算栅格的列表
-        temp_working_rasters = self.do_arcpy_list_raster_list(raster_list)
-
-        # 用于保存临时数据的列表
-        temp_mosaic_background = []
-
-        # 相比于非EOF中心的范围提取，这里把第一步mosaic的栅格结果保存到了新
-        # 栅格中进行操作，这样将不会影响原始数据，可以保证EOF计算的合理性。
-        # 第一步：为栅格mosaic零值背景并保存到新栅格中
-        for raster in tqdm(temp_working_rasters):
-            temp_new_mosaic = 'temp_new_mosaic_%s' % raster
-            
-            self.mosaic_background_to_raster(inRaster=raster, background=background_raster,output_Raster=temp_new_mosaic)
-
-            temp_mosaic_background.append(temp_new_mosaic)
-
-        # 第二步：叠加所有栅格
-        temp_extend = self.do_raster_add(temp_mosaic_background)
-
-        # 第三步：栅格非零值赋值为1
-        temp_extend = Con(temp_extend != 0, 1, 0)
-
-        # logger output
-        self.ES_logger.info('extend set to 1 mask')
-
-        # 第四步：零值设为空值
-        temp_null_extend = SetNull(temp_extend, 0, "VALUE = 0")
-        temp_null_extend = Con(temp_null_extend == 1, 0, temp_null_extend)
-        self.ES_logger.info('extend set to background mask')
-
-        # 保存生成的两个结果
-        # 生成待统计的栅格名称
-        try:
-            temp_save_extend = output_name_fmt % 'mask'
-            temp_save_null_extend = output_name_fmt % 'null_mask'
-        except Exception as e:
-            print 'background formatting failed.'
-
-            # logger output
-            self.ES_logger.error('save raster name formatting failed. raster name formate was %s.' %
-                                 output_name_fmt)
-
-            return
-
-        # 执行保存
-        temp_extend.save(temp_save_extend)
-        temp_null_extend.save(temp_save_null_extend)
 
     # 将栅格数据转换为numpy压缩格式并导出
     def EOF_raster_to_numpy(self, raster_list, nodata_to_value=None, export_to_npz=True, export_path=None):
