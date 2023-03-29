@@ -15,6 +15,7 @@ import re
 import itertools
 import collections
 import logging
+import string
 
 import eofs
 import h5py
@@ -163,15 +164,6 @@ class EDGAR_eof():
 
     # 这个函数需要完全重写，因为保存为一个numpy数组对于0.1度的数据来说会占据很大的空间，极其有可能导致程序假死或者崩溃。
     # 所以，这里不再采取保存numpy数组的形式，只通过固定参数将数据保存到一个HDF5 格式的文件中。
-    def do_numpy_to_hdf5(self, numpy_array, hdf_full_path_name=None):
-        if not hdf_full_path_name:
-            print('ERROR: save HDF5 file does not exist. Please check the input.')
-
-            # logger output
-            self.EE_logger.error('save HDF5 file does not exist.')
-            return
-        pass
-
     def numpy_to_hdf5(self, numpy_list, file_name_metadata, output_name=None, output_path=None, nodata_to_value=None):
         if not numpy_list or not file_name_metadata:
             print('ERROR: input rasters or file name metadata do not exist. Please check the inputs.')
@@ -209,13 +201,19 @@ class EDGAR_eof():
                 # 设置保存的hdf 组的路径
                 temp_group = hdf.create_group(name=self.hdf5_data_hierarchical_path)
                 # 保存数据
-                temp_group.create_dataset(name='grid_co2',
+                temp_dataset = temp_group.create_dataset(name='grid_co2',
                                           data=temp_numpy_array['arr_0'],
                                           dtype=temp_numpy_array_dtype,
                                           chunks=True,
                                           compression="gzip")
-
-
+                
+                # 为dataset添加属性信息
+                temp_dataset.attrs['DimensionNames'] = 'nlat,nlon'
+                temp_dataset.attrs['units'] = 't/grid'
+                temp_attrs = self.hdf5_data_hierarchical_path.split('/')
+                temp_dataset.attrs['year'] = temp_attrs[0]
+                temp_dataset.attrs['components'] = temp_attrs[1]
+                temp_dataset.attrs['region'] = temp_attrs[2]
 
     @property
     def hdf5_hierarchical_path(self):
@@ -231,7 +229,7 @@ class EDGAR_eof():
         通过正则表达式匹配输入文件名的结构，
         并返回一个符合HDF层次结构的路径。
 
-        metadata字典中必须包含年份'year'键值，其他可选的键值为'emission_coponents', 'region', 'centers', 'emission_categories', or 'EDGAR_sectors'。
+        metadata字典中必须包含年份'year'键值，其他可选的键值为'emission_components', 'region', 'centers', 'emission_categories', or 'EDGAR_sectors'。
         示例：
         传入的data字典结构示例：
         {'file_name': 'a string of npz file name',
@@ -287,6 +285,7 @@ class EDGAR_eof():
         else:
             temp_hierarchical_path = 'global'
 
+        # 判断emission_components
         # 判断是否需要构建总量、部门或分类排放
         if 'emission_categories' in data['metadata']:
             temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['emission_categories'], temp_hierarchical_path)

@@ -487,11 +487,14 @@ class EDGAR_spatial(object):
             return
 
         if output_Raster:
-            if type(output_Raster) != str:
+            try:
+                temp_output_path = str(output_Raster)
+            except:
                 print 'ERROR: output raster name does not exist.'
 
                 # logger output
                 self.ES_logger.error('output raster name does not exist.')
+                return
 
             # 确定输出栅格的pixel_type
             temp_pixel_type = self.__raster_pixel_type[arcpy.Raster(inRaster).pixelType]
@@ -505,9 +508,9 @@ class EDGAR_spatial(object):
                 number_of_bands=1,
                 mosaic_method="FIRST",
                 mosaic_colormap_mode="FIRST")
-            print 'Raster %s added background.' % output_Raster
+            print 'Raster %s added background.' % temp_output_path
             # logger output
-            self.ES_logger.debug('New raster was mosaiced with background: %s' % output_Raster)
+            self.ES_logger.debug('New raster was mosaiced with background: %s' % temp_output_path)
         else:
             arcpy.Mosaic_management(
                 inputs=[inRaster, background],
@@ -4179,6 +4182,13 @@ class EDGAR_spatial(object):
                                                 ncols=ncols,
                                                 nrows=nrows,
                                                 nodata_to_value=nodata_to_value)
+        
+        # 重新将nan填充到numpy array
+        temp_numpy_arr[temp_numpy_arr == nodata_to_value] = numpy.nan
+
+        # 沿Y轴翻转整个数组
+        # 翻转的原因是arcgis显示栅格的位置是左上角，与普通的笛卡尔坐标系在Y轴上相反
+        temp_numpy_arr = numpy.flipud(temp_numpy_arr)
         
         # logger output
         self.ES_logger.debug('The numpy array size in memory are: %s' % temp_numpy_arr.nbytes)
