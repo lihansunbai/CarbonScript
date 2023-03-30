@@ -25,6 +25,7 @@ import collections
 import numpy
 import interval
 import numbers
+import shortuuid
 
 # # 性能测试相关模块
 # import cProfile
@@ -1129,20 +1130,51 @@ class EDGAR_spatial(object):
     # 改进1：这个函数用到了tqdm显示累加进度
     # 改进2：修改参数的功能，如果提供了result_raster参数则保存到对应位置；
     #       如果不提供则只将生成的栅格返回。
+    # 改进3: 对于arcgis一次性计算超过一定数量的栅格可能会触发ERROR:999998。
+    #       所以改进为叠加一部分保存一部分，逐次递归得到最后的叠加结果。
+    #       （所以，这其实很像二叉树的归并。可惜在这样一个小函数里写一个二叉树有过分了。）
+    #       所以，借鉴二叉树归并的思想，采取递归的策略来完成叠加。
     def do_raster_add(self, raster_list, result_raster=None):
-        # 将列表中的第一个栅格作为累加的起始栅格
-        temp_raster = arcpy.Raster(raster_list[0])
-        raster_list.pop(0)
+        # 用于保存递归中产生的临时栅格的列表
+        temp_delete_rasters = []
 
-        # 累加剩余栅格
-        for r in tqdm(raster_list):
-            temp_raster = temp_raster + arcpy.Raster(r)
+        # 用于递归计算栅格求和的函数
+        def merge_list(inList):
+            # 递归终止条件
+            if len(inList) == 2:
+                temp_terminate_raster_name = 'temp_%s' % shortuuid.uuid()
+                temp_terminate_raster = arcpy.Raster(inList[0]) + arcpy.Raster(inList[1])
+                temp_terminate_raster.save(temp_terminate_raster_name)
+                self.delete_temporary_raster(temp_delete_rasters)
+                return temp_terminate_raster_name
 
-            # logger output
-            self.ES_logger.debug('Processing raster:%s' % r)
+            # 生成一个唯一的文件名用于储存临时累积结果
+            temp_add_raster_name = 'temp_%s' % shortuuid.uuid()
 
-        # logger output
-        self.ES_logger.info('Rasters added: %s' % raster_list)
+            # 选择任意两个列表中的栅格进行叠加
+            # 先将选择的两个栅格pop出列表
+            temp_add_head = inList.pop()
+            temp_add_tail = inList.pop()
+            temp_add_raster = arcpy.Raster(temp_add_head) + arcpy.Raster(temp_add_tail)
+            temp_add_raster.save(temp_add_raster_name)
+
+            # 将栅格添加到待清理列表
+            temp_delete_rasters.append(temp_add_raster_name)
+            # 将栅格添加到递归列表
+            inList.append(temp_add_raster_name)
+
+            return merge_list(inList)
+
+        if not raster_list:
+            print 'ERROR: in raster is empty. Please check the input'
+
+            # loggger output
+            self.ES_logger.error('in raster is empyt.')
+            return
+        
+        print 'Adding rasters...'
+        # 递归执行累加
+        temp_raster = merge_list(raster_list)
 
         # 如果提供了result_raster，则进行栅格保存操作。
         if result_raster:
@@ -1154,12 +1186,44 @@ class EDGAR_spatial(object):
                 return
 
             # 保存生成的栅格
-            temp_raster.save(result_raster)
+            arcpy.Raster(temp_raster).save(result_raster)
 
             # logger output
             self.ES_logger.debug('Raster saved: %s' % result_raster)
 
         return temp_raster
+
+        # 旧代码备份
+        # # 将列表中的第一个栅格作为累加的起始栅格
+        # temp_raster = arcpy.Raster(raster_list[0])
+        # raster_list.pop(0)
+
+        # # 累加剩余栅格
+        # for r in tqdm(raster_list):
+        #     temp_raster = temp_raster + arcpy.Raster(r)
+
+        #     # logger output
+        #     self.ES_logger.debug('Processing raster:%s' % r)
+
+        # # logger output
+        # self.ES_logger.info('Rasters added: %s' % raster_list)
+
+        # # 如果提供了result_raster，则进行栅格保存操作。
+        # if result_raster:
+        #     if type(result_raster) != str:
+        #         print 'Raster add: The output result raster path error.'
+
+        #         # logger output
+        #         self.ES_logger.error('The output result raster path error.')
+        #         return
+
+        #     # 保存生成的栅格
+        #     temp_raster.save(result_raster)
+
+        #     # logger output
+        #     self.ES_logger.debug('Raster saved: %s' % result_raster)
+
+        # return temp_raster
 
     # 函数需要传入一个包含需要叠加的部门列表list，
     # 以及执行操作的年份
@@ -2282,7 +2346,7 @@ class EDGAR_spatial(object):
         for raster in tqdm(temp_working_rasters):
             temp_new_mosaic = 'temp_new_mosaic_%s' % raster
             
-            self.mosaic_background_to_raster(inRaster=raster, background=background_raster,output_Raster=temp_new_mosaic)
+            # self.mosaic_background_to_raster(inRaster=raster, background=background_raster,output_Raster=temp_new_mosaic)
 
             temp_mosaic_background.append(temp_new_mosaic)
 
@@ -2290,7 +2354,7 @@ class EDGAR_spatial(object):
         temp_extend = self.do_raster_add(temp_mosaic_background)
 
         # 第三步：栅格非零值赋值为1
-        temp_extend = Con(temp_extend != 0, 1, 0)
+        temp_extend = Con(arcpy.Raster(temp_extend), 1, 0, "VALUE <> 0")
 
         # logger output
         self.ES_logger.info('extend set to 1 mask')
@@ -3861,8 +3925,8 @@ class EDGAR_spatial(object):
                                     background=temp_background)
 
     # 为一个中心里所有分类单独添加该分类对应的空间围背景
-    def EOF_center_category_mosaic_extend(self, center, category_list, background_fmt='%s_EOF_geographical_extend_null_mask'):
-        if not center or not category_list:
+    def EOF_center_category_mosaic_extend(self, center_name, category_list, background_fmt='%s_EOF_geographical_extend_null_mask'):
+        if not center_name or not category_list:
             print 'ERROR: input arguments does not exist, please check the inputs.'
 
             # logger output
@@ -3872,7 +3936,7 @@ class EDGAR_spatial(object):
         for category in category_list:
             # 获得中心的背景栅格
             try:
-                temp_background = background_fmt % center.center_name
+                temp_background = background_fmt % center_name
             except Exception as e:
                 print 'background raster formatting failed.'
 
@@ -3882,7 +3946,7 @@ class EDGAR_spatial(object):
                 return
 
             # 列出所有需要添加背景的栅格
-            temp_wildcard = ['%s_EOF_%s_\d+' % (center.center_name, category)]
+            temp_wildcard = ['%s_EOF_%s_\d+' % (center_name, category)]
             temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard, wildcard_mode=False)
 
             # 执行叠加背景

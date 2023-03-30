@@ -410,7 +410,7 @@ class EDGAR_eof():
     ############################################################################
     ############################################################################
     # 将hdf5中的数据组合为eofs库需要的(time, lat, lon)数组数据
-    def hdf_to_efos_arrray(self, state_vector=[]):
+    def hdf_to_dask_arrray(self, state_vector=[]):
         pass
 
     # 实际执行eofs计算
