@@ -2354,6 +2354,8 @@ class EDGAR_spatial(object):
         temp_extend = self.do_raster_add(temp_mosaic_background)
 
         # 第三步：栅格非零值赋值为1
+        # 这里需要注意栅格计算中输入的栅格参数是str还是arcpy栅格对象。
+        # 如果遇到ERROR:999998错误，可以尝试检查输入的对象是否栅格化为arcpy栅格对象。
         temp_extend = Con(arcpy.Raster(temp_extend), 1, 0, "VALUE <> 0")
 
         # logger output
