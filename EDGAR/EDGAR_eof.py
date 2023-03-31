@@ -8,12 +8,20 @@
 ################################################################################
 
 import os
+import sys
 import re
 import itertools
 import collections
 import logging
 
-import eofs
+# import eofs
+# from eofs.multivariate.standard import MultivariateEof
+
+# 以下为测试用DEBUG用库文件
+# 正式使用时请勿import
+sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_jupyter/EOF/eofs/lib/eofs')
+from multivariate.standard import MultivariateEof
+
 import h5py
 import numpy
 import tqdm
@@ -410,7 +418,7 @@ class EDGAR_eof():
     # 并返回一个dask.array
     # 注意！
     #   因为是multivariates EOF 所以在hierarchical_path_metadata中必须包含emission_categories键值
-    def hdf_to_dask_arrray(self, input_hdf, hierarchical_path_metadata, state_vector=__default_categories_list, center_name=None):
+    def hdf_to_dask_array(self, input_hdf, hierarchical_path_metadata, state_vector=__default_categories_list, center_name=None):
         if not input_hdf:
             print('ERROR: HDF5 file dose not exits. Please check the input.')
 
@@ -443,7 +451,8 @@ class EDGAR_eof():
 
         # 排序metadata中的时间
         # 保证构建eof数据时时间维度的顺序一致
-        temp_eof_time_series = [int(t) for t in hierarchical_path_metadata['year']].sort()
+        temp_eof_time_series = [int(t) for t in hierarchical_path_metadata['year']]
+        temp_eof_time_series.sort()
 
         # 打开HDF5文件
         hdf = h5py.File(input_hdf,'r')
@@ -459,19 +468,19 @@ class EDGAR_eof():
                 self.EE_logger.error('state not in metadata.')
                 exit()
 
+            # TODO
+            # 因为stack函数返回的结果和dask.array略有区别，不能成功进行eofs的计算
+            # 所以这要自己完成一套逻辑，将数据放入合适的dask.array位置中。
             # 逐年提取hdf中的数据到dask.array
-            # 由于循环太多所以使用itertools来简化循环
-            temp_iter = itertools.product(temp_eof_time_series, cate, center_name)
-            
             # 初始化需要stack 为结果数据的列表
             temp_state_array = []
 
             # 逐年提取hdf数据
-            for it in temp_iter:
-                temp_data_path = '{}/{}/{}/gird_co2'.format(it)
+            for yr in temp_eof_time_series:
+                temp_data_path = '{}/{}/{}/grid_co2'.format(yr, cate, center_name)
 
                 temp_dask_array = da.from_array(hdf[temp_data_path], chunks='auto')
-                temp_state_array.append(temp_state_array)
+                temp_state_array.append(temp_dask_array)
 
             # stack 数据为(time, lat, lon)维度
             temp_cate = da.stack(temp_state_array, axis=0)
@@ -482,7 +491,7 @@ class EDGAR_eof():
         return return_state_vector
 
     # 实际执行eofs计算
-    def EOF_run(self, input_data, center_list, state_vector=[]):
+    def multivariate_EOF_run(self, input_data, hierarchical_path_metadata, state_vector=__default_categories_list, center_name=None):
         if not input_data or not os.path.exists(input_data) :
             print('ERROR: input data does not exist. Please check the input.')
 
@@ -490,7 +499,25 @@ class EDGAR_eof():
             self.EE_logger.error('input data does not exist.')
             return
 
-        temp_hdf_in = h5py.File(input_data, 'r')
+        if not hierarchical_path_metadata:
+            print('ERROR: hierarchical metadata is empty. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('metadata is empty.')
+            return
+
+        # 获得state_vector的数据
+        state_vector_array_list = self.hdf_to_dask_array(input_hdf=input_data,
+                                                        hierarchical_path_metadata=hierarchical_path_metadata,
+                                                        state_vector=state_vector,
+                                                        center_name=center_name)
+                    
+        # 计算各个维度的权重
+        latitude = numpy.linspace(-90,90,1800)
+        weights_array = numpy.sqrt(numpy.cos(numpy.deg2rad(latitude)))[:, numpy.newaxis]
+        # 使用eofs库执行EOF
+        eof_sover = MultivariateEof(state_vector_array_listd)
+
 
     ############################################################################
     ############################################################################
