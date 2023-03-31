@@ -479,13 +479,17 @@ class EDGAR_eof():
             for yr in temp_eof_time_series:
                 temp_data_path = '{}/{}/{}/grid_co2'.format(yr, cate, center_name)
 
-                temp_dask_array = da.from_array(hdf[temp_data_path], chunks='auto')
-                temp_state_array.append(temp_dask_array)
+                # temp_dask_array = da.from_array(hdf[temp_data_path], chunks='auto')
+                # temp_state_array.append(temp_dask_array)
+
+                temp_numpy_array = hdf[temp_data_path]
+                temp_state_array.append(temp_numpy_array)
 
             # stack 数据为(time, lat, lon)维度
-            temp_cate = da.stack(temp_state_array, axis=0)
+            temp_cate = numpy.stack(temp_state_array, axis=0)
+            temp_dask_array = da.from_array(temp_cate)
 
-            return_state_vector.append(temp_cate)
+            return_state_vector.append(temp_dask_array)
 
         # 返回最终结果
         return return_state_vector
@@ -516,7 +520,7 @@ class EDGAR_eof():
         latitude = numpy.linspace(-90,90,1800)
         weights_array = numpy.sqrt(numpy.cos(numpy.deg2rad(latitude)))[:, numpy.newaxis]
         # 使用eofs库执行EOF
-        eof_sover = MultivariateEof(state_vector_array_listd)
+        eof_sover = MultivariateEof(state_vector_array_list)
 
 
     ############################################################################
