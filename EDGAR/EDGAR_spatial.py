@@ -2346,7 +2346,7 @@ class EDGAR_spatial(object):
         for raster in tqdm(temp_working_rasters):
             temp_new_mosaic = 'temp_new_mosaic_%s' % raster
             
-            # self.mosaic_background_to_raster(inRaster=raster, background=background_raster,output_Raster=temp_new_mosaic)
+            self.mosaic_background_to_raster(inRaster=raster, background=background_raster,output_Raster=temp_new_mosaic)
 
             temp_mosaic_background.append(temp_new_mosaic)
 
