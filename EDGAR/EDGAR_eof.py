@@ -7,7 +7,6 @@
 ################################################################################
 ################################################################################
 
-from math import hypot
 import os
 import re
 import itertools
@@ -18,8 +17,9 @@ import eofs
 import h5py
 import numpy
 import tqdm
-import xarray
 from tqdm import tqdm
+import dask
+import dask.array as da
 
 class EDGAR_eof():
     '''
@@ -73,10 +73,7 @@ class EDGAR_eof():
     __default_end_year = 2018
 
     # 默认部门编码
-    __default_gen_encode_list = ['G_ENE', 'G_IND', 'G_TRA', 'G_RCO', 'G_AGS', 'G_WST']
-
-    # 默认HDF5元数据
-    __default_eof_hdf_meta_data = {'attrs_title':'Categored emission for EOF'}
+    __default_categories_list = ['G_ENE', 'G_IND', 'G_TRA', 'G_RCO', 'G_AGS', 'G_WST']
 
     ############################################################################
     ############################################################################
@@ -410,11 +407,82 @@ class EDGAR_eof():
     ############################################################################
     ############################################################################
     # 将hdf5中的数据组合为eofs库需要的(time, lat, lon)数组数据
-    def hdf_to_dask_arrray(self, state_vector=[]):
-        pass
+    # 并返回一个dask.array
+    # 注意！
+    #   因为是multivariates EOF 所以在hierarchical_path_metadata中必须包含emission_categories键值
+    def hdf_to_dask_arrray(self, input_hdf, hierarchical_path_metadata, state_vector=__default_categories_list, center_name=None):
+        if not input_hdf:
+            print('ERROR: HDF5 file dose not exits. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('HDF5 file does not exists.')
+            return
+
+        if not hierarchical_path_metadata:
+            print('ERROR: metadata is empty. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('hierarchical path metadata is empty')
+            return
+
+        if 'emission_categories' not in hierarchical_path_metadata or not hierarchical_path_metadata['emission_categories']:
+            print('ERROR: metadata does not contain emission categories. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('emission categories is empty.')
+            return
+
+        # 判断是否传入中心
+        # 如果传入中心名称则保持不变，
+        # 如果没有传入中心名称，则视为范围为全球，则为中心赋特殊值
+        if not center_name:
+            center_name = ''
+
+            # logger output
+            self.EE_logger.info('emission extend set to global')
+
+        # 排序metadata中的时间
+        # 保证构建eof数据时时间维度的顺序一致
+        temp_eof_time_series = [int(t) for t in hierarchical_path_metadata['year']].sort()
+
+        # 打开HDF5文件
+        hdf = h5py.File(input_hdf,'r')
+
+        # 初始化最终返回列表
+        return_state_vector = []
+        # 按照state_vector给出的顺序进行操作
+        for cate in state_vector:
+            if cate not in hierarchical_path_metadata['emission_categories']:
+                print('ERROR: emission category of states not contain in hdf5 data. Please check the input.')
+
+                # logger output
+                self.EE_logger.error('state not in metadata.')
+                exit()
+
+            # 逐年提取hdf中的数据到dask.array
+            # 由于循环太多所以使用itertools来简化循环
+            temp_iter = itertools.product(temp_eof_time_series, cate, center_name)
+            
+            # 初始化需要stack 为结果数据的列表
+            temp_state_array = []
+
+            # 逐年提取hdf数据
+            for it in temp_iter:
+                temp_data_path = '{}/{}/{}/gird_co2'.format(it)
+
+                temp_dask_array = da.from_array(hdf[temp_data_path], chunks='auto')
+                temp_state_array.append(temp_state_array)
+
+            # stack 数据为(time, lat, lon)维度
+            temp_cate = da.stack(temp_state_array, axis=0)
+
+            return_state_vector.append(temp_cate)
+
+        # 返回最终结果
+        return return_state_vector
 
     # 实际执行eofs计算
-    def EOF_run(self, input_data, state_vector=[]):
+    def EOF_run(self, input_data, center_list, state_vector=[]):
         if not input_data or not os.path.exists(input_data) :
             print('ERROR: input data does not exist. Please check the input.')
 
