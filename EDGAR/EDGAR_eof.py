@@ -135,7 +135,6 @@ class EDGAR_eof():
 
         return return_decomposed_parts
 
-
     def print_start_year(self, year):
         # logger output
         self.EE_logger.debug('Processing start of year %s', year)
@@ -229,14 +228,55 @@ class EDGAR_eof():
                 temp_dataset.attrs['region'] = temp_attrs[2]
 
     @property
-    def hdf5_hierarchical_path(self):
-        if not self.hdf5_data_hierarchical_path:
+    def hdf5_dask_hierarchical_path(self):
+        if not self.hdf5_dask_data_hierarchical_path:
             return ''
         else:
-            return self.hdf5_data_hierarchical_path
+            return self.hdf5_dask_data_hierarchical_path
+    
+    @hdf5_dask_hierarchical_path.setter
+    def hdf5_dask_hierarchical_path(self, data):
+        '''
+        在传入的data中，按照metadata字典中给出的键值，在file_name中，
+        通过正则表达式匹配输入文件名的结构，
+        并返回一个符合HDF层次结构的路径。
 
-    @hdf5_hierarchical_path.setter
-    def hdf5_hierarchical_path(self, data):
+        metadata字典中必须包含年份 'year' 和 'emission_components' 键值，其他可选的键值为'region', 'centers', 'emission_categories', or 'EDGAR_sectors'。
+        示例：
+        传入的data字典结构示例：
+        {'file_name': 'a string of npz file name',
+         'metadata':{'year':['1970',...,'2018'],
+                     'emission_categories':['G_IND',...,'G_WST'],
+                     ... : ...}
+        }
+        '''
+        if not data:
+            print('ERROR: input metadata dose not exist. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('input metadata does not exist.')
+            self.hdf5_dask_data_hierarchical_path = ''
+            return
+        
+        if not data['metadata']['year'] or not data['metadata']['emission_categories']:
+            print('ERROR: year and emission categories must contained in metadata. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('year is empty in metadata')
+            self.hdf5_dask_data_hierarchical_path = ''
+            return
+
+
+
+    @property
+    def hdf5_separate_hierarchical_path(self):
+        if not self.hdf5_separate_data_hierarchical_path:
+            return ''
+        else:
+            return self.hdf5_separate_data_hierarchical_path
+
+    @hdf5_separate_hierarchical_path.setter
+    def hdf5_separate_hierarchical_path(self, data):
         '''
         在传入的data中，按照metadata字典中给出的键值，在file_name中，
         通过正则表达式匹配输入文件名的结构，
@@ -311,7 +351,7 @@ class EDGAR_eof():
         temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['year'], temp_hierarchical_path)
 
         # 保存最终结果
-        self.hdf5_data_hierarchical_path = temp_hierarchical_path
+        self.hdf5_separate_data_hierarchical_path = temp_hierarchical_path
 
     # numpy_filter_label 构造方法
     # numpy_filter_label 字典由以下键结构组成：
@@ -471,6 +511,8 @@ class EDGAR_eof():
             # TODO
             # 因为stack函数返回的结果和dask.array略有区别，不能成功进行eofs的计算
             # 所以这要自己完成一套逻辑，将数据放入合适的dask.array位置中。
+            # 这里可能需要很麻烦的先用xarray转换一次，再放入dask中。
+            # 或者，这里不做修改，而是再生成hdf数据的过程中就将数据组合为49*1800*3600的维度
             # 逐年提取hdf中的数据到dask.array
             # 初始化需要stack 为结果数据的列表
             temp_state_array = []
@@ -482,14 +524,17 @@ class EDGAR_eof():
                 # temp_dask_array = da.from_array(hdf[temp_data_path], chunks='auto')
                 # temp_state_array.append(temp_dask_array)
 
-                temp_numpy_array = hdf[temp_data_path]
-                temp_state_array.append(temp_numpy_array)
+                # temp_numpy_array = hdf[temp_data_path]
+                # temp_state_array.append(temp_numpy_array)
+
+                temp_dask_hdf = da.from_array(hdf[temp_data_path], chunks=(180,360))
+                temp_state_array.append(temp_dask_hdf)
 
             # stack 数据为(time, lat, lon)维度
-            temp_cate = numpy.stack(temp_state_array, axis=0)
-            temp_dask_array = da.from_array(temp_cate)
+            temp_cate = da.stack(temp_state_array, axis=0)
+            # temp_dask_array = da.from_array(temp_cate, chunks=(1,180,360))
 
-            return_state_vector.append(temp_dask_array)
+            return_state_vector.append(temp_cate)
 
         # 返回最终结果
         return return_state_vector
@@ -516,9 +561,9 @@ class EDGAR_eof():
                                                         state_vector=state_vector,
                                                         center_name=center_name)
                     
-        # 计算各个维度的权重
-        latitude = numpy.linspace(-90,90,1800)
-        weights_array = numpy.sqrt(numpy.cos(numpy.deg2rad(latitude)))[:, numpy.newaxis]
+        # # 计算各个维度的权重
+        # latitude = numpy.linspace(-90,90,1800)
+        # weights_array = numpy.sqrt(numpy.cos(numpy.deg2rad(latitude)))[:, numpy.newaxis]
         # 使用eofs库执行EOF
         eof_sover = MultivariateEof(state_vector_array_list)
 
