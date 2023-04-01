@@ -589,8 +589,8 @@ class EDGAR_eof():
 
         # 排序metadata中的时间
         # 保证构建eof数据时时间维度的顺序一致
-        temp_eof_time_series = [int(t) for t in hierarchical_path_metadata['year']]
-        temp_eof_time_series.sort()
+        # temp_eof_time_series = [int(t) for t in hierarchical_path_metadata['year']]
+        # temp_eof_time_series.sort()
 
         # 打开HDF5文件
         hdf = h5py.File(input_hdf,'r')
@@ -615,27 +615,38 @@ class EDGAR_eof():
             # 初始化需要stack 为结果数据的列表
             temp_state_array = []
 
-            # 逐年提取hdf数据
-            for yr in temp_eof_time_series:
-                temp_data_path = '{}/{}/{}/grid_co2'.format(yr, cate, center_name)
+            # 逐部门提取hdf数据
+            temp_data_path = '{}/{}/grid_co2'.format(cate, center_name)
 
-                # temp_dask_array = da.from_array(hdf[temp_data_path], chunks='auto')
-                # temp_state_array.append(temp_dask_array)
+            temp_dask_hdf = da.from_array(hdf[temp_data_path])
 
-                # temp_numpy_array = hdf[temp_data_path]
-                # temp_state_array.append(temp_numpy_array)
-
-                temp_dask_hdf = da.from_array(hdf[temp_data_path], chunks=(180,360))
-                temp_state_array.append(temp_dask_hdf)
-
-            # stack 数据为(time, lat, lon)维度
-            temp_cate = da.stack(temp_state_array, axis=0)
-            # temp_dask_array = da.from_array(temp_cate, chunks=(1,180,360))
-
-            return_state_vector.append(temp_cate)
+            return_state_vector.append(temp_dask_hdf)
 
         # 返回最终结果
         return return_state_vector
+
+        #     # 以下为旧代码备份
+        #     # 逐年提取hdf数据
+        #     for yr in temp_eof_time_series:
+        #         temp_data_path = '{}/{}/{}/grid_co2'.format(yr, cate, center_name)
+
+        #         # temp_dask_array = da.from_array(hdf[temp_data_path], chunks='auto')
+        #         # temp_state_array.append(temp_dask_array)
+
+        #         # temp_numpy_array = hdf[temp_data_path]
+        #         # temp_state_array.append(temp_numpy_array)
+
+        #         temp_dask_hdf = da.from_array(hdf[temp_data_path], chunks=(180,360))
+        #         temp_state_array.append(temp_dask_hdf)
+
+        #     # stack 数据为(time, lat, lon)维度
+        #     temp_cate = da.stack(temp_state_array, axis=0)
+        #     # temp_dask_array = da.from_array(temp_cate, chunks=(1,180,360))
+
+        #     return_state_vector.append(temp_cate)
+
+        # # 返回最终结果
+        # return return_state_vector
 
     # 实际执行eofs计算
     def multivariate_EOF_run(self, input_data, hierarchical_path_metadata, state_vector=__default_categories_list, center_name=None):
