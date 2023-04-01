@@ -212,18 +212,23 @@ class EDGAR_eof():
                     # 从numpy npz文件读取数据
                     temp_numpy_array = numpy.load(numpy_file)
 
+                    # 取得数据集写入位置
+                    temp_dataset_path = '{}/grid_co2'.format(self.hdf5_dask_data_hierarchical_path)
+
                     # 检查写入路径是否存在
                     # 如果路径不存在则要先创建一个空数据再写入
-                    if 'grid_co2' not in hdf[self.hdf5_dask_data_hierarchical_path]:
+                    if temp_dataset_path not in hdf:
                         # 设置保存的hdf 组的路径，并创建空数组
-                        temp_group = hdf.create_group(name=self.hdf5_separate_data_hierarchical_path)
+                        temp_group = hdf.create_group(name=self.hdf5_dask_data_hierarchical_path)
                         # 获取需要创建数组的数据类型和维度
                         temp_numpy_array_dtype = temp_numpy_array['arr_0'].dtype
                         temp_numpy_array_shape = temp_numpy_array['arr_0'].shape
                         # 创建空数据集
-                        temp_group.create_dataset(name='grid_co2',
-                                                  shape=(len(file_name_metadata['year'], temp_numpy_array_shape[0],temp_numpy_array_shape[1])),
-                                                  dtype=temp_numpy_array_dtype)
+                        temp_dataset = temp_group.create_dataset(name='grid_co2',
+                                                  shape=(len(file_name_metadata['year']), temp_numpy_array_shape[0],temp_numpy_array_shape[1]),
+                                                  dtype=temp_numpy_array_dtype,
+                                                  chunks=True,
+                                                  compression="gzip")
                         # 为空数据集的数据维度绑定标尺信息
                         temp_dataset.dims[0].attach_scale(hdf['time'])
                         temp_dataset.dims[1].attach_scale(hdf['lat'])
@@ -236,16 +241,15 @@ class EDGAR_eof():
                         temp_dataset.attrs['components'] = temp_attrs[0]
                         temp_dataset.attrs['region'] = temp_attrs[1]
                         
-                    # 取得数据集写入位置
-                    temp_dataset_path = '{}/grid_co2'.format(self.hdf5_dask_data_hierarchical_path)
-                    temp_dataset = hdf[temp_dataset_path]
+                    else:
+                        temp_dataset = hdf[temp_dataset_path]
 
                     # 确定写入的年份维度的位置
-                    temp_file_year = int(numpy_file[-8, -5])
-                    temp_data_position = self.start_year - temp_file_year
+                    temp_file_year = int(numpy_file[-8:-4])
+                    temp_data_position = temp_file_year - self.start_year 
                     temp_dataset[temp_data_position,...] = temp_numpy_array['arr_0']
                     # 执行写入数据到磁盘
-                    temp_dataset.flush()
+                    hdf.flush()
             else:
                 for numpy_file in tqdm(numpy_list):
                     # 构建hdf5_hierarchical_path生成需要的传入参数                
@@ -360,7 +364,7 @@ class EDGAR_eof():
             temp_hierarchical_path = '{}/{}'.format('total', temp_hierarchical_path)
         
         # 保存最终结果
-        self.hdf5_separate_data_hierarchical_path = temp_hierarchical_path
+        self.hdf5_dask_data_hierarchical_path = temp_hierarchical_path
 
     @property
     def hdf5_separate_hierarchical_path(self):
