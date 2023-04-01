@@ -165,7 +165,7 @@ class EDGAR_eof():
 
     # 这个函数需要完全重写，因为保存为一个numpy数组对于0.1度的数据来说会占据很大的空间，极其有可能导致程序假死或者崩溃。
     # 所以，这里不再采取保存numpy数组的形式，只通过固定参数将数据保存到一个HDF5 格式的文件中。
-    def numpy_to_hdf5(self, numpy_list, file_name_metadata, output_name=None, output_path=None, nodata_to_value=None):
+    def numpy_to_hdf5(self, numpy_list, file_name_metadata, output_name=None, output_path=None, dask_style=False):
         if not numpy_list or not file_name_metadata:
             print('ERROR: input rasters or file name metadata do not exist. Please check the inputs.')
 
@@ -189,43 +189,96 @@ class EDGAR_eof():
             # 创建维度标尺信息
             hdf.create_dataset('lat', data=numpy.arange(-90,90,0.1))
             hdf.create_dataset('lon', data=numpy.arange(-180,180,0.1))
+            hdf.create_dataset('time', data=numpy.arange(self.start_year,self.end_year,1))
             hdf['lat'].make_scale('latitude')
             hdf['lon'].make_scale('longitude')
+            hdf['time'].make_scale('time')
 
             print('Saving HDF5 file...')
             # 对输入的栅格列表中的栅格执行转换为numpy array再写入hdf
-            for numpy_file in tqdm(numpy_list):
-                # 构建hdf5_hierarchical_path生成需要的传入参数                
-                temp_save_name = {'file_name':numpy_file,
-                                    'metadata':file_name_metadata}
-                
-                # 通过属性的生成方法生成hdf5_hierarchical_path
-                self.hdf5_hierarchical_path = temp_save_name
+            if dask_style:
+                # 逐npz文件写入
+                for numpy_file in tqdm(numpy_list):
+                    # 构建hdf5_hierarchical_path生成需要的传入参数                
+                    temp_save_name = {'file_name':numpy_file,
+                                        'metadata':file_name_metadata}
+                    
+                    self.hdf5_dask_hierarchical_path = temp_save_name
 
-                # 从numpy npz文件读取数据
-                temp_numpy_array = numpy.load(numpy_file)
-                temp_numpy_array_dtype = temp_numpy_array['arr_0'].dtype
+                    # 从这里开始需要在DEBUG的时候留意内存使用情况
+                    # 不过，因为每次都是打开一个npz然后再关闭，
+                    # 所以可能会消耗的是写入I/O，内存耗尽的可能性不大。
 
-                # 设置保存的hdf 组的路径
-                temp_group = hdf.create_group(name=self.hdf5_data_hierarchical_path)
-                # 保存数据
-                temp_dataset = temp_group.create_dataset(name='grid_co2',
-                                          data=temp_numpy_array['arr_0'],
-                                          dtype=temp_numpy_array_dtype,
-                                          chunks=True,
-                                          compression="gzip")
-                
-                # 绑定维度标尺信息
-                temp_dataset.dims[0].attach_scale(hdf['lat'])
-                temp_dataset.dims[1].attach_scale(hdf['lon'])
+                    # 从numpy npz文件读取数据
+                    temp_numpy_array = numpy.load(numpy_file)
 
-                # 为dataset添加属性信息
-                temp_dataset.attrs['DimensionNames'] = 'nlat,nlon'
-                temp_dataset.attrs['units'] = 't/grid'
-                temp_attrs = self.hdf5_data_hierarchical_path.split('/')
-                temp_dataset.attrs['year'] = temp_attrs[0]
-                temp_dataset.attrs['components'] = temp_attrs[1]
-                temp_dataset.attrs['region'] = temp_attrs[2]
+                    # 检查写入路径是否存在
+                    # 如果路径不存在则要先创建一个空数据再写入
+                    if 'grid_co2' not in hdf[self.hdf5_dask_data_hierarchical_path]:
+                        # 设置保存的hdf 组的路径，并创建空数组
+                        temp_group = hdf.create_group(name=self.hdf5_separate_data_hierarchical_path)
+                        # 获取需要创建数组的数据类型和维度
+                        temp_numpy_array_dtype = temp_numpy_array['arr_0'].dtype
+                        temp_numpy_array_shape = temp_numpy_array['arr_0'].shape
+                        # 创建空数据集
+                        temp_group.create_dataset(name='grid_co2',
+                                                  shape=(len(file_name_metadata['year'], temp_numpy_array_shape[0],temp_numpy_array_shape[1])),
+                                                  dtype=temp_numpy_array_dtype)
+                        # 为空数据集的数据维度绑定标尺信息
+                        temp_dataset.dims[0].attach_scale(hdf['time'])
+                        temp_dataset.dims[1].attach_scale(hdf['lat'])
+                        temp_dataset.dims[2].attach_scale(hdf['lon'])
+
+                        # 为dataset添加属性信息
+                        temp_dataset.attrs['DimensionNames'] = 'time,nlat,nlon'
+                        temp_dataset.attrs['units'] = 't/grid'
+                        temp_attrs = self.hdf5_dask_data_hierarchical_path.split('/')
+                        temp_dataset.attrs['components'] = temp_attrs[0]
+                        temp_dataset.attrs['region'] = temp_attrs[1]
+                        
+                    # 取得数据集写入位置
+                    temp_dataset_path = '{}/grid_co2'.format(self.hdf5_dask_data_hierarchical_path)
+                    temp_dataset = hdf[temp_dataset_path]
+
+                    # 确定写入的年份维度的位置
+                    temp_file_year = int(numpy_file[-8, -5])
+                    temp_data_position = self.start_year - temp_file_year
+                    temp_dataset[temp_data_position,...] = temp_numpy_array['arr_0']
+                    # 执行写入数据到磁盘
+                    temp_dataset.flush()
+            else:
+                for numpy_file in tqdm(numpy_list):
+                    # 构建hdf5_hierarchical_path生成需要的传入参数                
+                    temp_save_name = {'file_name':numpy_file,
+                                        'metadata':file_name_metadata}
+                    
+                    # 通过属性的生成方法生成hdf5_hierarchical_path
+                    self.hdf5_separate_hierarchical_path = temp_save_name
+
+                    # 从numpy npz文件读取数据
+                    temp_numpy_array = numpy.load(numpy_file)
+                    temp_numpy_array_dtype = temp_numpy_array['arr_0'].dtype
+
+                    # 设置保存的hdf 组的路径
+                    temp_group = hdf.create_group(name=self.hdf5_separate_data_hierarchical_path)
+                    # 保存数据
+                    temp_dataset = temp_group.create_dataset(name='grid_co2',
+                                            data=temp_numpy_array['arr_0'],
+                                            dtype=temp_numpy_array_dtype,
+                                            chunks=True,
+                                            compression="gzip")
+                    
+                    # 绑定维度标尺信息
+                    temp_dataset.dims[0].attach_scale(hdf['lat'])
+                    temp_dataset.dims[1].attach_scale(hdf['lon'])
+
+                    # 为dataset添加属性信息
+                    temp_dataset.attrs['DimensionNames'] = 'nlat,nlon'
+                    temp_dataset.attrs['units'] = 't/grid'
+                    temp_attrs = self.hdf5_data_hierarchical_path.split('/')
+                    temp_dataset.attrs['year'] = temp_attrs[0]
+                    temp_dataset.attrs['components'] = temp_attrs[1]
+                    temp_dataset.attrs['region'] = temp_attrs[2]
 
     @property
     def hdf5_dask_hierarchical_path(self):
@@ -262,11 +315,52 @@ class EDGAR_eof():
             print('ERROR: year and emission categories must contained in metadata. Please check the input.')
 
             # logger output
-            self.EE_logger.error('year is empty in metadata')
+            self.EE_logger.error('year or emission categories is empty in metadata')
             self.hdf5_dask_data_hierarchical_path = ''
             return
 
+        # 保存返回的结果路径
+        temp_hierarchical_path = ''
 
+        # 保存返回用结果字典
+        return_decomposed_parts = {}
+
+        # 从文件名中，按照meta字典给出的键值拆解路径信息
+        for meta in data['metadata'].items():
+            for value in meta[1]:
+                meta_match = re.search(re.compile(value), data['file_name'])
+                if meta_match:
+                    return_decomposed_parts[meta[0]] = meta_match[0]
+
+        # 检查年份匹配结果，如果没有匹配到年份信息则直接退出
+        if not return_decomposed_parts['year'] or not return_decomposed_parts['emission_categories']:
+            print('ERROR: No input year or emission categories was found in file name. Please check the input')
+
+            # logger output
+            self.EE_logger.error('no year or emission categories information was found.')
+            self.hdf5_dask_data_hierarchical_path = ''
+            return
+            
+        # 以下构建路径的逻辑是从子路径向父路径逐层构建。
+        # 采用这个方式构建的优点是最多只需要进行三层构建。
+        # 不采用迭代的方式进行构建的原因是：尚未发现更简单或者更由效率的方法。
+        # 判断是否需要构建中心
+        if 'centers' in data['metadata']:
+            temp_hierarchical_path = temp_hierarchical_path.join('{}'.format(return_decomposed_parts['centers']))
+        else:
+            temp_hierarchical_path = 'global'
+
+        # 判断emission_components
+        # 判断是否需要构建总量、部门或分类排放
+        if 'emission_categories' in data['metadata']:
+            temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['emission_categories'], temp_hierarchical_path)
+        elif 'EDGAR_sectors' in data['metadata']:  
+            temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['EDGAR_sectors'], temp_hierarchical_path)
+        else:
+            temp_hierarchical_path = '{}/{}'.format('total', temp_hierarchical_path)
+        
+        # 保存最终结果
+        self.hdf5_separate_data_hierarchical_path = temp_hierarchical_path
 
     @property
     def hdf5_separate_hierarchical_path(self):
