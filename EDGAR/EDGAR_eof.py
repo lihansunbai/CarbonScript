@@ -19,7 +19,7 @@ import logging
 
 # 以下为测试用DEBUG用库文件
 # 正式使用时请勿import
-sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_jupyter/EOF/eofs/lib/eofs')
+sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/lib/eofs')
 from multivariate.standard import MultivariateEof
 
 import h5py
@@ -230,9 +230,11 @@ class EDGAR_eof():
                                                   chunks=True,
                                                   compression="gzip")
                         # 为空数据集的数据维度绑定标尺信息
-                        temp_dataset.dims[0].attach_scale(hdf['time'])
-                        temp_dataset.dims[1].attach_scale(hdf['lat'])
-                        temp_dataset.dims[2].attach_scale(hdf['lon'])
+                        # TEST1
+                        # 取消绑定以测试维度是否影响daskde的chunk行为
+                        # temp_dataset.dims[0].attach_scale(hdf['time'])
+                        # temp_dataset.dims[1].attach_scale(hdf['lat'])
+                        # temp_dataset.dims[2].attach_scale(hdf['lon'])
 
                         # 为dataset添加属性信息
                         temp_dataset.attrs['DimensionNames'] = 'time,nlat,nlon'
@@ -618,7 +620,7 @@ class EDGAR_eof():
             # 逐部门提取hdf数据
             temp_data_path = '{}/{}/grid_co2'.format(cate, center_name)
 
-            temp_dask_hdf = da.from_array(hdf[temp_data_path])
+            temp_dask_hdf = da.from_array(hdf[temp_data_path], chunks='auto')
 
             return_state_vector.append(temp_dask_hdf)
 
