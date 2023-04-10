@@ -676,7 +676,7 @@ class EDGAR_eof():
         # latitude = numpy.linspace(-90,90,1800)
         # weights_array = numpy.sqrt(numpy.cos(numpy.deg2rad(latitude)))[:, numpy.newaxis]
         # 使用eofs库执行EOF
-        eof_sover = MultivariateEof(state_vector_array_list)
+        return MultivariateEof(state_vector_array_list)
 
 
     ############################################################################

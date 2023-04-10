@@ -2168,7 +2168,7 @@ class EDGAR_spatial(object):
         return temp_mask
 
     # 这个函数已经被废弃
-    def old_do_raster_extract_center_area(self,
+    def deprecated_do_raster_extract_center_area(self,
                                           emission_center_peak,
                                           extract_raster,
                                           output,
