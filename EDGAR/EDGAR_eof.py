@@ -118,6 +118,50 @@ class EDGAR_eof():
 
         self._metadata = metadata
 
+    # 改编自eofs
+    # 实现这个函数的目的是为了满足dask_ml在standardize时的维度限制。
+    def _flatten_fields(self, field):
+        """
+        改编数据维度为二维
+        函数将输入的数据改编形状为(time, lon*lat)。
+        函数将返回两个内容：
+            1、改编形状后的数据
+            2、原始数据的维度信息
+        
+        实现这个函数的目的是为了满足dask_ml在standardize时的维度限制。
+
+        """
+        if not field:
+            print('ERROR: field is empty, please check the input.')
+
+            # logger output
+            self.EE_logger.error('input field is empty.')
+            return
+
+        # 保存原始数据的维度信息
+        info = {'shapes': []}
+        info['shapes'] = field.shape[1:]
+
+        # dask reshape
+        if isinstance(field, dask.array.Array):
+            merged = field.reshape((field.shape[0], numpy.prod(field.shape[1:])))
+        else:
+            print('ERROR: input data should be a dask.array like')
+
+            # logger output
+            self.EE_logger.error('input field type is not a dask.array')
+            return
+
+        return merged, info
+
+    # 改编自eofs
+    def _unwrap(self, modes):
+        """Split a returned mode field into component parts."""
+        nmodes = modes.shape[0]
+        modeset = [modes[:, slicer].reshape((nmodes,) + shape)
+                   for slicer, shape in zip(self._slicers, self._shapes)]
+        return modeset
+
     # 对HDF数据中的分中心分类排放数据进行数据标准化
     def category_standardize(self, hdf_name, output_hdf_name, data_hdf_hierarchical_path):
         # 这里应该可以使用dask里的standardize工具。
