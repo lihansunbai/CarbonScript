@@ -28,6 +28,7 @@ import tqdm
 from tqdm import tqdm
 import dask
 import dask.array as da
+from dask_ml.preprocessing import StandardScaler
 
 class EDGAR_eof():
     '''
@@ -119,7 +120,20 @@ class EDGAR_eof():
 
     # 对HDF数据中的分中心分类排放数据进行数据标准化
     def category_standardize(self, hdf_name, output_hdf_name, data_hdf_hierarchical_path):
-        pass
+        # 这里应该可以使用dask里的standardize工具。
+        # 但是，如果直接执行计算，结果肯定会爆内存。
+        # 所以，计算就意味着必须写入hdf文件。
+        data = hdf_name[data_hdf_hierarchical_path]
+        # 初始化dask_ml.standardizer
+        # 这么写名字过于绝对，考虑改变import方式避免引用域冲突
+        cate_scaler = StandardScaler()
+
+        # 从这里开始的操作需要确定是否是在内存中进行
+        # 以及，如果只是dask计算过程中的一部分，则考虑在写入hdf数据时需要的准备步骤
+        cate_scaler.fit(data)
+        cate_scaler.transform(data)
+        data.to_hdf(output_hdf_name)
+
 
     def print_start_year(self, year):
         # logger output
