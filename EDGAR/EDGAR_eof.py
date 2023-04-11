@@ -124,6 +124,10 @@ class EDGAR_eof():
         # 但是，如果直接执行计算，结果肯定会爆内存。
         # 所以，计算就意味着必须写入hdf文件。
         data = hdf_name[data_hdf_hierarchical_path]
+        # 如果要保持使用dask工具的一致性，可能需要仿照eofs库的_merge_field和_unwarp函数写一组将49*1800*3600
+        # 的数据拆分为49*6400000维度数据的方法。
+        # 这是由于scaler函数只支持两个维度数据的计算（要求dim < 2）。
+        # 反正就是限制多多……
         # 初始化dask_ml.standardizer
         # 这么写名字过于绝对，考虑改变import方式避免引用域冲突
         cate_scaler = StandardScaler()
@@ -626,12 +630,6 @@ class EDGAR_eof():
                 self.EE_logger.error('state not in metadata.')
                 exit()
 
-            # TODO
-            # 因为stack函数返回的结果和dask.array略有区别，不能成功进行eofs的计算
-            # 所以这要自己完成一套逻辑，将数据放入合适的dask.array位置中。
-            # 这里可能需要很麻烦的先用xarray转换一次，再放入dask中。
-            # 或者，这里不做修改，而是再生成hdf数据的过程中就将数据组合为49*1800*3600的维度
-            # 逐年提取hdf中的数据到dask.array
             # 初始化需要stack 为结果数据的列表
             temp_state_array = []
 
