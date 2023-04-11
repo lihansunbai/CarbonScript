@@ -117,23 +117,9 @@ class EDGAR_eof():
 
         self._metadata = metadata
 
-    # 以下函数已被弃用
-    # 以下函数功能整合到hdf5_hierarchical_path属性中
-    # 用以拆解文件名的函数
-    # 该函数会按照metadata字典中给出的键值，分析输入文件名的结构，并返回一个符合HDF层次结构的路径
-    def deprecated_file_name_decomposer(self, filename, metadata):
-        '''
-        按照metadata字典中给出的键值，
-        分析输入文件名的结构，
-        并返回一个符合HDF层次结构的路径
-        '''
-        # 保存返回用结果字典
-        return_decomposed_parts = {}
-
-        for meta in metadata.items():
-            return_decomposed_parts[meta[0]] = [value for value in meta[1] if(value in filename)]
-
-        return return_decomposed_parts
+    # 对HDF数据中的分中心分类排放数据进行数据标准化
+    def category_standardize(self, hdf_name, output_hdf_name, data_hdf_hierarchical_path):
+        pass
 
     def print_start_year(self, year):
         # logger output
@@ -156,6 +142,24 @@ class EDGAR_eof():
         print('Finished processing data of year %s', year)
         print('==============================')
         print('==============================')
+
+    # 以下函数已被弃用
+    # 以下函数功能整合到hdf5_hierarchical_path属性中
+    # 用以拆解文件名的函数
+    # 该函数会按照metadata字典中给出的键值，分析输入文件名的结构，并返回一个符合HDF层次结构的路径
+    def deprecated_file_name_decomposer(self, filename, metadata):
+        '''
+        按照metadata字典中给出的键值，
+        分析输入文件名的结构，
+        并返回一个符合HDF层次结构的路径
+        '''
+        # 保存返回用结果字典
+        return_decomposed_parts = {}
+
+        for meta in metadata.items():
+            return_decomposed_parts[meta[0]] = [value for value in meta[1] if(value in filename)]
+
+        return return_decomposed_parts
 
     ############################################################################
     ############################################################################
