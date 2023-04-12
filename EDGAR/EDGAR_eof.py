@@ -120,7 +120,7 @@ class EDGAR_eof():
 
     # 改编自eofs
     # 实现这个函数的目的是为了满足dask_ml在standardize时的维度限制。
-    def _flatten_fields(self, field):
+    def flatten_fields(self, field):
         """
         改编数据维度为二维
         函数将输入的数据改编形状为(time, lon*lat)。
@@ -140,7 +140,7 @@ class EDGAR_eof():
 
         # 保存原始数据的维度信息
         info = {'shapes': []}
-        info['shapes'] = field.shape[1:]
+        info['shapes'] = field.shape
 
         # dask reshape
         if isinstance(field, dask.array.Array):
@@ -155,12 +155,25 @@ class EDGAR_eof():
         return merged, info
 
     # 改编自eofs
-    def _unwrap(self, modes):
-        """Split a returned mode field into component parts."""
-        nmodes = modes.shape[0]
-        modeset = [modes[:, slicer].reshape((nmodes,) + shape)
-                   for slicer, shape in zip(self._slicers, self._shapes)]
-        return modeset
+    def unwrap_fields(self, flatten_fields, field_shape_info):
+        if not flatten_fields or not field_shape_info:
+            print('ERROR: any data was found. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('input flatten_fields is emtpy or field_shape_info is emtpy.')
+            return
+
+        # dask reshape
+        if isinstance(flatten_fields, dask.array.Array):
+            return_field = flatten_fields.reshape(field_shape_info)
+        else:
+            print('ERROR: flatten fields data should be a dask.array like')
+
+            # logger output
+            self.EE_logger.error('flatten fields field type is not a dask.array')
+            return
+
+        return return_field
 
     # 对HDF数据中的分中心分类排放数据进行数据标准化
     def category_standardize(self, hdf_name, output_hdf_name, data_hdf_hierarchical_path):
