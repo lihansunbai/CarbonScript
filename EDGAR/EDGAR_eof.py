@@ -134,37 +134,29 @@ class EDGAR_eof():
         实现这个函数的目的是为了满足dask_ml在standardize时的维度限制。
 
         """
-        if not field:
-            print('ERROR: field is empty, please check the input.')
-
-            # logger output
-            self.EE_logger.error('input field is empty.')
-            return
-
-        # 保存原始数据的维度信息
-        info = {'shapes': []}
-        info['shapes'] = field.shape
-
-        # dask reshape
-        if isinstance(field, dask.array.Array):
-            merged = field.reshape((field.shape[0], numpy.prod(field.shape[1:])))
-            flattened = merged.rechunk({0:'auto', 1:merged.shape[1]})
-        else:
+        if not isinstance(field, dask.array.Array):
             print('ERROR: input data should be a dask.array like')
 
             # logger output
             self.EE_logger.error('input field type is not a dask.array')
             return
 
+        # 保存原始数据的维度信息
+        info = {'shapes': []}
+        info['shapes'] = field.shape
+
+        merged = field.reshape((field.shape[0], numpy.prod(field.shape[1:])))
+        flattened = merged.rechunk({0:'auto', 1:merged.shape[1]})
+
         return flattened, info
 
     # 改编自eofs
     def unwrap_fields(self, flatten_fields, field_shape_info):
-        if not flatten_fields or not field_shape_info:
-            print('ERROR: any data was found. Please check the input.')
+        if not field_shape_info:
+            print('ERROR: shapes of original data not found. Please check the input.')
 
             # logger output
-            self.EE_logger.error('input flatten_fields is emtpy or field_shape_info is emtpy.')
+            self.EE_logger.error('input field_shape_info is empty.')
             return
 
         # dask reshape
@@ -218,7 +210,7 @@ class EDGAR_eof():
 
         # 重新将数据复原到输入栅格的形状
         temp_dask_to_hdf = self.unwrap_fields(flatten_fields=temp_dask_flatten_standard,
-                                              field_shape_info=origin_shape)
+                                              field_shape_info=origin_shape['shapes'])
         
         # 将数据写入HDF5文件
         temp_dask_to_hdf.to_hdf5(output_hdf_name, data_hdf_hierarchical_path, compression='gzip', chunks=True)
@@ -751,7 +743,7 @@ class EDGAR_eof():
         # return return_state_vector
 
     # 实际执行eofs计算
-    def multivariate_EOF_run(self, input_data, hierarchical_path_metadata, state_vector=__default_categories_list, center_name=None):
+    def multivariates_EOF_solver(self, input_data, hierarchical_path_metadata, center=True, state_vector=__default_categories_list, center_name=None):
         if not input_data or not os.path.exists(input_data) :
             print('ERROR: input data does not exist. Please check the input.')
 
@@ -772,11 +764,59 @@ class EDGAR_eof():
                                                         state_vector=state_vector,
                                                         center_name=center_name)
                     
-        # # 计算各个维度的权重
-        # latitude = numpy.linspace(-90,90,1800)
-        # weights_array = numpy.sqrt(numpy.cos(numpy.deg2rad(latitude)))[:, numpy.newaxis]
-        # 使用eofs库执行EOF
-        return MultivariateEof(state_vector_array_list)
+        # 使用eofs库执行EOF，得到solver
+        return MultivariateEof(state_vector_array_list, center=center)
+
+    # 生成EOF结果
+    # 这个函数将返回一个字典
+    # 字典包括eofs和pcs两个列表。
+    # 使用eof_num参数可以指定生成的场和对应的pc数量。默认生成第一个场。
+    # 可以设定save_to_hdf为True保存结果到指定位置文件中。使用此功能时必须提供一个保存文件的路径。
+    def multivariates_EOF_result_exporter(self, state_vector, multivariates_eof_solver, eof_num=1, save_to_hdf=False, output_path=None):
+        '''
+        生成EOF结果
+        这个函数将返回一个字典。字典包括eofs和pcs两个列表。
+        使用eof_num参数可以指定生成的场和对应的pc数量。默认生成第一个场。
+        可以设定save_to_hdf为True保存结果到指定位置文件中。使用此功能时必须提供一个保存文件的路径。
+        '''
+        if not multivariates_eof_solver:
+            print('ERROR: eof solver has not create. Please run multivariates_EOF_solver() or check the input')
+
+            # logger output
+            self.EE_logger.error('input eof solver does not exists')
+            return
+        
+        if not state_vector:
+            print('ERROR: state vector is empty. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('state vector is empty')
+            return
+        
+        # 初始化返回的字典
+        return_dict = {}
+
+        # 保存eof场的结果
+        return_dict['eofs'] = [
+            eof for eof in multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)
+        ]
+
+        # 保存pc的结果
+        return_dict['pcs'] = [
+            pc for pc in multivariates_eof_solver.pcs(pcscaling=0, npcs=eof_num)
+        ]
+
+        # 将结果写入文件
+        if save_to_hdf:
+            if os.path.exists(output_path):
+                pass
+            else:
+                print('ERROR: hdf save path does not exists. Please check the input.')
+
+                # logger output
+                self.EE_logger.error('hdf save path error.')
+        
+        return return_dict
 
 
     ############################################################################
