@@ -14,6 +14,8 @@ import itertools
 import collections
 import logging
 
+from attr import field
+
 # import eofs
 # from eofs.multivariate.standard import MultivariateEof
 
@@ -28,6 +30,7 @@ import tqdm
 from tqdm import tqdm
 import dask
 import dask.array as da
+import dask_ml.preprocessing
 from dask_ml.preprocessing import StandardScaler
 
 class EDGAR_eof():
@@ -145,6 +148,7 @@ class EDGAR_eof():
         # dask reshape
         if isinstance(field, dask.array.Array):
             merged = field.reshape((field.shape[0], numpy.prod(field.shape[1:])))
+            flattened = merged.rechunk({0:'auto', 1:merged.shape[1]})
         else:
             print('ERROR: input data should be a dask.array like')
 
@@ -152,7 +156,7 @@ class EDGAR_eof():
             self.EE_logger.error('input field type is not a dask.array')
             return
 
-        return merged, info
+        return flattened, info
 
     # 改编自eofs
     def unwrap_fields(self, flatten_fields, field_shape_info):
@@ -177,24 +181,47 @@ class EDGAR_eof():
 
     # 对HDF数据中的分中心分类排放数据进行数据标准化
     def category_standardize(self, hdf_name, output_hdf_name, data_hdf_hierarchical_path):
-        # 这里应该可以使用dask里的standardize工具。
-        # 但是，如果直接执行计算，结果肯定会爆内存。
-        # 所以，计算就意味着必须写入hdf文件。
-        data = hdf_name[data_hdf_hierarchical_path]
-        # 如果要保持使用dask工具的一致性，可能需要仿照eofs库的_merge_field和_unwarp函数写一组将49*1800*3600
-        # 的数据拆分为49*6400000维度数据的方法。
-        # 这是由于scaler函数只支持两个维度数据的计算（要求dim < 2）。
-        # 反正就是限制多多……
-        # 初始化dask_ml.standardizer
-        # 这么写名字过于绝对，考虑改变import方式避免引用域冲突
+        if not hdf_name or not os.path.exists(hdf_name) :
+            print('ERROR: any data was found in hdf file. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('input data is empty.')
+            return
+
+        if not output_hdf_name:
+            print('ERROR: output hdf file was not specify. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('output file not set.')
+            return
+        
+        hdf = h5py.File(hdf_name, 'r')
+        if data_hdf_hierarchical_path in hdf:
+            hdf_data = hdf[data_hdf_hierarchical_path]
+        else:
+            print('ERROR: data path error. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('hdf hierarchical path not exists.')
+            return
+
+        # hdf data to dask.array
+        temp_init_dask_hdf = da.from_array(hdf_data, chunks='auto')
+
+        # flatten dask.array to 2 dims
+        temp_dask_flatten_fields, origin_shape = self.flatten_fields(temp_init_dask_hdf)
+
+        # 初始化dask_ml的standardizer
         cate_scaler = StandardScaler()
+        cate_scaler.fit(temp_dask_flatten_fields)
+        temp_dask_flatten_standard = cate_scaler.transform(temp_dask_flatten_fields)
 
-        # 从这里开始的操作需要确定是否是在内存中进行
-        # 以及，如果只是dask计算过程中的一部分，则考虑在写入hdf数据时需要的准备步骤
-        cate_scaler.fit(data)
-        cate_scaler.transform(data)
-        data.to_hdf(output_hdf_name)
-
+        # 重新将数据复原到输入栅格的形状
+        temp_dask_to_hdf = self.unwrap_fields(flatten_fields=temp_dask_flatten_standard,
+                                              field_shape_info=origin_shape)
+        
+        # 将数据写入HDF5文件
+        temp_dask_to_hdf.to_hdf5(output_hdf_name, data_hdf_hierarchical_path, compression='gzip', chunks=True)
 
     def print_start_year(self, year):
         # logger output
