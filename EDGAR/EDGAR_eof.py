@@ -789,7 +789,7 @@ class EDGAR_eof():
             self.EE_logger.error('input eof_result_dict is empty.')
             return
 
-        if not os.path.exists(output_path):
+        if not os.path.exists(os.path.dirname(output_path)):
             print('ERROR: hdf save path does not exists. Please check the input.')
 
             # logger output
@@ -822,7 +822,7 @@ class EDGAR_eof():
         temp_mode_group = hdf.create_group(temp_mode_path)
         # 将逐个分量保存到对应名字的组之下
         for item in temp_save_dict.items():
-            temp_mode_state_group = temp_mode_group.create_group(item[0])
+            temp_mode_state_group = temp_mode_group.create_group(str(item[0]))
             temp_mode_state_date = temp_mode_state_group.create_dataset(name='modes',
                                                                         data=item[1],
                                                                         dtype=item[1].dtype,
