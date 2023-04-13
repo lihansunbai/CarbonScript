@@ -745,7 +745,7 @@ class EDGAR_eof():
         # return return_state_vector
 
     # 实际执行eofs计算
-    def multivariates_EOF_solver(self, input_data, hierarchical_path_metadata, center=True, state_vector=__default_categories_list, center_name=None):
+    def multivariates_EOF_run(self, input_data, hierarchical_path_metadata, center=True, state_vector=__default_categories_list, center_name=None):
         if not input_data or not os.path.exists(input_data) :
             print('ERROR: input data does not exist. Please check the input.')
 
@@ -765,9 +765,14 @@ class EDGAR_eof():
                                                         hierarchical_path_metadata=hierarchical_path_metadata,
                                                         state_vector=state_vector,
                                                         center_name=center_name)
+        
+        return self.multivariates_EOF_solver(datasets=state_vector_array_list, center=center)
                     
+    # eofs库solver的自定义封装
+    # 直接返回eofs库的solver。
+    def multivariates_EOF_solver(self, datasets, weights=None, center=True, ddof=1):
         # 使用eofs库执行EOF，得到solver
-        return MultivariateEof(state_vector_array_list, center=center)
+        return MultivariateEof(datasets=datasets, weights=weights, center=center, ddof=ddof)
 
     # 导出EOF结果到HDF文件
     # 函数需要传入一个EOF_results字典
