@@ -7,12 +7,14 @@
 ################################################################################
 ################################################################################
 
+import chunk
 import os
 import sys
 import re
 import itertools
 import collections
 import logging
+from tempfile import tempdir
 
 from attr import field
 
@@ -767,15 +769,73 @@ class EDGAR_eof():
         # 使用eofs库执行EOF，得到solver
         return MultivariateEof(state_vector_array_list, center=center)
 
+    # 导出EOF结果到HDF文件
+    # 函数需要传入一个EOF_results字典
+    def multivariates_EOF_exporter(self, eof_results_dict, output_path=None):
+        '''
+        导出EOF结果到HDF文件
+        函数需要传入一个EOF_results字典
+        '''
+
+        if not eof_results_dict:
+            print('ERROR: no data could save. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('input eof_result_dict is empty.')
+            return
+
+        if not os.path.exists(output_path):
+            print('ERROR: hdf save path does not exists. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('hdf save path error.')
+            return
+
+        print('Saving EOF results into {}'.format(output_path))
+        # logger output
+        self.EE_logger.info('Start saving EOF modes and pcs.')
+
+        temp_save_dict = eof_results_dict.copy()
+
+        # 链接HDF文件
+        hdf = h5py.File(output_path, 'a')
+        temp_mode_path = '/EOF_mode/'
+        temp_pc_path = '/EOF_pc/'
+
+        # 先写入pc数据，用pop把它弹出
+        temp_pc_group = hdf.create_group(temp_pc_path)
+        temp_pcs = temp_save_dict.pop('pcs')
+        temp_pc_data = temp_pc_group.create_dataset(name='pcs',
+                                                    data=temp_pcs,
+                                                    dtype=temp_pcs.dtype,
+                                                    chunks=True,
+                                                    compression='gzip')
+        hdf.flush()
+
+        # 写入场数据
+        # 先创建保存数据的组路径
+        temp_mode_group = hdf.create_group(temp_mode_path)
+        # 将逐个分量保存到对应名字的组之下
+        for item in temp_save_dict.items():
+            temp_mode_state_group = temp_mode_group.create_group(item[0])
+            temp_mode_state_date = temp_mode_state_group.create_dataset(name='modes',
+                                                                        data=item[1],
+                                                                        dtype=item[1].dtype,
+                                                                        chunks=True,
+                                                                        compression='gzip')
+            hdf.flush()
+        print('EOF modes and pcs were saved.')
+        # logger output
+        self.EE_logger.info('EOF modes and pcs were saved.')
+
     # 生成EOF结果
     # 这个函数将返回一个字典
-    # 字典包括eofs和pcs两个列表。
+    # 字典包括eofs对应的每个分量的字典和场列表；和pcs列表。
     # 使用eof_num参数可以指定生成的场和对应的pc数量。默认生成第一个场。
-    # 可以设定save_to_hdf为True保存结果到指定位置文件中。使用此功能时必须提供一个保存文件的路径。
-    def multivariates_EOF_result_exporter(self, state_vector, multivariates_eof_solver, eof_num=1, save_to_hdf=False, output_path=None):
+    def multivariates_EOF_results(self, state_vector, multivariates_eof_solver, eof_num=1):
         '''
         生成EOF结果
-        这个函数将返回一个字典。字典包括eofs和pcs两个列表。
+        这个函数将返回一个字典。字典包括eofs对应的每个分量的字典和场列表；和pcs列表。
         使用eof_num参数可以指定生成的场和对应的pc数量。默认生成第一个场。
         可以设定save_to_hdf为True保存结果到指定位置文件中。使用此功能时必须提供一个保存文件的路径。
         '''
@@ -794,28 +854,24 @@ class EDGAR_eof():
             return
         
         # 初始化返回的字典
-        return_dict = {}
+        return_dict = dict([(state, []) for state in state_vector])
+        return_dict.update(dict(pcs=[]))
 
         # 保存eof场的结果
-        return_dict['eofs'] = [
-            eof for eof in multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)
-        ]
+        # 因为EOF场的结果又分为state_vector的对应部分，所以保存需要经历两次分类。
+        # 首先获得所有eof分量，并存入列表
+        temp_eofs = [eof for eof in multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)]
+        # 将分量eof和对应的名称绑定
+        # 因为返回的分量的顺序是按照输入的分量顺序返回所以可以做到一一对应
+        temp_state_eof = zip(state_vector, temp_eofs)
+        # 逐项合并入返回字典中
+        for it in list(temp_state_eof):
+            return_dict[it[0]] = it[1]
 
         # 保存pc的结果
-        return_dict['pcs'] = [
-            pc for pc in multivariates_eof_solver.pcs(pcscaling=0, npcs=eof_num)
-        ]
+        temp_pcs = multivariates_eof_solver.pcs(pcscaling=0, npcs=eof_num)
+        return_dict['pcs'] = numpy.transpose(temp_pcs)
 
-        # 将结果写入文件
-        if save_to_hdf:
-            if os.path.exists(output_path):
-                pass
-            else:
-                print('ERROR: hdf save path does not exists. Please check the input.')
-
-                # logger output
-                self.EE_logger.error('hdf save path error.')
-        
         return return_dict
 
 
