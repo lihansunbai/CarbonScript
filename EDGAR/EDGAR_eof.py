@@ -214,8 +214,95 @@ class EDGAR_eof():
         temp_dask_to_hdf = self.unwrap_fields(flatten_fields=temp_dask_flatten_standard,
                                               field_shape_info=origin_shape['shapes'])
         
+        # 缩减储存体积为float32
+        temp_dask_to_hdf = temp_dask_to_hdf.astype(numpy.float32)
         # 将数据写入HDF5文件
         temp_dask_to_hdf.to_hdf5(output_hdf_name, data_hdf_hierarchical_path, compression='gzip', chunks=True)
+
+    # 将hdf数据的南北方向恢复为arcgis南北方向
+    def north_revise(self, hdf_file, data_path, data_name, north_dim=1):
+        if not hdf_file or not data_path or not data_name:
+            print('ERROR: cant find data in hdf file. Please check the input.')
+
+            return
+
+        hdf = h5py.File(hdf_file, 'r+')
+        data = os.path.join(data_path, data_name)
+        
+        if data not in hdf:
+            print('ERROR: can find data in hdf file. Please check the input.')
+
+            return
+        
+        # dask version
+        # warning: dask version may cause python segmentation fault...
+        # data_dask_array = dask.array.from_array(hdf[data], chunks=True)
+        # data_dask_array = data_dask_array.rechunk({0:1,1:18,2:36})
+        # data_fliped = dask.array.flip(data_dask_array, axis = north_dim)
+        # data_fliped.to_hdf5(hdf_file, data, compression='gzip', chunks=True)
+
+        # numpy version
+        data_numpy_array = numpy.array(hdf[data][:])
+        data_fliped = numpy.flip(data_numpy_array, axis=1)
+        hdf[data][:] = data_fliped 
+        
+        # 释放内存
+        hdf.close()
+        del data_numpy_array
+        del data_fliped
+    
+    # 函数将为输入的hdf数据定义地理信息
+    # 如果hdf本身包含地理范围信息则沿用文件已有范围信息。
+    # 如果不包含地理范围信息，则使用玩家传入参数为地理范围信息，同时在hdf的最顶层位置保存地理范围信息。
+    def hdf_create_geographical_extend(self, hdf_file, data_path, data_name, lat_range=(-90,90), lon_range=(-180,180), resolution=0.1):
+        if not hdf_file:
+            print('ERROR: hdf file dose not exist. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('hdf file dose not exist.')
+            return
+        
+        hdf = h5py.File(hdf_file, 'r+')
+
+        data = os.path.join(data_path, data_name)
+        
+        if data not in hdf:
+            print('ERROR: can not find data in hdf file. Please check the input data path and name.')
+
+            # logger output
+            self.EE_logger.error('data does not exist.')
+            return
+
+        # 初始化存储地理范围信息
+        temp_lon = []
+        temp_lat = []
+        # 检查HDF文件本身是否包含地理范围信息
+        if 'lat' in hdf and 'lon' in hdf:
+            temp_lat = hdf['lat']
+            temp_lon = hdf['lon']
+
+            # logger output
+            self.EE_logger.info('HDF file have geographical extend. Data will use HDF file defind geographical extend.')
+        else:
+            temp_lat = numpy.arange(lat_range[0], lat_range[1], resolution)
+            temp_lon = numpy.arange(lon_range[0], lon_range[1], resolution)
+            
+            hdf.create_dataset('lat', data=temp_lat)
+            hdf.create_dataset('lon', data=temp_lon)
+            hdf['lat'].make_scale('latitude')
+            hdf['lon'].make_scale('longitude')
+            # logger output
+            self.EE_logger.info('Data will use costume defind geographical extend.')
+
+        # 执行为数据绑定地理范围信息
+        hdf[data].attrs['DimensionNames'] = 'lat,lon'
+        hdf[data].attrs['units'] = 't/km^2'
+        hdf[data].dims[1].attach_scale(hdf['lat'])
+        hdf[data].dims[2].attach_scale(hdf['lon'])
+        
+        # logger output
+        self.EE_logger.info('geographical extend add: {}'.format(data))
+
 
     def print_start_year(self, year):
         # logger output

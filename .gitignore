@@ -44,3 +44,4 @@ EDGAR/__pycache__/EDGAR_eof.cpython-310.pyc
 eof_raster_to_numpy
 eof_hdf_standardize
 eof.log
+hdf_north_revise
