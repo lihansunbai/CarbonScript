@@ -847,31 +847,8 @@ class EDGAR_eof():
         # 返回最终结果
         return return_state_vector
 
-        #     # 以下为旧代码备份
-        #     # 逐年提取hdf数据
-        #     for yr in temp_eof_time_series:
-        #         temp_data_path = '{}/{}/{}/grid_co2'.format(yr, cate, center_name)
-
-        #         # temp_dask_array = da.from_array(hdf[temp_data_path], chunks='auto')
-        #         # temp_state_array.append(temp_dask_array)
-
-        #         # temp_numpy_array = hdf[temp_data_path]
-        #         # temp_state_array.append(temp_numpy_array)
-
-        #         temp_dask_hdf = da.from_array(hdf[temp_data_path], chunks=(180,360))
-        #         temp_state_array.append(temp_dask_hdf)
-
-        #     # stack 数据为(time, lat, lon)维度
-        #     temp_cate = da.stack(temp_state_array, axis=0)
-        #     # temp_dask_array = da.from_array(temp_cate, chunks=(1,180,360))
-
-        #     return_state_vector.append(temp_cate)
-
-        # # 返回最终结果
-        # return return_state_vector
-
     # 实际执行eofs计算
-    def multivariates_EOF_run(self, input_data, hierarchical_path_metadata, center=True, state_vector=__default_categories_list, center_name=None):
+    def multivariates_EOF_run(self, input_data, hierarchical_path_metadata, center=True, state_vector=__default_categories_list, center_name=None, weights=None):
         if not input_data or not os.path.exists(input_data) :
             print('ERROR: input data does not exist. Please check the input.')
 
@@ -892,7 +869,7 @@ class EDGAR_eof():
                                                         state_vector=state_vector,
                                                         center_name=center_name)
         
-        return self.multivariates_EOF_solver(datasets=state_vector_array_list, center=center)
+        return self.multivariates_EOF_solver(datasets=state_vector_array_list, center=center, weights=weights)
                     
     # eofs库solver的自定义封装
     # 直接返回eofs库的solver。

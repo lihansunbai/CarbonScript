@@ -45,3 +45,4 @@ eof_raster_to_numpy
 eof_hdf_standardize
 eof.log
 hdf_north_revise
+eof_area_weights
