@@ -14,9 +14,6 @@ import re
 import itertools
 import collections
 import logging
-from tempfile import tempdir
-
-from attr import field
 
 # import eofs
 # from eofs.multivariate.standard import MultivariateEof
@@ -34,6 +31,7 @@ import dask
 import dask.array as da
 import dask_ml.preprocessing
 from dask_ml.preprocessing import StandardScaler
+from sklearn import preprocessing
 
 class EDGAR_eof():
     '''
@@ -122,6 +120,47 @@ class EDGAR_eof():
             return
 
         self._metadata = metadata
+
+    # 将计算EOF使用的面积权重进行归一化转换，并保存为同路径下weights.hdf的文件。
+    # 结果数据保存在weights dataset中。
+    # 因为计算的数组较小，直接采取numpy计算即可
+    def area_weights_normalize(self, area_file):
+        '''
+        将计算EOF使用的面积权重进行归一化转换，并保存为同路径下weights.hdf的文件。
+        结果数据保存在weights dataset中。
+        '''
+        if not os.path.exists(area_file):
+            print('ERROR: input area_file does not exist. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('input area_file does not exist.')
+            return
+        
+        # 打开npz文件并导入数据
+        area_data = numpy.load(area_file)['arr_0']
+
+        # 创建MaxAbsScaler
+        area_scaler = preprocessing.MaxAbsScaler()
+
+        # 计算归一化值
+        area_weights = area_scaler.fit_transform(area_data)
+
+        # logger output
+        self.EE_logger.info('area weights calculated.')
+
+        # 生成保存文件名
+        hdf_save_path = os.path.dirname(area_file)
+        hdf_save_name = os.path.join(hdf_save_path, 'weights.hdf')
+
+        hdf_file = h5py.File(hdf_save_name, 'a')
+        hdf_data = hdf_file.create_dataset(name='weights',
+                                           data=area_weights,
+                                           dtype=area_weights.dtype,
+                                           chunks=True)
+        hdf_file.flush()
+
+        # logger output
+        self.EE_logger.info('area weights hdf saved.')
 
     # 改编自eofs
     # 实现这个函数的目的是为了满足dask_ml在standardize时的维度限制。
