@@ -4490,7 +4490,10 @@ class EDGAR_spatial(object):
         hdf = h5py.File(hdf_file_path, 'r')
         
         # 组合得到完整数据路径
-        full_data_path = os.path.join(hierarchical_data_path, data_name)
+        # 由于奇怪的msys bug，在这里使用os.path.join会误判分隔符为“\\”
+        # 所以只能改用格式化字符串
+        # full_data_path = os.path.join(hierarchical_data_path, data_name)
+        full_data_path = '%s/%s' % (hierarchical_data_path, data_name)
 
         # 检查数据是否存在
         if full_data_path not in hdf:

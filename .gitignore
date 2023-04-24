@@ -46,3 +46,4 @@ eof_hdf_standardize
 eof.log
 hdf_north_revise
 eof_area_weights
+eof_mode_to_raster
