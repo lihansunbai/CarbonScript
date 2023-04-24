@@ -26,6 +26,7 @@ import numpy
 import interval
 import numbers
 import shortuuid
+import h5py
 
 # # 性能测试相关模块
 # import cProfile
@@ -488,6 +489,50 @@ class EDGAR_spatial(object):
                 in_raster=temp_set_nodata_value,
                 out_rasterdataset=temp_output_name,
                 format=output_formate)
+
+    # 从HDF5中将数据转换为Arcgis raster
+    # 使用这个函数要注意output_path参数，如果在构造函数初始化的过程中定义了工作空间，则可以直接传入不带后缀的保存文件名，
+    # 输出的栅格将直接保存到工作空间中；如果，需要输出到非初始化过程中定义的工作空间位置，则应该传入完整的保存路径，
+    # 这里的完整保存路径是指包括文件后缀的文件绝对路径。
+    # 注意，这个方法相当简陋，只能导出不包含时间维度，即dim=2的数据。
+    def hdf_to_raster(self, hdf_file_path, hierarchical_data_path, data_name, output_path):
+        '''
+        使用这个函数要注意output_path参数，如果在构造函数初始化的过程中定义了工作空间，则可以直接传入不带后缀的保存文件名，
+        输出的栅格将直接保存到工作空间中；如果需要输出到非初始化过程中定义的工作空间位置，则应该传入完整的保存路径，
+        这里的完整保存路径是指包括文件后缀的文件绝对路径。
+        注意，这个方法相当简陋，只能导出不包含时间维度，即dim=2的数据。
+        '''
+        if not os.path.exists(hdf_file_path):
+            print 'ERROR: hdf file does not exist. Please check the input.'
+
+            # logger output
+            self.ES_logger.error('hdf file does not exist.')
+            return
+        
+        # 打开hdf文件
+        hdf = h5py.File(hdf_file_path, 'r')
+        
+        # 组合得到完整数据路径
+        full_data_path = os.path.join(hierarchical_data_path, data_name)
+
+        # 检查数据是否存在
+        if full_data_path not in hdf:
+            print 'ERROR: data not exist. Please check the input.'
+
+            # logger output
+            self.ES_logger.error('data not exist.')
+            return
+        
+        # 取得hdf中数据
+        temp_numpy_data = hdf[full_data_path][...]
+
+        # numpy 转 raster
+        temp_raster = arcpy.NumPyArrayToRaster(temp_numpy_data, x_cell_size=0.1)
+        # 为raster定义坐标系
+        arcpy.DefineProjection_management(temp_raster, arcpy.SpatialReference(4326))
+        # 保存raster
+        temp_raster.save(output_path)
+
 
     # 为栅格添加背景值
     # 用途：添加一个背景值以保持栅格数据历史范围稳定。
@@ -4379,6 +4424,95 @@ class EDGAR_spatial(object):
     
         # 返回结果
         return temp_numpy_arr
+
+    # 将结果的mode数据转换为raster
+    def EOF_hdf_mode_to_raster(self, hdf_path, category_field_list, mode_name, num_eofs, output_fmt='%s_mode_%s'):
+        if not category_field_list:
+            print 'ERROR: emission categories does not exist. Please check exist.'
+
+            # logger output
+            self.ES_logger.error('emission categories does not exist.')
+            return
+        
+        if not os.path.exists(hdf_path):
+            print 'ERROR: hdf file does not exist. Please check the input.'
+
+            # logger output
+            self.ES_logger.error('hdf file does not exist.')
+            return
+        
+        if not num_eofs:
+            print 'ERROR: eof mode numbers does not specified. Please check the input.'
+
+            # logger output
+            self.ES_logger.error('eof mode numbers does not specified.')
+            return
+
+        
+        for cate in category_field_list:
+            # 按照场数量逐个输出
+            for eof in range(0, num_eofs):
+                # 检查输出文件名是否能够成功构建
+                try:
+                    output_raster = output_fmt % (cate, eof)
+                except:
+                    print 'ERROR: can not format raster output name.'
+
+                    # logger output
+                    self.ES_logger.error('raster output name format failed.')
+                    return
+
+                # 生成hdf数据路径
+                temp_data_path = os.path.join('/EOF_mode/', cate)
+
+                # 执行数据提取
+                self.do_EOF_hdf_mode_to_raster(hdf_file_path=hdf_path, hierarchical_data_path=temp_data_path, data_name=mode_name, output_path=output_raster, mode=eof)
+
+
+    # 从HDF5中的eof mode数据转换为Arcgis raster
+    # 使用这个函数要注意output_path参数，如果在构造函数初始化的过程中定义了工作空间，则可以直接传入不带后缀的保存文件名，
+    # 输出的栅格将直接保存到工作空间中；如果，需要输出到非初始化过程中定义的工作空间位置，则应该传入完整的保存路径，
+    # 这里的完整保存路径是指包括文件后缀的文件绝对路径。
+    def do_EOF_hdf_mode_to_raster(self, hdf_file_path, hierarchical_data_path, data_name, output_path, mode=0):
+        '''
+        使用这个函数要注意output_path参数，如果在构造函数初始化的过程中定义了工作空间，则可以直接传入不带后缀的保存文件名，
+        输出的栅格将直接保存到工作空间中；如果需要输出到非初始化过程中定义的工作空间位置，则应该传入完整的保存路径，
+        这里的完整保存路径是指包括文件后缀的文件绝对路径。
+        '''
+        if not os.path.exists(hdf_file_path):
+            print 'ERROR: hdf file does not exist. Please check the input.'
+
+            # logger output
+            self.ES_logger.error('hdf file does not exist.')
+            return
+        
+        # 打开hdf文件
+        hdf = h5py.File(hdf_file_path, 'r')
+        
+        # 组合得到完整数据路径
+        full_data_path = os.path.join(hierarchical_data_path, data_name)
+
+        # 检查数据是否存在
+        if full_data_path not in hdf:
+            print 'ERROR: data not exist. Please check the input.'
+
+            # logger output
+            self.ES_logger.error('data not exist.')
+            return
+        
+        # 取得hdf中数据
+        temp_numpy_data = hdf[full_data_path][mode,...]
+
+        # numpy 转 raster
+        temp_raster = arcpy.NumPyArrayToRaster(temp_numpy_data, x_cell_size=0.1)
+        # 为raster定义坐标系
+        arcpy.DefineProjection_management(temp_raster, arcpy.SpatialReference(4326))
+        # 保存raster
+        temp_raster.save(output_path)
+        self.ES_logger.info('raster saved: %s' % output_path)
+
+
+
 
     # # 将arcgis栅格数据转换成Numpy multivariates-EOF计算所用的格式
     # def EOF_raster_to_numpy_multivariates(self, raster_list, nodata_to_value, export_to_npz=True, export_path=None):
