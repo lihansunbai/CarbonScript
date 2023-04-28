@@ -533,7 +533,6 @@ class EDGAR_spatial(object):
         # 保存raster
         temp_raster.save(output_path)
 
-
     # 为栅格添加背景值
     # 用途：添加一个背景值以保持栅格数据历史范围稳定。
     # 注意：如果指定了output_Raster参数，则会输出到该参数指定的栅格中。
@@ -3811,6 +3810,155 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.debug('Zonal statistics convert to csv.')
 
+    # 实际执行从点数据中生成不同分类排放栅格
+    # 注意！！！
+    # 这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`category_year`。
+    # 如果要使用这里的栅格结果请参考以上命名逻辑找到所需栅格
+    # 
+    # 注意第四个参数`return_results`，当此参数为True时函数会返回一个生成栅格的结果的列表；
+    # 当此参数为False时，函数将不返回任何结果而结束。
+    def generate_categories_emission_raster(self, inPoint, category_field_list, return_results=True):
+        '''
+        实际执行从点数据中生成不同分类排放量格
+        注意！！！
+        这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`category_year`。
+        如果要使用这里的栅格结果请参考以上命名逻辑找到所需栅格
+     
+        注意第四个参数`return_results`，当此参数为True时函数会返回一个生成栅格的结果的列表；
+        当此参数为False时，函数将不返回任何结果而结束。
+        '''
+        if not category_field_list :
+            print 'ERROR: please specify the center_list and the category_list'
+
+            # logger output
+            self.ES_logger.error('input center list or category list does not exist.')
+
+            return
+
+        if not arcpy.Exists(inPoint):
+            print 'ERROR: input point data does not exist'
+
+            # logger output
+            self.ES_logger.error('input point data does not exist.')
+
+            exit(1)
+        
+        # 向点数据中添加临时字段
+        # 这里选择一次性添加所有临时字段。
+        # 考虑到如果在计算的过程中不停的添加和删除字段会极大的消耗计算时间，
+        # 所以采取统一添加统一删除的策略
+        try:
+            # 逐一添加临时字段
+            temp_add_field = ['export_%s' % category for category in category_field_list]
+            for field in temp_add_field:
+                arcpy.AddField_management(inPoint, field, 'DOUBLE', '#', '#', '#', '#','NULLABLE', '#', '#')
+
+            # logger output
+            self.ES_logger.debug('export raster: temporary field added.')
+        except:
+            print 'export raster: Add field to point failed in: %s' % inPoint
+
+            # logger output
+            self.ES_logger.error( 'Export raster: Add field to point failed in: %s' % inPoint)
+
+            print arcpy.GetMessages()
+            exit()
+        
+        # 储存可能需要返回的结果列表
+        temp_return_rasters = []
+
+        # 对每个分类进行栅格导出
+        for category in category_field_list:
+            # 构造游标需要的列名称
+            # 注意：
+            # 根据arcpy文档给出的说明：
+            # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
+            # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
+            # 准备需要列出的字段的名称
+            # 需要列出的字段包括：储存临时计算结果的字段：EOF_TEMP总排放量对数值字段：grid_log_total_emission、各个分类的比例字段：从category_field_list中获取
+            temp_result_field = 'export_%s' % category
+            temp_field_list = ['grid_log_total_emission', category, temp_result_field] 
+
+            # 计算分类排放的排放量
+            with arcpy.da.UpdateCursor(in_table=inPoint, field_names=temp_field_list) as cursor:
+                for row in tqdm(cursor):
+                    # 计算每个每个分类的排放量，通过“总量*分类比例”得到需要值。
+                    # 注意:
+                    #       这里由于使用的是对数值，所以实际的进行的运算是加法运算。
+                    # 注意2:
+                    #       由于很多部门的排放是0，在计算log10的时候会出错。
+                    #       并且就现实中的情况来说，一个区域的某一部门排放是0那就意味着这个地区没有这个部门，
+                    #       也就没有必要对这个部门进行计算了
+                    
+                    # 该栅格没有包含排放的情况
+                    if row[0] is None:
+                        row[2] = None
+                        cursor.updateRow(row)
+                        continue
+
+                    # 该栅格没有某一部门排放的情况
+                    if row[1] == 0:
+                        row[2] = None
+                    # 该栅格存在某一部门排放
+                    else:
+                        temp_category_property = numpy.log10(row[1])
+                        row[2] = row[0] + temp_category_property
+
+                    # 更新行信息
+                    cursor.updateRow(row)
+
+            # 保存列数据为栅格
+            save_raster = '%s_%s' % (temp_result_field, inPoint[-4:])
+
+            ################################################################################
+            ################################################################################
+            # 以下部分是一段python segmentation fault debug 使用的代码
+            # arcpy.PointToRaster_conversion(inPoint,temp_result_field, save_raster,'MOST_FREQUENT', '#', '0.1')
+            # arcpy.PointToRaster_conversion(in_features=inPoint,
+            #                                 value_field=temp_result_field,
+            #                                 out_rasterdataset=save_raster,
+            #                                 cell_assignment="MOST_FREQUENT",
+            #                                 cellsize=0.1)
+
+            # # 添加转换结果到待返回列表
+            # temp_return_rasters.append(save_raster)
+
+            # # logger output
+            # self.ES_logger.debug('EOF rasterize finished:%s' % save_raster)
+            # debug 结束
+            ################################################################################
+            ################################################################################
+
+            try:
+                arcpy.PointToRaster_conversion(inPoint,temp_result_field, save_raster,'MOST_FREQUENT', '#', '0.1')
+
+                # 添加转换结果到待返回列表
+                temp_return_rasters.append(save_raster)
+
+                # logger output
+                self.ES_logger.debug('EOF rasterize finished:%s' % save_raster)
+            except:
+                print 'Create raster field: %s' % save_raster
+
+                # logger output
+                self.ES_logger.error('EOF rasterize failed:%s' % save_raster)
+
+                print arcpy.GetMessages()
+
+        # 从点数据中删除添加的临时列
+        print 'Deleting temporary fields...'
+        arcpy.DeleteField_management(inPoint, temp_add_field)
+        # logger output
+        self.ES_logger.info('Deleted temporary fields.')
+        print 'Deleted temporary fields.'
+        
+        # 决定返回模式
+        if return_results:
+            # 返回一个包含生成栅格名称的列表
+            return temp_return_rasters
+        else:
+            return
+            
     ############################################################################
     ############################################################################
     # 合并同一年不同排放中心至一个栅格
@@ -4174,6 +4322,15 @@ class EDGAR_spatial(object):
     # 注意第四个参数`return_results`，当此参数为True时函数会返回一个生成栅格的结果的列表；
     # 当此参数为False时，函数将不返回任何结果而结束。
     def do_EOF_generate_center_categories_emission_raster(self, inPoint, center, category_field_list, return_results=True):
+        '''
+        实际执行从点数据中生成某一个中心里的不同分类的排放量栅格
+        注意！！！
+        这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`centerName_category_year`。
+        如果要使用这里的栅格结果请参考以上命名逻辑找到所需栅格
+     
+        注意第四个参数`return_results`，当此参数为True时函数会返回一个生成栅格的结果的列表；
+        当此参数为False时，函数将不返回任何结果而结束。
+        '''
         if not center or not category_field_list :
             print 'ERROR: please specify the center_list and the category_list'
 
@@ -4426,7 +4583,7 @@ class EDGAR_spatial(object):
         return temp_numpy_arr
 
     # 将结果的mode数据转换为raster
-    def EOF_hdf_mode_to_raster(self, hdf_path, category_field_list, mode_name, num_eofs, output_fmt='%s_mode_%s'):
+    def EOF_hdf_mode_to_raster(self, hdf_path, category_field_list, mode_name, num_eofs, output_fmt='%s_mode_%s', remove_value=None):
         if not category_field_list:
             print 'ERROR: emission categories does not exist. Please check exist.'
 
@@ -4460,21 +4617,22 @@ class EDGAR_spatial(object):
 
                     # logger output
                     self.ES_logger.error('raster output name format failed.')
-                    return
+                    returni
 
                 # 生成hdf数据路径
                 temp_data_path = os.path.join('/EOF_mode/', cate)
 
                 # 执行数据提取
-                self.do_EOF_hdf_mode_to_raster(hdf_file_path=hdf_path, hierarchical_data_path=temp_data_path, data_name=mode_name, output_path=output_raster, mode=eof)
+                self.do_EOF_hdf_mode_to_raster(hdf_file_path=hdf_path, hierarchical_data_path=temp_data_path, data_name=mode_name, output_path=output_raster, mode=eof, remove_value=remove_value)
 
 
     # 从HDF5中的eof mode数据转换为Arcgis raster
     # 使用这个函数要注意output_path参数，如果在构造函数初始化的过程中定义了工作空间，则可以直接传入不带后缀的保存文件名，
     # 输出的栅格将直接保存到工作空间中；如果，需要输出到非初始化过程中定义的工作空间位置，则应该传入完整的保存路径，
     # 这里的完整保存路径是指包括文件后缀的文件绝对路径。
-    def do_EOF_hdf_mode_to_raster(self, hdf_file_path, hierarchical_data_path, data_name, output_path, mode=0):
+    def do_EOF_hdf_mode_to_raster(self, hdf_file_path, hierarchical_data_path, data_name, output_path, mode=0, remove_value=None):
         '''
+        如果指定了remove_value参数的值，那么在导出数据的过程中将会把该指定值设定为NoData。
         使用这个函数要注意output_path参数，如果在构造函数初始化的过程中定义了工作空间，则可以直接传入不带后缀的保存文件名，
         输出的栅格将直接保存到工作空间中；如果需要输出到非初始化过程中定义的工作空间位置，则应该传入完整的保存路径，
         这里的完整保存路径是指包括文件后缀的文件绝对路径。
@@ -4507,15 +4665,20 @@ class EDGAR_spatial(object):
         temp_numpy_data = hdf[full_data_path][mode,...]
 
         # numpy 转 raster
-        temp_raster = arcpy.NumPyArrayToRaster(temp_numpy_data, x_cell_size=0.1)
+        temp_raster = arcpy.NumPyArrayToRaster(temp_numpy_data, x_cell_size=0.1, lower_left_corner=arcpy.Point(-180, -90))
         # 为raster定义坐标系
         arcpy.DefineProjection_management(temp_raster, arcpy.SpatialReference(4326))
-        # 保存raster
-        temp_raster.save(output_path)
-        self.ES_logger.info('raster saved: %s' % output_path)
 
-
-
+        # 执行设定remove_value为NoData
+        if remove_value is None:
+            # 保存raster
+            temp_raster.save(output_path)
+            self.ES_logger.info('raster saved: %s' % output_path)
+        else:
+            temp_where_clause = 'VALUE = %s' % remove_value
+            temp_raster_setnull = SetNull(in_conditional_raster=temp_raster, in_false_raster_or_constant=temp_raster, where_clause=temp_where_clause)
+            temp_raster_setnull.save(output_path)
+            self.ES_logger.info('raster saved at %s and removed value \'%s\'' % (output_path, remove_value))
 
     # # 将arcgis栅格数据转换成Numpy multivariates-EOF计算所用的格式
     # def EOF_raster_to_numpy_multivariates(self, raster_list, nodata_to_value, export_to_npz=True, export_path=None):
