@@ -1,0 +1,9 @@
+2023-05-02 12:12:23,551-[INFO]-[root]-[__init__]-==========EDGAR_Spatial start==========
+2023-05-02 12:12:23,551-[DEBUG]-[root]-[year_range]-year range changed to:1970 to 2018
+2023-05-02 12:12:23,551-[INFO]-[root]-[__init__]-Year has set.
+2023-05-02 12:12:26,042-[INFO]-[root]-[__init__]-workplace has set.
+2023-05-02 12:12:26,042-[INFO]-[root]-[__init__]-arcpy Spatial extension checked.
+2023-05-02 12:12:26,045-[INFO]-[root]-[__init__]-arcpy parallelProcessingFactor set to 200%.
+2023-05-02 12:12:26,045-[INFO]-[root]-[__init__]-arcpy overwriteOutput set to True.
+2023-05-02 12:12:26,045-[INFO]-[root]-[__init__]-Root initialization finished.
+2023-05-02 12:12:26,046-[INFO]-[root]-[data_analyze]-Initialization finished.

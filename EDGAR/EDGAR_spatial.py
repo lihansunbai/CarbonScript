@@ -3570,7 +3570,7 @@ class EDGAR_spatial(object):
                     # 之后位数赋值为0的本质就是乘上10，100，1000...这样的10的幂次的数
                     fill_suffix = math.pow(10, len(temp_sorted) - temp_sorted_position)
                     temp_encode = int(temp_encode) * fill_suffix
-                    return temp_encode
+                    return int(temp_encode)
             else:
                 # 从encode中找到元素的对应位置，位置即为代码
                 temp_index = encode.index(category)
@@ -3662,7 +3662,7 @@ class EDGAR_spatial(object):
         with arcpy.da.UpdateCursor(inPoint, field_names) as cursor:
             for row in tqdm(cursor):
                 # 检查栅格排放值是否为0，为0则直接将所有值赋值为0
-                if row[field_names.index('sector_counts')] == 0:
+                if row[field_names.index('grid_total_emission')] == 0:
                     # 检查最大部门排放是否为0
                     # 二次确认
                     if row[field_names.index('wmax')] == 0:
