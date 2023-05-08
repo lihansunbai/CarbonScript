@@ -93,12 +93,12 @@ class EDGAR_spatial(object):
         # year_range 参数初始化部分
         # 这里需要初始化计算的起始和结束
         if (type(st_year) != int) or (type(en_year) != int):
-            print 'Error! Processing starting year and ending year must be int value'
+            print('Error! Processing starting year and ending year must be int value')
             self.ES_logger.info('Year setting type error.')
             self.ES_logger.error('Year setting error!')
             return
         elif st_year < self.__default_start_year or en_year > self.__default_end_year:
-            print 'Error! Processing year range out of data support! The year must contain in 1970 to 2018'
+            print('Error! Processing year range out of data support! The year must contain in 1970 to 2018')
             self.ES_logger.info('Year settings are out of range.')
             self.ES_logger.error('Year setting error!')
             return
@@ -114,7 +114,7 @@ class EDGAR_spatial(object):
         # 初始化构造需要明确arcgis工作空间或者一个确定的数据为
         # 检查输入是否为空值
         if workspace == '':
-            print 'Spatial direction or database path error! Please check your input!'
+            print('Spatial direction or database path error! Please check your input!')
             self.ES_logger.error('arcpy environment workspace set failed!')
             return
 
@@ -170,7 +170,7 @@ class EDGAR_spatial(object):
         # 默认情况下使用默认参数初始化
         # 为EDGAR_sectors参数赋值
         if type(sectors) != dict:
-            print 'Error! EDGAR_sectors only accept a dictionary type input.'
+            print('Error! EDGAR_sectors only accept a dictionary type input.')
             root_init.ES_logger.info('EDGAR_sectors only accept a dictionary type input.')
             root_init.ES_logger.error('EDGAR_sectors type error.')
             return
@@ -187,7 +187,7 @@ class EDGAR_spatial(object):
         # 默认情况下使用默认参数初始化
         # 为EDGAR_sectors_colormap 参数赋值
         if type(colormap) != dict:
-            print 'Error! EDGAR_sectors_colormap only accept a dictionary type input.'
+            print('Error! EDGAR_sectors_colormap only accept a dictionary type input.')
             root_init.ES_logger.info('EDGAR_sectors_colormap only accept a dictionary type input.')
             root_init.ES_logger.error('EDGAR_sectors_colormap type error.')
             return
@@ -212,7 +212,7 @@ class EDGAR_spatial(object):
                 }
                 root_init.ES_logger.debug('Background has set.')
             else:
-                print 'Error: Please check background flag or label or raster.'
+                print('Error: Please check background flag or label or raster.')
                 root_init.ES_logger.error('Background setting error!')
                 return
         elif bool(background_flag) == False:
@@ -235,7 +235,7 @@ class EDGAR_spatial(object):
         root_init.filter_label = temp_init_filter_label
         root_init.ES_logger.info('filter_label has set.')
 
-        print 'EDGAR_Spatial initialized! More debug information please check the log file.'
+        print('EDGAR_Spatial initialized! More debug information please check the log file.')
         root_init.ES_logger.info('Initialization finished.')
 
         # 返回初始化之后的类
@@ -273,7 +273,7 @@ class EDGAR_spatial(object):
         # 初始化排放中心的列表
         root_init.emission_center_list = []
 
-        print 'EDGAR_Spatial initialized! More debug information please check the log file.'
+        print('EDGAR_Spatial initialized! More debug information please check the log file.')
         root_init.ES_logger.info('Initialization finished.')
         # 返回初始化之后的类
         return root_init
@@ -422,30 +422,30 @@ class EDGAR_spatial(object):
         self.start_year, self.end_year = start_end
 
         # logger output
-        self.ES_logger.debug('year range changed to:%s to %s' % start_end)
+        self.ES_logger.debug('year range changed to:{} to {}'.format(start_end[0], start_end[1]))
 
     def print_start_year(self, year):
 
         # logger output
-        self.ES_logger.debug('Processing start of year %s' % year)
+        self.ES_logger.debug('Processing start of year {}'.format(year))
 
-        print '=============================='
-        print '=============================='
-        print 'Processing start of year %s' % year
-        print '=============================='
-        print '=============================='
+        print('==============================')
+        print('==============================')
+        print('Processing start of year {}'.format(year))
+        print('==============================')
+        print('==============================')
 
     def print_finish_year(self, year):
 
         # logger output
-        self.ES_logger.debug('Finished processing data of year %s' % year)
+        self.ES_logger.debug('Finished processing data of year {}'.format(year))
 
-        print '=============================='
-        print '=============================='
-        print 'Congratulations!'
-        print 'Finished processing data of year %s' % year
-        print '=============================='
-        print '=============================='
+        print('==============================')
+        print('==============================')
+        print('Congratulations!')
+        print('Finished processing data of year {}'.format(year))
+        print('==============================')
+        print('==============================')
 
     # 简易导出栅格函数，并规定nodata的值
     def raster_quick_export(self, raster_list, nodata_value, output_path, output_formate):
@@ -454,7 +454,7 @@ class EDGAR_spatial(object):
         '''
         # 检查输入的栅格列表是否存在
         if not raster_list:
-            print 'ERROR: input raster_list is empty. Please check the input.'
+            print('ERROR: input raster_list is empty. Please check the input.')
 
             # logger output
             self.ES_logger.error('input raster list is empty')
@@ -462,7 +462,7 @@ class EDGAR_spatial(object):
 
         # 检查其余参数是否正确
         if not nodata_value or not output_formate or type(output_formate) != str:
-            print 'ERROR: nodata_value or output_formate argument error.'
+            print('ERROR: nodata_value or output_formate argument error.')
 
             # logger output
             self.ES_logger.error('nodata_value or output_formate argument error')
@@ -472,10 +472,10 @@ class EDGAR_spatial(object):
         for raster in tqdm(raster_list):
             # 先检查栅格是否存在
             if not arcpy.Exists(raster):
-                print 'ERROR: input raster not found. Raster name: %s' % raster
+                print('ERROR: input raster not found. Raster name: {}'.format(raster))
 
                 # logger output
-                self.ES_logger.error('ERROR: input raster not found. Raster name: %s' % raster)
+                self.ES_logger.error('ERROR: input raster not found. Raster name: {}'.format(raster))
                 return
 
             # 先利用从con()函数将所有nodata定义为固定值
@@ -485,7 +485,7 @@ class EDGAR_spatial(object):
                 in_false_raster_or_constant=raster)
 
             # 生成输出文件名
-            temp_output_name = '%s\\%s.%s' % (output_path, raster, output_formate)
+            temp_output_name = '{}\\{}.{}'.format(output_path, raster, output_formate)
 
             arcpy.CopyRaster_management(
                 in_raster=temp_set_nodata_value,
@@ -505,7 +505,7 @@ class EDGAR_spatial(object):
         注意，这个方法相当简陋，只能导出不包含时间维度，即dim=2的数据。
         '''
         if not os.path.exists(hdf_file_path):
-            print 'ERROR: hdf file does not exist. Please check the input.'
+            print('ERROR: hdf file does not exist. Please check the input.')
 
             # logger output
             self.ES_logger.error('hdf file does not exist.')
@@ -519,7 +519,7 @@ class EDGAR_spatial(object):
 
         # 检查数据是否存在
         if full_data_path not in hdf:
-            print 'ERROR: data not exist. Please check the input.'
+            print('ERROR: data not exist. Please check the input.')
 
             # logger output
             self.ES_logger.error('data not exist.')
@@ -544,19 +544,18 @@ class EDGAR_spatial(object):
         注意：如果指定了output_Raster参数，则会输出到该参数指定的栅格中。
         '''
         if not inRaster or not background:
-            print 'ERROR: raster or background does not exist. Please check the input.'
+            print('ERROR: raster or background does not exist. Please check the input.')
 
             # logger output
             self.ES_logger.error(
-                'Input raster or background does not exist. inRaster:%s; background:%s.' %
-                (inRaster, background))
+                'Input raster or background does not exist. inRaster:{}; background:{}.'.format(inRaster, background))
             return
 
         if output_Raster:
             try:
                 temp_output_path = str(output_Raster)
             except:
-                print 'ERROR: output raster name does not exist.'
+                print('ERROR: output raster name does not exist.')
 
                 # logger output
                 self.ES_logger.error('output raster name does not exist.')
@@ -574,9 +573,9 @@ class EDGAR_spatial(object):
                 number_of_bands=1,
                 mosaic_method="FIRST",
                 mosaic_colormap_mode="FIRST")
-            print 'Raster %s added background.' % temp_output_path
+            print('Raster {} added background.'.format(temp_output_path))
             # logger output
-            self.ES_logger.debug('New raster was mosaiced with background: %s' % temp_output_path)
+            self.ES_logger.debug('New raster was mosaiced with background: {}'.format(temp_output_path))
         else:
             arcpy.Mosaic_management(
                 inputs=[inRaster, background],
@@ -585,16 +584,16 @@ class EDGAR_spatial(object):
                 colormap="FIRST",
                 mosaicking_tolerance=0.5)
 
-            print 'Raster %s added background.' % inRaster 
+            print('Raster {} added background.'.format(inRaster ))
             # logger output
-            self.ES_logger.debug('Background was mosaiced into raster: %s' % inRaster)
+            self.ES_logger.debug('Background was mosaiced into raster: {}'.format(inRaster))
 
     # 删除临时生成的图层文件
     def delete_temporary_feature_classes(self, feature_list):
         '''
         删除生成的临时要素类文件。当然，也可以用作于批量删除输入列表中的要素数据文件。
         '''
-        print 'Deleting temporary files'
+        print('Deleting temporary files')
 
         prepare_feature = [
             s for s in feature_list if arcpy.ListFeatureClasses(wild_card=s, feature_type=Point)
@@ -609,16 +608,16 @@ class EDGAR_spatial(object):
             arcpy.Delete_management(feature_fullpath)
 
             # logger output
-            self.ES_logger.debug('Deleted feature:%s' % f)
+            self.ES_logger.debug('Deleted feature:{}'.format(f))
 
-        print 'Deleting temporary files finished!'
+        print('Deleting temporary files finished!')
 
     # 删除临时生成的图层文件
     def delete_temporary_raster(self, raster_list):
         '''
         删除生成的临时栅格文件。当然，也可以用作于批量删除输入列表中的栅格数据文件。
         '''
-        print 'Deleting temporary files'
+        print('Deleting temporary files')
 
         prepare_feature = self.do_arcpy_list_raster_list(wildcard_list=raster_list, wildcard_mode=False)
 
@@ -631,9 +630,9 @@ class EDGAR_spatial(object):
             arcpy.Delete_management(feature_fullpath)
 
             # logger output
-            self.ES_logger.debug('Deleted feature:%s' % f)
+            self.ES_logger.debug('Deleted feature:{}'.format(f))
 
-        print 'Deleting temporary files finished!'
+        print('Deleting temporary files finished!')
 
     # 以下三个函数为神奇的、不知道为什么要写的函数、但是既然已经写了就不删除了
     # 为栅格添加背景值
@@ -653,12 +652,11 @@ class EDGAR_spatial(object):
            2、如果不是通过nodata进行区分，则需要在传入参数中指定背景值。使用该方法时，需设置`null_background`参数为False，并在`background_value`参数中提供要作为背景的值。
         '''
         if not inRaster or not background:
-            print 'ERROR: raster or background does not exist. Please check the input.'
+            print('ERROR: raster or background does not exist. Please check the input.')
 
             # logger output
             self.ES_logger.error(
-                'Input raster or background does not exist. inRaster:%s; background:%s.' %
-                (inRaster, background))
+                'Input raster or background does not exist. inRaster:{}; background:{}.'.format(inRaster, background))
             return
 
         if null_background:
@@ -683,7 +681,7 @@ class EDGAR_spatial(object):
         '''
         if output_Raster:
             if type(output_Raster) != str:
-                print 'ERROR: output raster name does not exist.'
+                print('ERROR: output raster name does not exist.')
 
                 # logger output
                 self.ES_logger.error('output raster name does not exist.')
@@ -700,9 +698,9 @@ class EDGAR_spatial(object):
                 number_of_bands=1,
                 mosaic_method="FIRST",
                 mosaic_colormap_mode="FIRST")
-            print 'Raster %s added background.' % output_Raster
+            print('Raster {} added background.'.format(output_Raster))
             # logger output
-            self.ES_logger.debug('New raster was mosaiced with background: %s' % output_Raster)
+            self.ES_logger.debug('New raster was mosaiced with background: {}'.format(output_Raster))
         else:
             arcpy.Mosaic_management(
                 inputs=[inRaster, background],
@@ -711,9 +709,9 @@ class EDGAR_spatial(object):
                 colormap="FIRST",
                 mosaicking_tolerance=0.5)
 
-            print 'Raster %s added background.' % inRaster 
+            print('Raster {} added background.'.format(inRaster))
             # logger output
-            self.ES_logger.debug('Background was mosaiced into raster: %s' % inRaster)
+            self.ES_logger.debug('Background was mosaiced into raster: {}'.format(inRaster))
 
     # 以下为神奇的、不知道为什么要写的函数
     # 注意以下这个方法可能会消耗大量的时间！
@@ -734,7 +732,7 @@ class EDGAR_spatial(object):
         '''
         if output_Raster:
             if type(output_Raster) != str:
-                print 'ERROR: output raster name does not exist.'
+                print('ERROR: output raster name does not exist.')
 
                 # logger output
                 self.ES_logger.error('output raster name does not exist.')
@@ -751,9 +749,9 @@ class EDGAR_spatial(object):
                 number_of_bands=1,
                 mosaic_method="FIRST",
                 mosaic_colormap_mode="FIRST")
-            print 'Raster %s added background.' % output_Raster
+            print('Raster {} added background.'.format(output_Raster))
             # logger output
-            self.ES_logger.debug('New raster was mosaiced with background: %s' % output_Raster)
+            self.ES_logger.debug('New raster was mosaiced with background: {}'.format(output_Raster))
         else:
             arcpy.Mosaic_management(
                 inputs=[inRaster, background],
@@ -762,9 +760,9 @@ class EDGAR_spatial(object):
                 colormap="FIRST",
                 mosaicking_tolerance=0.5)
 
-            print 'Raster %s added background.' % inRaster 
+            print('Raster {} added background.'.format(inRaster))
             # logger output
-            self.ES_logger.debug('Background was mosaiced into raster: %s' % inRaster)
+            self.ES_logger.debug('Background was mosaiced into raster: {}'.format(inRaster) )
 
     # 以下为神奇的、不知道为什么要写的函数
     # 注意以下这个方法可能会消耗大量的时间！
@@ -779,7 +777,7 @@ class EDGAR_spatial(object):
         相比于上一个null方法，这个方法可能会多处至少4*N的时间消耗。
         '''
         if not isinstance(background_value, numbers.Number):
-            print 'ERROR: backgound value must be a number.'
+            print('ERROR: backgound value must be a number.')
 
             # logger output
             self.ES_logger.error('background value type error.')
@@ -787,20 +785,20 @@ class EDGAR_spatial(object):
 
         # 从输入背景栅格生成不影响原始数据的背景值,
         # 即是获得一个背景值区域为0，其他区域为nodata的栅格。
-        temp_setnull_where_clause = 'VALUE <> %s' % background_value
+        temp_setnull_where_clause = 'VALUE <> {}'.format(background_value)
         newBackground = SetNull(in_conditional_raster=background,
                                 in_false_raster_or_constant=0,
                                 where_clause=temp_setnull_where_clause)        
 
         # logger output
-        self.ES_logger.debug('New background raster was built: %s' % newBackground)
+        self.ES_logger.debug('New background raster was built: {}'.format(newBackground) )
 
         # 因为考虑到保护原始数据和运行效率的原因，从这里开始就要分是否将结果保存到新栅格的问题：
         #   1、首先是保护原始数据的问题。如果不需要保存到新栅格，即意味着所有改动都发生在原始的数据栅格上，所以可以对原始数据进行操作。相反，如果要保存到新栅格即意味着使用者并不期望原始数据被修改，所以不能对原始数据进行操作。
         #   2、考虑到运行效率问题。保存到新栅格的操作比在原始数据上操作需要经历更多的步骤，且二者的很多操作是相互独立的，在并不通用的操作上都执行一遍会造成大量的时间浪费。
         if output_Raster:
             if type(output_Raster) != str:
-                print 'ERROR: output raster name does not exist.'
+                print('ERROR: output raster name does not exist.')
 
                 # logger output
                 self.ES_logger.error('output raster name does not exist.')
@@ -822,7 +820,7 @@ class EDGAR_spatial(object):
                 mosaic_colormap_mode="FIRST")
 
             # logger output
-            self.ES_logger.debug('Raster was mosaiced with new background: %s' % temp_result_raster)
+            self.ES_logger.debug('Raster was mosaiced with new background: {}'.format(temp_result_raster) )
         else:
             # 保存结果的临时栅格
             temp_result_raster = inRaster
@@ -835,7 +833,7 @@ class EDGAR_spatial(object):
                 mosaicking_tolerance=0.5)
 
             # logger output
-            self.ES_logger.debug('Raster was mosaiced with new background: %s' % temp_result_raster)
+            self.ES_logger.debug('Raster was mosaiced with new background: {}'.format(temp_result_raster) )
 
         # 在新栅格中恢复背景值
         temp_result_raster = Con(temp_result_raster, temp_result_raster, 'VALUE = 0')
@@ -847,9 +845,9 @@ class EDGAR_spatial(object):
                                 colormap="FIRST",
                                 mosaicking_tolerance=0.5)
 
-        print 'Raster %s added background.' % temp_result_raster 
+        print('Raster {} added background.'.format(temp_result_raster) )
         # logger output
-        self.ES_logger.debug('Raster was mosaiced with new background: %s' % temp_result_raster)
+        self.ES_logger.debug('Raster was mosaiced with new background: {}'.format(temp_result_raster) )
 
     ############################################################################
     ############################################################################
@@ -868,31 +866,31 @@ class EDGAR_spatial(object):
     @sectors_handle.setter
     def sectors_handle(self, sectors):
         if type(sectors) != dict:
-            print 'Error type! EDGAR sectors should be dictionary!'
+            print('Error type! EDGAR sectors should be dictionary!')
             self.ES_logger.error('Error type! EDGAR sectors should be dictionary.')
             return
 
         self.EDGAR_sectors = sectors
 
         # logger output
-        self.ES_logger.debug('EDGAR_sectors changed to:%s' % sectors)
+        self.ES_logger.debug('EDGAR_sectors changed to:{}'.format(sectors) )
 
     # 想要自定义或者修改处理的部门对应栅格值需要使用特殊的property函数
     @property
     def sectors_colormap_handle(self):
-        print self.EDGAR_sectors_colormap
+        print(self.EDGAR_sectors_colormap)
 
     @sectors_colormap_handle.setter
     def sectors_colormap_handle(self, sectors_colormap):
         if type(sectors_colormap) != dict:
-            print 'Error type! EDGAR sectors colormap should be dictionary!'
+            print('Error type! EDGAR sectors colormap should be dictionary!')
             self.ES_logger.error('Error type! EDGAR sectors colormap should be dictionary.')
             return
 
         self.EDGAR_sectors_colormap = sectors_colormap
 
         # logger output
-        self.ES_logger.debug('EDGAR_sectors_colormap changed to:%s' % sectors_colormap)
+        self.ES_logger.debug('EDGAR_sectors_colormap changed to:{}'.format(sectors_colormap) )
 
     # 栅格图像背景值设置和查看属性/函数
     @property
@@ -908,12 +906,12 @@ class EDGAR_spatial(object):
             try:
                 self.background_flag = bool(flag_label_raster_dict['flag'])
                 self.background_label = ''
-                print 'Background value flag closed!'
+                print('Background value flag closed!')
 
                 # logger output
                 self.ES_logger.debug('Background closed.')
             except:
-                print 'Background flag set failed! Please check the flag argument input.'
+                print('Background flag set failed! Please check the flag argument input.')
                 self.ES_logger.error(
                     'Background flag set failed! Please check the flag argument input.')
         # 开启background，即栅格包含背景0值
@@ -925,7 +923,7 @@ class EDGAR_spatial(object):
                 # logger output
                 self.ES_logger.debug('Background opened.')
             except:
-                print 'Background flag set failed! Please check the flag argument input.'
+                print('Background flag set failed! Please check the flag argument input.')
                 self.ES_logger.error(
                     'Background flag set failed! Please check the flag argument input.')
                 exit(1)
@@ -935,10 +933,9 @@ class EDGAR_spatial(object):
                 self.background_label = flag_label_raster_dict['label']
 
                 # logger output
-                self.ES_logger.debug('Background label changed to:%s' %
-                                     flag_label_raster_dict['label'])
+                self.ES_logger.debug('Background label changed to:{}'.format(flag_label_raster_dict['label']))
             else:
-                print 'Background flag label set failed! Please check the flag argument input.'
+                print('Background flag label set failed! Please check the flag argument input.')
                 self.ES_logger.error(
                     'Background flag set failed! Please check the flag argument input.')
                 exit(1)
@@ -949,15 +946,14 @@ class EDGAR_spatial(object):
                     self.background_raster = flag_label_raster_dict['raster']
 
                     # logger output
-                    self.ES_logger.debug('Background label changed to:%s' %
-                                         flag_label_raster_dict['raster'])
+                    self.ES_logger.debug('Background label changed to:{}'.format(flag_label_raster_dict['raster']))
                 else:
-                    print 'Background raster set failed! The background raster dose not exits.'
+                    print('Background raster set failed! The background raster dose not exits.')
                     self.ES_logger.error(
                         'Background raster set failed! The background raster dose not exits.')
                     exit(1)
             else:
-                print 'Background flag label set failed! Please check the flag argument input.'
+                print('Background flag label set failed! Please check the flag argument input.')
                 self.ES_logger.error(
                     'Background flag set failed! Please check the flag argument input.')
                 exit(1)
@@ -1004,7 +1000,7 @@ class EDGAR_spatial(object):
                     # logger output
                     self.ES_logger.debug('filter label will contain background value.')
             else:
-                print 'background label set error. Please check background_label_set argument.'
+                print('background label set error. Please check background_label_set argument.')
                 self.ES_logger.error(
                     'background label set error. The background_label_set need a dict type input. More information please refer the project readme.md files.'
                 )
@@ -1015,9 +1011,9 @@ class EDGAR_spatial(object):
                 self.filter_label_dict['label']['sectors'] = filter_label['sectors']
 
                 # logger output
-                self.ES_logger.debug('filter_label changed to:%s' % filter_label['sectors'])
+                self.ES_logger.debug('filter_label changed to:{}'.format(filter_label['sectors']))
             else:
-                print 'filter_label: sectors setting error! sectors only accept string or dictionary type.'
+                print('filter_label: sectors setting error! sectors only accept string or dictionary type.')
                 self.ES_logger.error(
                     'filter label set error. The filter_label need a dict or a list type input. More information please refer the project readme.md files.'
                 )
@@ -1025,7 +1021,7 @@ class EDGAR_spatial(object):
             # 检查年份设置并赋值
             # 检查start_year 和 end_year
             if (type(filter_label['start_year']) != int) or (type(filter_label['end_year']) != int):
-                print 'filter_label: year setting error! please check year arguments'
+                print('filter_label: year setting error! please check year arguments')
                 self.ES_logger.error(
                     'year error. The star year and end year must be integer. More information please refer the project readme.md files.'
                 )
@@ -1035,8 +1031,7 @@ class EDGAR_spatial(object):
                 self.filter_label_dict['label']['end_year'] = filter_label['end_year']
 
                 # logger output
-                self.ES_logger.debug('filter_label year range changed to:%s to %s' %
-                                     (filter_label['start_year'], filter_label['end_year']))
+                self.ES_logger.debug('filter_label year range changed to:{} to {}'.format(filter_label['start_year'], filter_label['end_year']))
         elif bool(filter_label['default']) == False:
             # logger output
             self.ES_logger.debug('filter label will set by costume.')
@@ -1045,7 +1040,7 @@ class EDGAR_spatial(object):
             # 赋值'label'标签内容
             self.filter_label_dict['label'] = filter_label['label']
         else:
-            print 'default set error. Please check default_set argument.'
+            print('default set error. Please check default_set argument.')
             self.ES_logger.error('default set error. default_set argument need a bool type input.')
 
     # 注意：这里需要为set函数传入一个filter_label字典
@@ -1069,7 +1064,7 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.debug('filter_label changed by costume function.')
         else:
-            print 'Error: raster filter arguments error.'
+            print('Error: raster filter arguments error.')
 
     # 类中提供了两个过滤标签的构造方法
     # 1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
@@ -1078,7 +1073,7 @@ class EDGAR_spatial(object):
     def build_raster_filter_default(self, background_label, sectors, start_year, end_year):
         # 检查年份设定是否为整数。（其他参数可以暂时忽略，因为默认格式下基本不会改变）
         if (type(start_year) != int) or (type(end_year) != int):
-            print 'Error: Year setting error!'
+            print('Error: Year setting error!')
             self.ES_logger.error(
                 'Year setting error. Year settings must be integer and between 1970 to 2018.')
             return
@@ -1093,7 +1088,7 @@ class EDGAR_spatial(object):
 
         # 逐年逐部门生成筛选条件语句，并保存到raster_filter_wildcard中
         for i in temp_sectors_year_tuple_list:
-            temp_raster_filter_wildcard = '%s*%s_%s' % (background_label, i[0], i[1])
+            temp_raster_filter_wildcard = '{}*{}_{}'.format(background_label, i[0], i[1])
             self.raster_filter_wildcard.append(temp_raster_filter_wildcard),
 
         # logger output
@@ -1102,7 +1097,7 @@ class EDGAR_spatial(object):
     def build_raster_filter_costume(self, custom_label):
         # 对于自定义筛选条件，只需要检查是否为字符串
         if type(custom_label) != str:
-            print "arcpy.ListRasters() need a string for 'wild_card'."
+            print("arcpy.ListRasters() need a string for 'wild_card'.")
             self.ES_logger.error(
                 'Wild_card set failed. The wild_card string must follow the standard of arcgis wild_card rules.'
             )
@@ -1127,7 +1122,7 @@ class EDGAR_spatial(object):
             # 列表为空
             if raster_filter_wildcard == []:
                 # 显示警告：这个操作会列出数据库中的所有栅格
-                print 'WARNING: No filter! All rasters will be list!'
+                print('WARNING: No filter! All rasters will be list!')
 
                 # 使用str方式列出所有栅格
                 self.do_prepare_arcpy_list_raster_str(wildcard_str='')
@@ -1146,7 +1141,7 @@ class EDGAR_spatial(object):
             # 显示筛选列表警告:
             # 如果为空值则警告可能会对所有栅格进行操作：
             if raster_filter_wildcard == '':
-                print 'WARNING: No filter! All rasters will be list!'
+                print('WARNING: No filter! All rasters will be list!')
 
             self.do_prepare_arcpy_list_raster_str(wildcard_str=raster_filter_wildcard)
 
@@ -1154,7 +1149,7 @@ class EDGAR_spatial(object):
             self.ES_logger.debug('rasters listed without filter.')
         else:
             # 其他情况直接退出
-            print 'Error: No filter! Please check input raster filter!'
+            print('Error: No filter! Please check input raster filter!')
             self.ES_logger.error('No filter! Please check input raster filter!')
             return
 
@@ -1163,7 +1158,7 @@ class EDGAR_spatial(object):
         self.all_prepare_working_rasters.extend(arcpy.ListRasters(wild_card=wildcard_str))
 
         # logger output
-        self.ES_logger.debug('working rasters changed to:%s' % self.all_prepare_working_rasters)
+        self.ES_logger.debug('working rasters changed to:{}'.format(self.all_prepare_working_rasters)) 
 
     # 准备栅格时实际执行列出栅格的方法，这个为list方式
     # 这里需要注意第三个参数`wildcard_mode`：
@@ -1191,7 +1186,7 @@ class EDGAR_spatial(object):
             # 放弃使用以下方法！
             # self.all_prepare_working_rasters.extend(arcpy.ListRasters(wild_card=i))
         # logger output
-        self.ES_logger.debug('working rasters changed to:%s' % self.all_prepare_working_rasters)
+        self.ES_logger.debug('working rasters changed to:{}'.format(self.all_prepare_working_rasters)) 
 
     # 实际执行列出栅格的方法，这个为str方式
     def do_arcpy_list_raster_str(self, wildcard_str):
@@ -1199,7 +1194,7 @@ class EDGAR_spatial(object):
         temp_working_rasters.extend(arcpy.ListRasters(wild_card=wildcard_str))
 
         # logger output
-        self.ES_logger.debug('working rasters changed to:%s' % temp_working_rasters)
+        self.ES_logger.debug('working rasters changed to:{}'.format(temp_working_rasters))
         return temp_working_rasters
 
     # 实际执行列出栅格的方法，这个为list方式
@@ -1239,7 +1234,7 @@ class EDGAR_spatial(object):
         #         self.ES_logger.warning('raster not exists! raster name: %s' % i)
 
         # logger output
-        self.ES_logger.debug('working rasters changed to:%s' % temp_result_rasters)
+        self.ES_logger.debug('working rasters changed to:{}'.format(temp_result_rasters) )
 
         # 返回生成的结果
         return temp_result_rasters
@@ -1252,7 +1247,7 @@ class EDGAR_spatial(object):
         sectors_rasters_dict = {}
 
         for s in sectors_list:
-            temp_regex = re.compile('%s' % s)
+            temp_regex = re.compile('{}'.format(s))
             # 注意这里filter函数返回的是一个list，
             # 需要取出其中的值赋值到字典中
             temp_value = filter(temp_regex.search, rasters_list)
@@ -1286,14 +1281,14 @@ class EDGAR_spatial(object):
         def merge_list(inList):
             # 递归终止条件
             if len(inList) == 2:
-                temp_terminate_raster_name = 'temp_%s' % shortuuid.uuid()
+                temp_terminate_raster_name = 'temp_{}'.format(shortuuid.uuid())
                 temp_terminate_raster = arcpy.Raster(inList[0]) + arcpy.Raster(inList[1])
                 temp_terminate_raster.save(temp_terminate_raster_name)
                 self.delete_temporary_raster(temp_delete_rasters)
                 return temp_terminate_raster_name
 
             # 生成一个唯一的文件名用于储存临时累积结果
-            temp_add_raster_name = 'temp_%s' % shortuuid.uuid()
+            temp_add_raster_name = 'temp_{}'.format( shortuuid.uuid())
 
             # 选择任意两个列表中的栅格进行叠加
             # 先将选择的两个栅格pop出列表
@@ -1310,20 +1305,20 @@ class EDGAR_spatial(object):
             return merge_list(inList)
 
         if not raster_list:
-            print 'ERROR: in raster is empty. Please check the input'
+            print('ERROR: in raster is empty. Please check the input')
 
             # loggger output
             self.ES_logger.error('in raster is empyt.')
             return
         
-        print 'Adding rasters...'
+        print('Adding rasters...')
         # 递归执行累加
         temp_raster = merge_list(raster_list)
 
         # 如果提供了result_raster，则进行栅格保存操作。
         if result_raster:
             if type(result_raster) != str:
-                print 'Raster add: The output result raster path error.'
+                print('Raster add: The output result raster path error.')
 
                 # logger output
                 self.ES_logger.error('The output result raster path error.')
@@ -1333,7 +1328,7 @@ class EDGAR_spatial(object):
             arcpy.Raster(temp_raster).save(result_raster)
 
             # logger output
-            self.ES_logger.debug('Raster saved: %s' % result_raster)
+            self.ES_logger.debug('Raster saved: {}'.format(result_raster) )
 
         return temp_raster
 
@@ -1376,21 +1371,21 @@ class EDGAR_spatial(object):
         # 这里是通过构造正则表达式的方式来筛选列表中符合的元素
         temp_sectors = ''
         for i in merge_sectors:
-            temp_sectors = temp_sectors + '|%s' % i
+            temp_sectors = temp_sectors + '|{}'.format(i)
 
         temp_sectors = temp_sectors[1:len(temp_sectors)]
-        temp_sectors_year = '(%s).*%s' % (temp_sectors, year)
+        temp_sectors_year = '({}).*{}'.format(temp_sectors, year)
         filter_regex = re.compile(temp_sectors_year)
 
         # 吐槽：神奇的python语法~~~
         temp_merge_rasters = [s for s in rasters_list if filter_regex.search(s)]
 
         # logger output
-        self.ES_logger.debug('merging rasters: %s' % temp_merge_rasters)
+        self.ES_logger.debug('merging rasters: {}'.format(temp_merge_rasters) )
 
         # 此处输出的总量数据文件名不可更改！！！
         # 未来加入自定义文件名功能
-        result_year = 'total_emission_%s' % year
+        result_year = 'total_emission_{}'.format(year)
 
         # 执行栅格数据累加
         self.do_raster_add(temp_merge_rasters, result_year)
@@ -1406,7 +1401,7 @@ class EDGAR_spatial(object):
         # 执行部门累加
         self.year_sectors_merge(self.all_prepare_working_rasters, temp_sectors, year)
 
-        print 'Total emission of %s saved!\n' % year
+        print('Total emission of {} saved!\n'.format(year) )
 
         # logger output
         self.ES_logger.info('All sectors merged!')
@@ -1423,13 +1418,13 @@ class EDGAR_spatial(object):
     def sector_emission_percentage(self, sector, year, output_sector_point):
         # 尝试列出当年总量的栅格
         # 这里要注意，总量栅格的名称在year_sectors_merge()中写死了
-        temp_year_total = arcpy.Raster('total_emission_%s' % year)
-        temp_sector_wildcard = '%s*%s*%s' % (self.background[1], sector, year)
+        temp_year_total = arcpy.Raster('total_emission_{}'.format(year))
+        temp_sector_wildcard = '{}*{}*{}'.format(self.background[1], sector, year)
         temp_sector_emission = arcpy.Raster(arcpy.ListRasters(wild_card=temp_sector_wildcard)[0])
 
         # 检查输入的部门栅格和总量栅格是否存在，如果不存在则报错并返回
         if not (arcpy.Exists(temp_sector_emission)) or not (arcpy.Exists(temp_year_total)):
-            print 'Sector_emission_percentage: Error! sector emission or year total emission raster does not exist.'
+            print('Sector_emission_percentage: Error! sector emission or year total emission raster does not exist.')
 
             # logger output
             self.ES_logger.error('sector emission or year total emission raster does not exist.')
@@ -1441,7 +1436,7 @@ class EDGAR_spatial(object):
         temp_output_weight_raster = temp_sector_emission / temp_year_total
 
         # logger output
-        self.ES_logger.debug('Sectoral raster weight calculated:%s' % sector)
+        self.ES_logger.debug('Sectoral raster weight calculated:{}'.format(sector) )
 
         # Mosaic 比例计算结果和0值背景
         # Mosaic 的结果仍然保存在temp_output_weight_raster中
@@ -1456,7 +1451,7 @@ class EDGAR_spatial(object):
         self.ES_logger.debug('Sectoral raster weight mosaic to 1800*3600.')
 
         # 保存栅格格式权重计算结果
-        temp_output_weight_raster_path = '%s_weight_raster_%s' % (sector, year)
+        temp_output_weight_raster_path = '{}_weight_raster_{}'.format(sector, year)
         temp_output_weight_raster.save(temp_output_weight_raster_path)
 
         #######################################################################
@@ -1478,7 +1473,7 @@ class EDGAR_spatial(object):
         #######################################################################
         #######################################################################
 
-        print 'Sector emission weight raster saved: %s\n' % sector
+        print('Sector emission weight raster saved: {}\n'.format(sector))
 
         # logger output
         self.ES_logger.info('Sector emission weight raster saved')
@@ -1491,7 +1486,7 @@ class EDGAR_spatial(object):
                                            'VALUE')
 
             # logger output
-            self.ES_logger.debug('Sector emission weight raster convert to point:%s' % sector)
+            self.ES_logger.debug('Sector emission weight raster convert to point:{}'.format(sector) )
 
             # rename value field
             arcpy.AlterField_management(output_sector_point, 'grid_code', new_field_name=sector)
@@ -1499,22 +1494,22 @@ class EDGAR_spatial(object):
             arcpy.DeleteField_management(output_sector_point, 'pointid')
 
             # logger output
-            self.ES_logger.debug('Sector emission weight point fields cleaned:%s' % sector)
+            self.ES_logger.debug('Sector emission weight point fields cleaned:{}'.format(sector) )
 
-            print 'Sector raster convert to point finished: %s of %s' % (sector, year)
+            print('Sector raster convert to point finished: {} of {}'.format(sector, year))
         except:
-            print 'Failed sector to point : %s' % sector
+            print('Failed sector to point : {}'.format(sector) )
 
             # logger output
-            self.ES_logger.error('Raster weight converting to point failed:%s' % sector)
+            self.ES_logger.error('Raster weight converting to point failed:{}'.format(sector) )
 
-            print arcpy.GetMessages()
+            print(arcpy.GetMessages())
 
     # 计算一年中所有部门的比例
     def year_sectors_emission_percentage(self, year):
         for s in tqdm(self.EDGAR_sectors):
             # 设定输出点数据的格式
-            output = '%s_weight_%s' % (s, year)
+            output = '{}_weight_{}'.format(s, year)
             self.sector_emission_percentage(s, year, output)
 
     # 实际执行用点提取栅格中数据的函数
@@ -1529,7 +1524,7 @@ class EDGAR_spatial(object):
                 interpolate_values='NONE',
                 add_attributes='VALUE_ONLY')
             # logger output
-            self.ES_logger.debug('Extract value in %s by %s' % (ExtractPoint, ValueRaster))
+            self.ES_logger.debug('Extract value in {} by {}'.format(ExtractPoint, ValueRaster))
 
             # 如果需要改名提取后的字段则执行改名操作
             if NewFieldName != None:
@@ -1538,14 +1533,14 @@ class EDGAR_spatial(object):
                     arcpy.AlterField_management(
                         in_table=outPoint, field=NewFieldName[0], new_field_name=NewFieldName[1])
                 # logger output
-                self.ES_logger.debug('Rename field %s to %s' % (NewFieldName[0], NewFieldName[1]))
+                self.ES_logger.debug('Rename field {} to {}'.format(NewFieldName[0], NewFieldName[1]))
         except:
-            print 'Error: Extract value to point failed!'
+            print('Error: Extract value to point failed!')
 
             # logger output
             self.ES_logger.error('Extract value to point failed!')
 
-            print arcpy.GetMessages()
+            print(arcpy.GetMessages())
 
     # 将同一年份的部门整合到同一个点数据图层中
     def year_weight_joint(self, year, sectors_list):
@@ -1560,22 +1555,22 @@ class EDGAR_spatial(object):
 
         # 初始化部分参数
         # 设定的保存的文件名的格式
-        output_sectoral_weights = 'sectoral_weights_%s' % year
+        output_sectoral_weights = 'sectoral_weights_{}'.format(year) 
         # 设定需要删除的临时生成文件列表
         delete_temporary = []
 
         # 筛选需要计算的部门
         # 列出提取值的栅格
         temp_wildcard_pair = zip(sectors_list, [str(year)] * len(sectors_list))
-        temp_wildcard = ['%s_weight_raster_%s' % i for i in temp_wildcard_pair]
+        temp_wildcard = ['{}_weight_raster_{}'.format(i[0],i[1]) for i in temp_wildcard_pair]
         temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard)
         temp_extract_raster = self.zip_sectors_rasters_to_dict(sectors_list, temp_working_rasters)
 
         # logger output
-        self.ES_logger.debug('Calculate weight in: %s' % str(temp_extract_raster))
+        self.ES_logger.debug('Calculate weight in: {}'.format(str(temp_extract_raster)))
 
         # 首先弹出一个部门作为合并的起始指针
-        temp_point_start_wildcard = '%s*%s' % (temp_extract_raster.popitem()[0], year)
+        temp_point_start_wildcard = '{}*{}'.format(temp_extract_raster.popitem()[0], year)
         # 这里的逻辑看似有点奇怪，其实并不奇怪。
         # 因为在sector_emission_percentage()中已经保存了完整的‘部门-年份’点数据
         # 所以可以用其中一个点数据作为提取的起点。
@@ -1583,7 +1578,7 @@ class EDGAR_spatial(object):
             wild_card=temp_point_start_wildcard, feature_type=Point).pop()
 
         # logger output
-        self.ES_logger.debug('First weight extract point:%s' % temp_point_start)
+        self.ES_logger.debug('First weight extract point:{}'.format(temp_point_start) )
 
         # 构造三个特殊变量来完成操作和循环的大和谐~、
         # 因为sa.ExtractValuesToPoint函数需要一个输出表，同时又不能覆盖替换另一个表
@@ -1626,9 +1621,9 @@ class EDGAR_spatial(object):
         # 这里应该加入合并单元格排放量的ETP过程。
         # 保存最后的输出结果
         # 应该用temp_point_output去提取total_emission_xxxx，生成结果。
-        temp_total_emission = 'total_emission_%s' % year
+        temp_total_emission = 'total_emission_{}'.format(year) 
         if arcpy.Exists(temp_total_emission):
-            print 'Saving sectoral weights and total emission...'
+            print('Saving sectoral weights and total emission...')
             self.do_ETP(
                 ExtractPoint=temp_point_output,
                 ValueRaster=temp_total_emission,
@@ -1636,9 +1631,9 @@ class EDGAR_spatial(object):
                 NewFieldName=('RASTERVALU', 'grid_total_emission'))
 
             # logger output
-            self.ES_logger.debug('Sectoral weights saved:%s' % output_sectoral_weights)
+            self.ES_logger.debug('Sectoral weights saved:{}'.format(output_sectoral_weights))
         else:
-            print 'Saving sectoral weights and total emission failed!'
+            print('Saving sectoral weights and total emission failed!')
 
             # logger output
             self.ES_logger.error(
@@ -1646,7 +1641,7 @@ class EDGAR_spatial(object):
             )
             return
 
-        print 'Sectoral weights finished:%s' % year
+        print('Sectoral weights finished:{}'.format(year) )
 
         # 删除临时生成的迭代变量
         self.delete_temporary_feature_classes(delete_temporary)
@@ -1656,9 +1651,9 @@ class EDGAR_spatial(object):
 
     # 导出不同年份最大权重栅格
     def max_weight_rasterize(self, year):
-        temp_point = 'sectoral_weights_%s' % year
-        save_raster_categories = 'main_emi_%s' % year
-        save_raster_weight = 'main_emi_weight_%s' % year
+        temp_point = 'sectoral_weights_{}'.format(year) 
+        save_raster_categories = 'main_emi_{}'.format(year) 
+        save_raster_weight = 'main_emi_weight_{}'.format(year)
 
         # 向point feature中添加列
         # 1.权重最大值 wmax
@@ -1684,21 +1679,21 @@ class EDGAR_spatial(object):
             arcpy.AddField_management(temp_point, temp_new_fields[3], 'DOUBLE', '#', '#', '#', '#',
                                       'NULLABLE', '#', '#')
             # logger output
-            self.ES_logger.debug('Max-Classes fields added:%s' % temp_new_fields)
+            self.ES_logger.debug('Max-Classes fields added:{}'.format(temp_new_fields))
         except:
-            print 'Add field to point failed in: %s' % temp_point
+            print('Add field to point failed in: {}'.format(temp_point) )
 
             # logger output
-            self.ES_logger.error('Add field to point failed in: %s' % temp_point)
+            self.ES_logger.error('Add field to point failed in: {}'.format(temp_point) )
 
-            print arcpy.GetMessages()
+            print(arcpy.GetMessages())
             return
 
         # 这里的year参数可能需要删除aa
         self.do_sector_max_extract(temp_point, temp_new_fields)
 
-        print 'Field calculate finished: %s in wraster' % year
-        print 'Add and calculate fields finished: %s' % temp_point
+        print('Field calculate finished: {} in wraster'.format(year))
+        print('Add and calculate fields finished: {}'.format(temp_point))
 
         # 用wraster列转栅格
         try:
@@ -1706,17 +1701,17 @@ class EDGAR_spatial(object):
                                            'MOST_FREQUENT', '#', '0.1')
             arcpy.PointToRaster_conversion(temp_point, 'wmax', save_raster_weight, 'MOST_FREQUENT',
                                            '#', '0.1')
-            print 'Create main emission raster: %s' % temp_point
+            print('Create main emission raster: {}'.format(temp_point))
 
             # logger output
-            self.ES_logger.debug('Max-Classes rasterize finished:%s' % year)
+            self.ES_logger.debug('Max-Classes rasterize finished:{}'.format(year))
         except:
-            print 'Create main emission raster field: %s' % temp_point
+            print('Create main emission raster field: {}'.format(temp_point))
 
             # logger output
-            self.ES_logger.error('Max-Classes rasterize failed:%s' % year)
+            self.ES_logger.error('Max-Classes rasterize failed:{}'.format(year))
 
-            print arcpy.GetMessages()
+            print(arcpy.GetMessages())
 
     # 用arcpy.da.cursor类进行操作
     # 在一行中同时实现找到最大值，最大值对应的id，最大值对应的colormap
@@ -1782,7 +1777,7 @@ class EDGAR_spatial(object):
 
         # 逐年处理
         for yr in range(start_year, end_year + 1):
-            self.print_start_year(yr)
+            self.print_start_yea((yr))
             self.year_total_sectors_merge(yr)
             self.year_sectors_emission_percentage(yr)
             self.year_weight_joint(yr, self.EDGAR_sectors)
@@ -1825,7 +1820,7 @@ class EDGAR_spatial(object):
         def __init__(self, outer_class, center_name='default_center'):
             # 需要检查是否输入EDGAR_spatial类,输入类的作用是保证共享的参数可以获取
             if not outer_class:
-                print 'ERROR: please input a EDGAR_spatial class.'
+                print('ERROR: please input a EDGAR_spatial class.')
 
                 return
 
@@ -1843,7 +1838,7 @@ class EDGAR_spatial(object):
         # 将emission_peak转换为center的元素
         def emission_peak_assembler(self, emission_peak):
             if not emission_peak:
-                print "Error: emission peak is empty."
+                print("Error: emission peak is empty.")
 
                 # logger output
                 self.outer_class.ES_logger.error('Emission peak is empty.')
@@ -1860,7 +1855,7 @@ class EDGAR_spatial(object):
             # 检查center_peaks_buffer是否存在
             # 存在时则将其按年份排序，再组成一个排序字典
             if not self.center_peaks_buffer:
-                print 'ERROR: center peak is empty, please run emission_center.emission_peak_assembler to add peaks.'
+                print('ERROR: center peak is empty, please run emission_center.emission_peak_assembler to add peaks.')
 
                 # logger output
                 self.outer_class.ES_logger.error('center peaks is empty.')
@@ -1878,7 +1873,7 @@ class EDGAR_spatial(object):
         # 不加修改的返回整个中心的数据内容
         def return_center(self):
             if not self.center_peaks:
-                print 'Center list has not been create in this work.'
+                print('Center list has not been create in this work.')
                 return
             else:
                 return self.center_peaks
@@ -1902,7 +1897,7 @@ class EDGAR_spatial(object):
     def return_emission_center(self, emission_center):
         # 检查输入的emission_center是否存在，不存在则直接返回
         if not emission_center:
-            print 'ERROR: emission center does not exist.'
+            print('ERROR: emission center does not exist.')
 
             # logger output
             self.ES_logger.error('input emission center does not exist.')
@@ -1915,14 +1910,14 @@ class EDGAR_spatial(object):
     def remove_peak(self, emission_center, year):
         # 检查输入的emission_center是否存在，不存在则直接返回
         if not emission_center:
-            print 'ERROR: emission center does not exist.'
+            print('ERROR: emission center does not exist.')
 
             # logger output
             self.ES_logger.error('input emission center does not exist.')
             return
 
         if not year or year > self.end_year or year < self.start_year:
-            print 'ERROR: removing peak failed, please assign a correct year to index the peak.'
+            print('ERROR: removing peak failed, please assign a correct year to index the peak.')
 
             # logger output
             self.ES_logger.error('Input year is empty.')
@@ -1934,7 +1929,7 @@ class EDGAR_spatial(object):
     def edit_peak(self, emission_center, emission_peak):
         # 检查输入的emission_center是否存在，不存在则直接返回
         if not emission_center:
-            print 'ERROR: emission center does not exist.'
+            print('ERROR: emission center does not exist.')
 
             # logger output
             self.ES_logger.error('input emission center does not exist.')
@@ -1964,7 +1959,7 @@ class EDGAR_spatial(object):
 
             return temp_peaks_list
         else:
-            print 'ERROR: input year error.'
+            print('ERROR: input year error.')
 
             # logger output
             self.ES_logger.error('input year error.')
@@ -1980,17 +1975,17 @@ class EDGAR_spatial(object):
                 temp_peak = str(
                     (temp_peak_lower_bound + temp_peak_upper_bound) / 2).replace('.', '')
             else:
-                print "Error: emission peak require maximum and minimum range."
+                print("Error: emission peak require maximum and minimum range.")
 
                 # logger output
                 self.ES_logger.error('Emission peak range error.')
                 return
         else:
-            print "Error: emission peak range require a tuple. Please check the input."
+            print("Error: emission peak range require a tuple. Please check the input.")
 
         # 年份变量检查
         if year < self.start_year or year > self.end_year:
-            print "Error: emission peak require a correct year."
+            print("Error: emission peak require a correct year.")
 
             # logger output
             self.ES_logger.error('Emission peak year error.')
@@ -2008,7 +2003,7 @@ class EDGAR_spatial(object):
     def create_center(self, outer_class, emission_center_name):
         # 检查排放中心的名称是否存在，不存在则直接返回
         if not emission_center_name or type(emission_center_name) != str:
-            print 'ERROR: center name is empty or not a string'
+            print('ERROR: center name is empty or not a string')
 
             # logger output
             self.ES_logger.error('center name type error.')
@@ -2021,7 +2016,7 @@ class EDGAR_spatial(object):
     def add_emission_peaks(self, emission_center, peaks_list):
         # 检查输入的emission_center是否存在，不存在则直接返回
         if not emission_center:
-            print 'ERROR: emission center does not exist.'
+            print('ERROR: emission center does not exist.')
 
             # logger output
             self.ES_logger.error('input emission center does not exist.')
@@ -2029,7 +2024,7 @@ class EDGAR_spatial(object):
 
         # 检查输入的peak_list是否存在，不存在则直接返回
         if not peaks_list:
-            print 'ERROR: peak list center does not exist.'
+            print('ERROR: peak list center does not exist.')
 
             # logger output
             self.ES_logger.error('input peak list does not exist.')
@@ -2042,7 +2037,7 @@ class EDGAR_spatial(object):
         elif type(peaks_list) == dict:
             emission_center.emission_peak_assembler(peaks_list)
         else:
-            print 'ERROR: emission peak type error, please run emission_peak function to generate a emission peak or a list of emission peaks.'
+            print('ERROR: emission peak type error, please run emission_peak function to generate a emission peak or a list of emission peaks.')
 
             # logger output
             self.ES_logger.error('emission peak type or structure error.')
@@ -2066,7 +2061,7 @@ class EDGAR_spatial(object):
                             saveMask=True):
         # 检查输入的emission_center_peak是否存在，不存在则直接返回
         if not emission_center_peak:
-            print 'ERROR: emission center does not exist.'
+            print('ERROR: emission center does not exist.')
 
             # logger output
             self.ES_logger.error('input emission center does not exist.')
@@ -2074,7 +2069,7 @@ class EDGAR_spatial(object):
 
         # 检查输入的栅格是否存在
         if not (arcpy.Exists(total_emission_raster)):
-            print 'Error: input raster does not exist'
+            print('Error: input raster does not exist')
 
             # logger output
             self.ES_logger.error('input raster not found.')
@@ -2082,7 +2077,7 @@ class EDGAR_spatial(object):
 
         # 检查输出路径是否存在
         if not output or type(output) != str:
-            print 'Error: output path does not exist'
+            print('Error: output path does not exist')
 
             # logger output
             self.ES_logger.error('output path does not exist.')
@@ -2090,7 +2085,7 @@ class EDGAR_spatial(object):
 
         # 将大于上界和小于下界范围的栅格设为nodata
         # Set local variables
-        whereClause = "VALUE < %s OR VALUE > %s" % (emission_center_peak['peak_min'],
+        whereClause = "VALUE < {} OR VALUE > {}".format(emission_center_peak['peak_min'],
                                                     emission_center_peak['peak_max'])
 
         # 利用setnull的结果作为提取中心的mask
@@ -2098,7 +2093,7 @@ class EDGAR_spatial(object):
         temp_SetNull = SetNull(total_emission_raster, total_emission_raster, whereClause)
 
         # 保存总量中心的raster
-        temp_center_output = 'center_%s_%s' % (emission_center_peak['peak_name'],
+        temp_center_output = 'center_{}_{}'.format(emission_center_peak['peak_name'],
                                                emission_center_peak['year'])
         temp_SetNull.save(temp_center_output)
 
@@ -2108,7 +2103,7 @@ class EDGAR_spatial(object):
         # 通过saveMask参数
         # 在这里控制保存一个提取结果的mask（掩膜）结果
         if saveMask:
-            temp_center_mask_path = 'center_mask_%s_%s' % (emission_center_peak['peak_name'],
+            temp_center_mask_path = 'center_mask_{}_{}'.format(emission_center_peak['peak_name'],
                                                            emission_center_peak['year'])
             temp_mask.save(temp_center_mask_path)
 
@@ -2122,7 +2117,7 @@ class EDGAR_spatial(object):
                                           saveMask=False):
         # 检查输入的emission_center_peak是否存在，不存在则直接返回
         if not emission_center_peak:
-            print 'ERROR: emission center does not exist.'
+            print('ERROR: emission center does not exist.')
 
             # logger output
             self.ES_logger.error('input emission center does not exist.')
@@ -2130,7 +2125,7 @@ class EDGAR_spatial(object):
 
         # 检查输入的栅格是否存在
         if not (arcpy.Exists(extract_raster)):
-            print 'Error: input raster does not exist'
+            print('Error: input raster does not exist')
 
             # logger output
             self.ES_logger.error('input raster not found.')
@@ -2138,7 +2133,7 @@ class EDGAR_spatial(object):
 
         # 检查输出路径是否存在
         if not output or type(output) != str:
-            print 'Error: output path does not exist'
+            print('Error: output path does not exist')
 
             # logger output
             self.ES_logger.error('output path does not exist.')
@@ -2146,7 +2141,7 @@ class EDGAR_spatial(object):
 
         # 将大于上界和小于下界范围的栅格设为nodata
         # Set local variables
-        whereClause = "VALUE < %s OR VALUE > %s" % (emission_center_peak['peak_min'],
+        whereClause = "VALUE < {} OR VALUE > {}".format(emission_center_peak['peak_min'],
                                                     emission_center_peak['peak_max'])
 
         # 利用setnull的结果作为提取中心的mask
@@ -2157,7 +2152,7 @@ class EDGAR_spatial(object):
         # 通过saveMask参数
         # 在这里控制保存一个提取结果的mask（掩膜）结果
         if saveMask:
-            temp_center_mask_path = 'center_mask_%s_%s' % (emission_center_peak['peak_name'],
+            temp_center_mask_path = 'center_mask_{}_{}'.format(emission_center_peak['peak_name'],
                                                            emission_center_peak['year'])
             temp_mask.save(temp_center_mask_path)
 
@@ -2168,7 +2163,7 @@ class EDGAR_spatial(object):
     def extract_raster_center_basic_info(self, emission_center, isLog):
         # 检查输入的emission_center是否存在，不存在则直接返回
         if not emission_center:
-            print 'ERROR: emission center does not exist.'
+            print('ERROR: emission center does not exist.')
 
             # logger output
             self.ES_logger.error('input emission center does not exist.')
@@ -2187,11 +2182,11 @@ class EDGAR_spatial(object):
         for yr in tqdm(range(temp_start_year, temp_end_year + 1)):
             # 生成total_emission
             if bool(isLog) == True:
-                temp_total_emission = 'total_emission_%s_log' % yr
+                temp_total_emission = 'total_emission_{}_log'.format(yr)
             elif bool(isLog) == False:
-                temp_total_emission = 'total_emission_%s' % yr
+                temp_total_emission = 'total_emission_{}'.format(yr)
             else:
-                print 'Error: Please set the isLog flag.'
+                print('Error: Please set the isLog flag.')
 
                 # logger output
                 self.ES_logger.error('isLog flag check failed.')
@@ -2200,27 +2195,27 @@ class EDGAR_spatial(object):
             # 检查输入的栅格是否存在
             # 检查total_emission
             if not (arcpy.Exists(temp_total_emission)):
-                print 'Error: input total emission raster does not exist'
+                print('Error: input total emission raster does not exist')
 
                 # logger output
                 self.ES_logger.error('input total emission not found.')
                 return
 
             # 检查对应年份的主要排放部门栅格
-            temp_main_sector = 'main_emi_%s' % yr
+            temp_main_sector = 'main_emi_{}'.format(yr)
 
             if not (arcpy.Exists(temp_main_sector)):
-                print 'Error: input total emission raster does not exist'
+                print('Error: input total emission raster does not exist')
 
                 # logger output
                 self.ES_logger.error('input total emission not found.')
                 return
 
             # 检查对应年份的主要排放部门权重栅格
-            temp_main_sector_weight = 'main_emi_weight_%s' % yr
+            temp_main_sector_weight = 'main_emi_weight_{}'.format(yr)
 
             if not (arcpy.Exists(temp_main_sector_weight)):
-                print 'Error: input total emission weight raster does not exist'
+                print('Error: input total emission weight raster does not exist')
 
                 # logger output
                 self.ES_logger.error('input total emission not found.')
@@ -2231,7 +2226,7 @@ class EDGAR_spatial(object):
 
             # 提取中心的总排放属性
             # set the output
-            temp_center_path = 'center_%s_%s' % (temp_center_peak_name, yr)
+            temp_center_path = 'center_{}_{}'.format(temp_center_peak_name, yr)
 
             temp_mask = self.do_make_center_mask(
                 emission_center_peak=temp_center_peak,
@@ -2240,12 +2235,12 @@ class EDGAR_spatial(object):
                 saveMask=True)
 
             # 提取中心的最大排放部门类型属性
-            temp_center_main_output = 'center_main_sector_%s_%s' % (temp_center_peak_name, yr)
+            temp_center_main_output = 'center_main_sector_{}_{}'.format(temp_center_peak_name, yr)
             temp_center_main = arcpy.Raster(temp_main_sector) * temp_mask
             temp_center_main.save(temp_center_main_output)
 
             # 提取中心的最大排放部门占比属性
-            temp_center_main_weight_output = 'center_main_sector_weight_%s_%s' % (
+            temp_center_main_weight_output = 'center_main_sector_weight_{}_{}'.format(
                 temp_center_peak_name, yr)
 
             temp_center_main_weight = arcpy.Raster(temp_main_sector_weight) * temp_mask
@@ -2260,7 +2255,7 @@ class EDGAR_spatial(object):
                              log_calculate_flag=False,
                              total_emission_field=None):
         if not emission_center_list or not inPoint or not log_emission_field or not output_field_name or not year:
-            print 'ERROR: input arguments not exist, please check the inputs.'
+            print('ERROR: input arguments not exist, please check the inputs.')
 
             # logger output
             self.ES_logger.error('some input arguments do not exist.')
@@ -2268,7 +2263,7 @@ class EDGAR_spatial(object):
 
         if log_calculate_flag:
             if not total_emission_field:
-                print 'ERROR: total emission field does not exist, please check the input.'
+                print('ERROR: total emission field does not exist, please check the input.')
 
                 # logger output
                 self.ES_logger.error('total emission field does not exist.')
@@ -2319,14 +2314,14 @@ class EDGAR_spatial(object):
                                output_field_name, year):
         # 检查输入是否为空。为空则直接返回。
         if not inPoint or not log_emission_field or not output_field_name or not year:
-            print 'ERROR: input inPoint or output_field_name is empty. Please check the inputs.'
+            print('ERROR: input inPoint or output_field_name is empty. Please check the inputs.')
 
             # logger output
             self.ES_logger.error('point center assign input arguments were empty.')
             return
 
         if emission_center_list == []:
-            print 'WARNING: emission_center_list is empty.'
+            print('WARNING: emission_center_list is empty.')
 
             # logger output
             self.ES_logger.error('emission center list is empty.')
@@ -2374,7 +2369,7 @@ class EDGAR_spatial(object):
     def extract_raster_categories_center(self, emission_center):
         # 检查输入的emission_center是否存在，不存在则直接返回
         if not emission_center:
-            print 'ERROR: emission center does not exist.'
+            print('ERROR: emission center does not exist.')
 
             # logger output
             self.ES_logger.error('input emission center does not exist.')
@@ -2395,27 +2390,27 @@ class EDGAR_spatial(object):
             temp_center_peak_name = temp_center_peak['peak_name']
 
             # 检查输入的mask栅格是否存在
-            temp_center_mask = 'center_mask_%s_%s' % (temp_center_peak_name, yr)
+            temp_center_mask = 'center_mask_{}_{}'.format(temp_center_peak_name, yr)
 
             if not (arcpy.Exists(temp_center_mask)):
-                print 'Error: input center mask raster does not exist'
+                print('Error: input center mask raster does not exist')
 
                 # logger output
                 self.ES_logger.error('input mask raster not found.')
                 return
 
             # 检查对应年份的待提取的排放分类栅格是否存在
-            temp_categories_raster = 'sorted_categories_%s' % yr
+            temp_categories_raster = 'sorted_categories_{}'.format(yr)
 
             if not (arcpy.Exists(temp_categories_raster)):
-                print 'Error: input categories raster does not exist'
+                print('Error: input categories raster does not exist')
 
                 # logger output
                 self.ES_logger.error('input categories raster not found.')
                 return
 
             # 提取分类栅格的中心
-            temp_categories_center_output = 'sorted_categories_center_%s_%s' % (
+            temp_categories_center_output = 'sorted_categories_center_{}_{}'.format(
                 temp_center_peak_name, yr)
 
             temp_categories_center = arcpy.Raster(temp_categories_raster) * arcpy.Raster(
@@ -2427,7 +2422,7 @@ class EDGAR_spatial(object):
     # 根据提供的排放中心生成该中心的全部排放的分布
     def generate_center_geographical_extend(self, emission_center_list, background_raster):
         if not emission_center_list or not background_raster:
-            print 'ERROR: input argument is empty, please check the input'
+            print('ERROR: input argument is empty, please check the input')
 
             # logger output
             self.ES_logger.error('raster list is empty')
@@ -2438,7 +2433,7 @@ class EDGAR_spatial(object):
             # 逐个处理传入的排放中心
             for emission_center in emission_center_list:
                 # 生成输出栅格的文件名
-                temp_output_name_fmt = '%s_geographical_extend' % emission_center.center_name
+                temp_output_name_fmt = '{}_geographical_extend'.format(emission_center.center_name)
 
                 # 如果看不懂下面的python解包操作，就看注释里的这段代码。
                 # If developers were confused about the following unpack list, please read the code block in following comments.
@@ -2448,7 +2443,7 @@ class EDGAR_spatial(object):
 
                 # 列出该中心的所有栅格
                 temp_raster_list = [
-                    'center_mask_%s_%s' % (peak['peak_name'], year)
+                    'center_mask_{}_{}'.format(peak['peak_name'], year)
                     for (year, peak) in emission_center.return_center().items()
                 ]
 
@@ -2459,10 +2454,10 @@ class EDGAR_spatial(object):
                     output_name_fmt=temp_output_name_fmt)
         else:    # 如果只是传入单一中心，且没有用列表包括该中心
             # 生成输出栅格的文件名
-            temp_output_name_fmt = '%s_geographical_extend' % emission_center_list.center_name
+            temp_output_name_fmt = '{}_geographical_extend'.format(emission_center_list.center_name)
             # 列出该中心的所有栅格
             temp_raster_list = [
-                'center_mask_%s_%s' % (peak['peak_name'], year)
+                'center_mask_{}_{}'.format(peak['peak_name'], year)
                 for (year, peak) in emission_center_list.return_center().items()
             ]
             # 调用实际执行的do_generate_extend函数
@@ -2478,7 +2473,7 @@ class EDGAR_spatial(object):
     def do_generate_center_geographical_extend(self,
                                         raster_list,
                                         background_raster,
-                                        output_name_fmt='extend_%s'):
+                                        output_name_fmt='extend_{}'):
         # 测试生成的文件名是否可用
         # 列出待计算栅格的列表
         temp_working_rasters = self.do_arcpy_list_raster_list(raster_list)
@@ -2488,7 +2483,7 @@ class EDGAR_spatial(object):
 
         # 第一步：为栅格mosaic零值背景
         for raster in tqdm(temp_working_rasters):
-            temp_new_mosaic = 'temp_new_mosaic_%s' % raster
+            temp_new_mosaic = 'temp_new_mosaic_{}'.format(raster)
             
             self.mosaic_background_to_raster(inRaster=raster, background=background_raster,output_Raster=temp_new_mosaic)
 
@@ -2513,14 +2508,13 @@ class EDGAR_spatial(object):
         # 保存生成的两个结果
         # 生成待统计的栅格名称
         try:
-            temp_save_extend = output_name_fmt % 'mask'
-            temp_save_null_extend = output_name_fmt % 'null_mask'
+            temp_save_extend = output_name_fmt.format('mask')
+            temp_save_null_extend = output_name_fmt.format('null_mask')
         except Exception as e:
-            print 'background formatting failed.'
+            print('background formatting failed.')
 
             # logger output
-            self.ES_logger.error('save raster name formatting failed. raster name formate was %s.' %
-                                 output_name_fmt)
+            self.ES_logger.error('save raster name formatting failed. raster name formate was {}.'.format(output_name_fmt))
 
             return
 
@@ -2551,13 +2545,13 @@ class EDGAR_spatial(object):
                     (temp_center_lower_bound + temp_center_upper_bound) / 2).replace('.', '')
             else:
 
-                print "Error: center range require a start year and a end year."
+                print("Error: center range require a start year and a end year.")
 
                 # logger output
                 self.ES_logger.error('Center range year error.')
                 return
         else:
-            print "Error: center range require a tuple. Please check the input."
+            print("Error: center range require a tuple. Please check the input.")
 
             # logger output
             self.ES_logger.error('Center range type error.')
@@ -2566,27 +2560,27 @@ class EDGAR_spatial(object):
         # 检查输入的栅格是否存在
         # 检查total_emission
         if not (arcpy.Exists(total_emission_raster)):
-            print 'Error: input total emission raster does not exist'
+            print('Error: input total emission raster does not exist')
 
             # logger output
             self.ES_logger.error('input total emission not found.')
             return
 
         # 检查对应年份的主要排放部门栅格
-        temp_main_sector = 'main_emi_%s' % year
+        temp_main_sector = 'main_emi_{}'.format(year)
 
         if not (arcpy.Exists(temp_main_sector)):
-            print 'Error: input total emission raster does not exist'
+            print('Error: input total emission raster does not exist')
 
             # logger output
             self.ES_logger.error('input total emission not found.')
             return
 
         # 检查对应年份的主要排放部门权重栅格
-        temp_main_sector_weight = 'main_emi_weight_%s' % year
+        temp_main_sector_weight = 'main_emi_weight_{}'.format(year)
 
         if not (arcpy.Exists(temp_main_sector_weight)):
-            print 'Error: input total emission weight raster does not exist'
+            print('Error: input total emission weight raster does not exist')
 
             # logger output
             self.ES_logger.error('input total emission not found.')
@@ -2594,14 +2588,14 @@ class EDGAR_spatial(object):
 
         # 将大于上界和小于下界范围的栅格设为nodata
         # Set local variables
-        whereClause = "VALUE < %s OR VALUE > %s" % (temp_center_lower_bound,
+        whereClause = "VALUE < {} OR VALUE > {}".format(temp_center_lower_bound,
                                                     temp_center_upper_bound)
 
         # Execute SetNull
         outSetNull = SetNull(total_emission_raster, total_emission_raster, whereClause)
 
         # Save the output
-        temp_center_path = 'center_%s_%s' % (temp_center, year)
+        temp_center_path = 'center_{}_{}'.format(temp_center, year)
         outSetNull.save(temp_center_path)
 
         # 防止BUG删除outSetNull
@@ -2612,7 +2606,7 @@ class EDGAR_spatial(object):
         outCon = Con(temp_center_path, 1, '')
 
         # Save the outputs
-        temp_center_mask_path = 'center_mask_%s_%s' % (temp_center, year)
+        temp_center_mask_path = 'center_mask_{}_{}'.format(temp_center, year)
         outCon.save(temp_center_mask_path)
 
         # 防止BUG删除outCon
@@ -2623,7 +2617,7 @@ class EDGAR_spatial(object):
             arcpy.Raster(temp_main_sector)
 
         # Save the output
-        temp_center_main = 'center_main_sector_%s_%s' % (temp_center, year)
+        temp_center_main = 'center_main_sector_{}_{}'.format(temp_center, year)
         outMain.save(temp_center_main)
 
         # 防止BUG删除outCon
@@ -2633,7 +2627,7 @@ class EDGAR_spatial(object):
         outMainWeight = arcpy.Raster(temp_center_mask_path) * arcpy.Raster(temp_main_sector_weight)
 
         # Save the output
-        temp_center_main_weight = 'center_main_sector_weight_%s_%s' % (temp_center, year)
+        temp_center_main_weight = 'center_main_sector_weight_{}_{}'.format(temp_center, year)
         outMainWeight.save(temp_center_main_weight)
 
         del outMainWeight
@@ -2647,13 +2641,13 @@ class EDGAR_spatial(object):
 
         # 检查输入年份变量参数是否合规
         if (type(year_range[0]) != int) or (type(year_range[1]) != int):
-            print 'Error! Processing starting year and ending year must be int value'
+            print('Error! Processing starting year and ending year must be int value')
             self.ES_logger.info('Year setting type error.')
             self.ES_logger.error('Year setting error!')
             return
         elif min(year_range) < self.__default_start_year or max(
                 year_range) > self.__default_end_year:
-            print 'Error! Processing year range out of data support! The year must contain in 1970 to 2018'
+            print('Error! Processing year range out of data support! The year must contain in 1970 to 2018')
             self.ES_logger.info('Year settings are out of range.')
             self.ES_logger.error('Year setting error!')
             return
@@ -2665,14 +2659,14 @@ class EDGAR_spatial(object):
         # 需要区分栅格中的总量数据是否已经进行了对数换算
         if bool(isLog) == True:
             temp_wild_card = [
-                'total_emission_%s_log' % s for s in range(temp_start_year, temp_end_year + 1)
+                'total_emission_{}_log'.format( s ) for s in range(temp_start_year, temp_end_year + 1)
             ]
         elif bool(isLog) == False:
             temp_wild_card = [
-                'total_emission_%s' % s for s in range(temp_start_year, temp_end_year + 1)
+                'total_emission_{}'.format(s)for s in range(temp_start_year, temp_end_year + 1)
             ]
         else:
-            print 'Error: Please set the isLog flag.'
+            print('Error: Please set the isLog flag.')
 
             # logger output
             self.ES_logger.error('isLog flag check failed.')
@@ -2746,21 +2740,21 @@ class EDGAR_spatial(object):
             # del row
 
         # logger output
-        self.ES_logger.debug('Convert %s\'s statistics table to csv file:%s' % (year, temp_outPath))
+        self.ES_logger.debug('Convert {}\'s statistics table to csv file:{}'.format(year, temp_outPath))
 
     def zonal_center_info_statistics(self,
                                      emission_center,
                                      inZone,
                                      zoneField,
                                      outPath,
-                                     inRaster_fmt='center_%s_%s',
+                                     inRaster_fmt='center_{}_{}',
                                      do_tabulate_area=False):
         # 获得保存路径
         temp_out_csv_path = os.path.abspath(outPath)
 
         # 检查输入的分区是否存在
         if not (arcpy.Exists(inZone)):
-            print 'Error: inZone not found.'
+            print('Error: inZone not found.')
 
             # logger output
             self.ES_logger.error('inZone does not exist.')
@@ -2771,7 +2765,7 @@ class EDGAR_spatial(object):
         inZone_prj = arcpy.Describe(inZone).spatialReference.factoryCode
 
         if not emission_center:
-            print 'ERROR: input emission center does not exist.'
+            print('ERROR: input emission center does not exist.')
 
             # logger output
             self.ES_logger.error('input emission center does not exist.')
@@ -2780,24 +2774,24 @@ class EDGAR_spatial(object):
         for peak in tqdm(emission_center.return_center().values()):
             # 生成待统计的栅格名称
             try:
-                temp_inRaster = inRaster_fmt % (peak['peak_name'], peak['year'])
+                temp_inRaster = inRaster_fmt.format(peak['peak_name'], peak['year'])
             except Exception as e:
                 # logger output
                 self.ES_logger.error(
-                    'temp raster name formatting failed. raster name formate was %s.' % inRaster_fmt)
+                    'temp raster name formatting failed. raster name formate was {}.'.format(inRaster_fmt))
 
                 return
 
             if not (arcpy.Exists(temp_inRaster)):
-                print 'Error: inRaster not found. inRaster name: %s' % temp_inRaster
+                print('Error: inRaster not found. inRaster name: {}'.format(temp_inRaster))
 
                 # logger output
-                self.ES_logger.error('inRaster does not exist. inRaster name: %s' % temp_inRaster)
+                self.ES_logger.error('inRaster does not exist. inRaster name: {}'.format(temp_inRaster))
 
                 return
 
             if arcpy.Describe(temp_inRaster).spatialReference.factoryCode != inZone_prj:
-                print 'ERROR: inzone and raster spatial reference does not same!'
+                print('ERROR: inzone and raster spatial reference does not same!')
 
                 # logger output
                 self.ES_logger.error('Spatial reference was different.')
@@ -2813,14 +2807,14 @@ class EDGAR_spatial(object):
                 outTable=temp_ZST_outTable)
 
             # logger output
-            self.ES_logger.debug('Zonal statistics finished:%s' % temp_inRaster)
+            self.ES_logger.debug('Zonal statistics finished:{}'.format(temp_inRaster))
 
             temp_ZST_outCsv = os.path.join(temp_out_csv_path, temp_ZST_outTable + '.csv')
             self.do_zonal_table_to_csv(
                 table=temp_ZST_outTable, year=peak['year'], outPath=temp_ZST_outCsv)
 
             # logger output
-            self.ES_logger.debug('Zonal statistics convert to csv. Csv name: %s' % temp_ZST_outCsv)
+            self.ES_logger.debug('Zonal statistics convert to csv. Csv name: {}'.format(temp_ZST_outCsv))
 
             # 统计Tabulate_area
             if do_tabulate_area:
@@ -2833,29 +2827,28 @@ class EDGAR_spatial(object):
                     out_table=temp_TA_outTable)
 
                 # logger output
-                self.ES_logger.debug('Tabulate area finished:%s' % temp_inRaster)
+                self.ES_logger.debug('Tabulate area finished:{}'.format(temp_inRaster))
 
                 temp_TA_outCsv = os.path.join(temp_out_csv_path, temp_TA_outTable + '.csv')
                 self.do_zonal_table_to_csv(
                     table=temp_TA_outTable, year=peak['year'], outPath=temp_TA_outCsv)
 
                 # logger output
-                self.ES_logger.debug('Zonal statistics convert to csv. Csv name: %s' %
-                                     temp_TA_outCsv)
+                self.ES_logger.debug('Zonal statistics convert to csv. Csv name: {}'.format(temp_TA_outCsv))
 
     def zonal_center_merge_info_statistics(self,
                                            emission_center,
                                            inZone,
                                            zoneField,
                                            outPath,
-                                           inRaster_fmt='center_merge_%s',
+                                           inRaster_fmt='center_merge_{}',
                                            do_tabluate_area=False):
         # 获得保存路径
         temp_out_csv_path = os.path.abspath(outPath)
 
         # 检查输入的分区是否存在
         if not (arcpy.Exists(inZone)):
-            print 'Error: inZone not found.'
+            print('Error: inZone not found.')
 
             # logger output
             self.ES_logger.error('inZone does not exist.')
@@ -2866,7 +2859,7 @@ class EDGAR_spatial(object):
         inZone_prj = arcpy.Describe(inZone).spatialReference.factoryCode
 
         if not emission_center:
-            print 'ERROR: input emission center does not exist.'
+            print('ERROR: input emission center does not exist.')
 
             # logger output
             self.ES_logger.error('input emission center does not exist.')
@@ -2875,24 +2868,24 @@ class EDGAR_spatial(object):
         for year in tqdm(emission_center.return_center().keys()):
             # 生成待统计的栅格名称
             try:
-                temp_inRaster = inRaster_fmt % year
+                temp_inRaster = inRaster_fmt.format(year)
             except Exception as e:
                 # logger output
                 self.ES_logger.error(
-                    'temp raster name formatting failed. raster name formate was %s.' % inRaster_fmt)
+                    'temp raster name formatting failed. raster name formate was {}.'.format(inRaster_fmt))
 
                 return
 
             if not (arcpy.Exists(temp_inRaster)):
-                print 'Error: inRaster not found. inRaster name: %s' % temp_inRaster
+                print('Error: inRaster not found. inRaster name: {}'.format(temp_inRaster))
 
                 # logger output
-                self.ES_logger.error('inRaster does not exist. inRaster name: %s' % temp_inRaster)
+                self.ES_logger.error('inRaster does not exist. inRaster name: {}'.format(temp_inRaster))
 
                 return
 
             if arcpy.Describe(temp_inRaster).spatialReference.factoryCode != inZone_prj:
-                print 'ERROR: inzone and raster spatial reference does not same!'
+                print('ERROR: inzone and raster spatial reference does not same!')
 
                 # logger output
                 self.ES_logger.error('Spatial reference was different.')
@@ -2908,13 +2901,13 @@ class EDGAR_spatial(object):
                 outTable=temp_ZST_outTable)
 
             # logger output
-            self.ES_logger.debug('Zonal statistics finished:%s' % temp_inRaster)
+            self.ES_logger.debug('Zonal statistics finished:{}'.format(temp_inRaster))
 
             temp_ZST_outCsv = os.path.join(temp_out_csv_path, temp_ZST_outTable + '.csv')
             self.do_zonal_table_to_csv(table=temp_ZST_outTable, year=year, outPath=temp_ZST_outCsv)
 
             # logger output
-            self.ES_logger.debug('Zonal statistics convert to csv. Csv name: %s' % temp_ZST_outCsv)
+            self.ES_logger.debug('Zonal statistics convert to csv. Csv name: {}'.format(temp_ZST_outCsv))
 
             # 统计Tabulate_area
             if do_tabluate_area:
@@ -2927,15 +2920,14 @@ class EDGAR_spatial(object):
                     out_table=temp_TA_outTable)
 
                 # logger output
-                self.ES_logger.debug('Tabulate area finished:%s' % temp_inRaster)
+                self.ES_logger.debug('Tabulate area finished:{}'.format(temp_inRaster))
 
                 temp_TA_outCsv = os.path.join(temp_out_csv_path, temp_TA_outTable + '.csv')
                 self.do_zonal_table_to_csv(
                     table=temp_TA_outTable, year=year, outPath=temp_TA_outCsv)
 
                 # logger output
-                self.ES_logger.debug('Zonal statistics convert to csv. Csv name: %s' %
-                                     temp_TA_outCsv)
+                self.ES_logger.debug('Zonal statistics convert to csv. Csv name: {}'.format(temp_TA_outCsv))
 
     # 这里的year_range和center_range都是一个二元元组
     def zonal_center_basic_info_statistics(self, emission_center, inZone, outPath):
@@ -2944,7 +2936,7 @@ class EDGAR_spatial(object):
 
         # 检查输入的分区是否存在
         if not (arcpy.Exists(inZone)):
-            print 'Error: inZone not found.'
+            print('Error: inZone not found.')
 
             # logger output
             self.ES_logger.error('inZone does not exist.')
@@ -2952,7 +2944,7 @@ class EDGAR_spatial(object):
             return
 
         if not emission_center:
-            print 'ERROR: input emission center does not exist.'
+            print('ERROR: input emission center does not exist.')
 
             # logger output
             self.ES_logger.error('input emission center does not exist.')
@@ -2961,15 +2953,14 @@ class EDGAR_spatial(object):
         # 逐年处理
         for peak in emission_center.return_center().values():
             # 生成总量中心的栅格名称
-            temp_emission_inRaster = 'center_%s_%s' % (peak['peak_name'], peak['year'])
+            temp_emission_inRaster = 'center_{}_{}'.format(peak['peak_name'], peak['year'])
 
             # 检查输入的待统计值
             if not (arcpy.Exists(temp_emission_inRaster)):
-                print 'Error: inRaster not found. inRaster name: %s' % temp_emission_inRaster
+                print('Error: inRaster not found. inRaster name: {}'.format(temp_emission_inRaster))
 
                 # logger output
-                self.ES_logger.error('inRaster does not exist. inRaster name: %s' %
-                                     temp_emission_inRaster)
+                self.ES_logger.error('inRaster does not exist. inRaster name: {}'.format(temp_emission_inRaster))
 
                 return
 
@@ -2981,7 +2972,7 @@ class EDGAR_spatial(object):
                 inValueRaster=temp_emission_inRaster,
                 outTable=temp_outTable)
             # logger output
-            self.ES_logger.debug('Zonal statistics finished:%s' % temp_emission_inRaster)
+            self.ES_logger.debug('Zonal statistics finished:{}'.format(temp_emission_inRaster))
 
             temp_outCsv = os.path.join(temp_out_csv_path, temp_emission_inRaster + '.csv')
             self.do_zonal_table_to_csv(table=temp_outTable, year=peak['year'], outPath=temp_outCsv)
@@ -2990,15 +2981,14 @@ class EDGAR_spatial(object):
             self.ES_logger.debug('Zonal statistics convert to csv.')
 
             # 生成部门中心的栅格名称
-            temp_main_inRaster = 'center_main_sector_%s_%s' % (peak['peak_name'], peak['year'])
+            temp_main_inRaster = 'center_main_sector_{}_{}'.format(peak['peak_name'], peak['year'])
 
             # 检查输入的待统计值
             if not (arcpy.Exists(temp_main_inRaster)):
-                print 'Error: inRaster not found. inRaster name: %s' % temp_main_inRaster
+                print('Error: inRaster not found. inRaster name: {}'.format(temp_main_inRaster))
 
                 # logger output
-                self.ES_logger.error('inRaster does not exist. inRaster name: %s' %
-                                     temp_main_inRaster)
+                self.ES_logger.error('inRaster does not exist. inRaster name: {}'.format(temp_main_inRaster))
 
                 return
 
@@ -3010,7 +3000,7 @@ class EDGAR_spatial(object):
                 inValueRaster=temp_main_inRaster,
                 outTable=temp_outTable)
             # logger output
-            self.ES_logger.debug('Zonal statistics finished:%s' % temp_main_inRaster)
+            self.ES_logger.debug('Zonal statistics finished:{}'.format(temp_main_inRaster))
 
             temp_outCsv = os.path.join(temp_out_csv_path, temp_main_inRaster + '.csv')
             self.do_zonal_table_to_csv(table=temp_outTable, year=peak['year'], outPath=temp_outCsv)
@@ -3019,15 +3009,14 @@ class EDGAR_spatial(object):
             self.ES_logger.debug('Zonal statistics convert to csv.')
 
             # 生成中心权重的栅格名称
-            temp_main_weight_inRaster = 'center_main_sector_weight_%s_%s' % (peak['peak_name'],
+            temp_main_weight_inRaster = 'center_main_sector_weight_{}_{}'.format(peak['peak_name'],
                                                                              peak['year'])
             # 检查输入的待统计值
             if not (arcpy.Exists(temp_main_weight_inRaster)):
-                print 'Error: inRaster not found. inRaster name: %s' % temp_main_weight_inRaster
+                print('Error: inRaster not found. inRaster name: {}'.format(temp_main_weight_inRaster))
 
                 # logger output
-                self.ES_logger.error('inRaster does not exist. inRaster name: %s' %
-                                     temp_main_weight_inRaster)
+                self.ES_logger.error('inRaster does not exist. inRaster name: {}'.format(temp_main_weight_inRaster))
                 return
 
             temp_outTable = 'table_' + temp_main_weight_inRaster
@@ -3038,7 +3027,7 @@ class EDGAR_spatial(object):
                 inValueRaster=temp_main_weight_inRaster,
                 outTable=temp_outTable)
             # logger output
-            self.ES_logger.debug('Zonal statistics finished:%s' % temp_main_weight_inRaster)
+            self.ES_logger.debug('Zonal statistics finished:{}'.format(temp_main_weight_inRaster))
 
             temp_outCsv = os.path.join(temp_out_csv_path, temp_main_weight_inRaster + '.csv')
             self.do_zonal_table_to_csv(table=temp_outTable, year=peak['year'], outPath=temp_outCsv)
@@ -3052,7 +3041,7 @@ class EDGAR_spatial(object):
 
         # 检查输入的分区是否存在
         if not (arcpy.Exists(inZone)):
-            print 'Error: inZone not found.'
+            print('Error: inZone not found.')
 
             # logger output
             self.ES_logger.error('inZone does not exist.')
@@ -3060,7 +3049,7 @@ class EDGAR_spatial(object):
             return
 
         if not emission_center:
-            print 'ERROR: input emission center does not exist.'
+            print('ERROR: input emission center does not exist.')
 
             # logger output
             self.ES_logger.error('input emission center does not exist.')
@@ -3069,16 +3058,15 @@ class EDGAR_spatial(object):
         # 逐年处理
         for peak in emission_center.return_center().values():
             # 生成分类中心的栅格名称
-            temp_categories_inRaster = 'sorted_categories_center_%s_%s' % (peak['peak_name'],
+            temp_categories_inRaster = 'sorted_categories_center_{}_{}'.format(peak['peak_name'],
                                                                            peak['year'])
 
             # 检查输入的待统计值
             if not (arcpy.Exists(temp_categories_inRaster)):
-                print 'Error: inRaster not found. inRaster name: %s' % temp_categories_inRaster
+                print('Error: inRaster not found. inRaster name: {}'.format(temp_categories_inRaster))
 
                 # logger output
-                self.ES_logger.error('inRaster does not exist. inRaster name: %s' %
-                                     temp_categories_inRaster)
+                self.ES_logger.error('inRaster does not exist. inRaster name: {}'.format(temp_categories_inRaster))
 
                 return
 
@@ -3090,7 +3078,7 @@ class EDGAR_spatial(object):
                 inValueRaster=temp_categories_inRaster,
                 outTable=temp_outTable)
             # logger output
-            self.ES_logger.debug('Zonal statistics finished:%s' % temp_categories_inRaster)
+            self.ES_logger.debug('Zonal statistics finished:{}'.format(temp_categories_inRaster))
 
             temp_outCsv = os.path.join(temp_out_csv_path, temp_categories_inRaster + '.csv')
             self.do_zonal_table_to_csv(table=temp_outTable, year=peak['year'], outPath=temp_outCsv)
@@ -3104,7 +3092,7 @@ class EDGAR_spatial(object):
 
         # 检查输入的分区是否存在
         if not (arcpy.Exists(inZone)):
-            print 'Error: inZone not found.'
+            print('Error: inZone not found.')
 
             # logger output
             self.ES_logger.error('inZone does not exist.')
@@ -3116,10 +3104,10 @@ class EDGAR_spatial(object):
 
         for yr in tqdm(range(min(year_range), max(year_range) + 1)):
             # 生成中心的栅格名称
-            temp_main_inRaster = 'center_main_sector_%s_%s' % (temp_center, yr)
+            temp_main_inRaster = 'center_main_sector_{}_{}'.format(temp_center, yr)
             # 检查输入的待统计值
             if not (arcpy.Exists(temp_main_inRaster)):
-                print 'Error: inRaster not found.'
+                print('Error: inRaster not found.')
 
                 # logger output
                 self.ES_logger.error('inRaster does not exist.')
@@ -3135,7 +3123,7 @@ class EDGAR_spatial(object):
                 inValueRaster=temp_main_inRaster,
                 outTable=temp_outTable)
             # logger output
-            self.ES_logger.debug('Zonal statistics finished:%s' % temp_main_inRaster)
+            self.ES_logger.debug('Zonal statistics finished:{}'.format(temp_main_inRaster))
 
             temp_outCsv = os.path.join(temp_out_csv_path, temp_main_inRaster + '.csv')
             self.do_zonal_table_to_csv(table=temp_outTable, year=yr, outPath=temp_outCsv)
@@ -3144,10 +3132,10 @@ class EDGAR_spatial(object):
             self.ES_logger.debug('Zonal statistics convert to csv.')
 
             # 生成中心权重的栅格名称
-            temp_main_weight_inRaster = 'center_main_sector_weight_%s_%s' % (temp_center, yr)
+            temp_main_weight_inRaster = 'center_main_sector_weight_{}_{}'.format(temp_center, yr)
             # 检查输入的待统计值
             if not (arcpy.Exists(temp_main_weight_inRaster)):
-                print 'Error: inRaster not found.'
+                print('Error: inRaster not found.')
 
                 # logger output
                 self.ES_logger.error('inRaster does not exist.')
@@ -3170,7 +3158,7 @@ class EDGAR_spatial(object):
     # 如果不符合arcpy的规定则会返回一个空字典。
     def do_field_attributes_check(self, fieldAttributes):
         if not fieldAttributes:
-            print 'ERROR: input field and its attributes are empty. Please check the input'
+            print('ERROR: input field and its attributes are empty. Please check the input')
 
             # logger output
             self.ES_logger.error('input field is empty.')
@@ -3182,7 +3170,7 @@ class EDGAR_spatial(object):
         # 一系列类型检查，检查的基于arcpy中的定义
         # field name check
         if fieldAttributes['field_name'] == '' or type(fieldAttributes['field_name']) != str:
-            print 'ERROR: field name should be string type.'
+            print('ERROR: field name should be string type.')
 
             # logger output
             self.ES_logger.error('Field name type error.')
@@ -3193,7 +3181,7 @@ class EDGAR_spatial(object):
 
         # field type check
         if fieldAttributes['field_type'] == '' or type(fieldAttributes['field_type']) != str:
-            print 'ERROR: field type should be string type.'
+            print('ERROR: field type should be string type.')
 
             # logger output
             self.ES_logger.error('Field type argument type error.')
@@ -3205,7 +3193,7 @@ class EDGAR_spatial(object):
         if 'field_precision' in fieldAttributes:
             if fieldAttributes['field_precision'] < 0 or type(
                     fieldAttributes['field_precision']) != int:
-                print 'ERROR: field precision should be positive integer type.'
+                print('ERROR: field precision should be positive integer type.')
 
                 # logger output
                 self.ES_logger.error('Field precision argument type error.')
@@ -3219,7 +3207,7 @@ class EDGAR_spatial(object):
         # field scale check
         if 'field_scale' in fieldAttributes:
             if fieldAttributes['field_scale'] < 0 or type(fieldAttributes['field_scale']) != int:
-                print 'ERROR: field scale should be positive integer type.'
+                print('ERROR: field scale should be positive integer type.')
 
                 # logger output
                 self.ES_logger.error('Field scale argument type error.')
@@ -3233,7 +3221,7 @@ class EDGAR_spatial(object):
         # field length check
         if 'field_length' in fieldAttributes:
             if fieldAttributes['field_length'] < 0 or type(fieldAttributes['field_length']) != int:
-                print 'ERROR: field length should be positive integer type.'
+                print('ERROR: field length should be positive integer type.')
 
                 # logger output
                 self.ES_logger.error('Field length argument type error.')
@@ -3247,7 +3235,7 @@ class EDGAR_spatial(object):
         # field alias check
         if 'field_alias' in fieldAttributes:
             if fieldAttributes['field_alias'] == '' or type(fieldAttributes['field_alias']) != str:
-                print 'ERROR: field alias should be string type.'
+                print('ERROR: field alias should be string type.')
 
                 # logger output
                 self.ES_logger.error('Field alias argument type error.')
@@ -3262,7 +3250,7 @@ class EDGAR_spatial(object):
         if 'field_is_nullable' in fieldAttributes:
             if not fieldAttributes['field_is_nullable'] == 'NULLABLE' or not fieldAttributes[
                     'field_is_nullable'] == 'NON_NULLABLE':
-                print 'ERROR: field is nullable should be "NULLABLE" or "NON_NULLABLE".'
+                print('ERROR: field is nullable should be "NULLABLE" or "NON_NULLABLE".')
 
                 # logger output
                 self.ES_logger.error('Field is nullable argument type error.')
@@ -3277,7 +3265,7 @@ class EDGAR_spatial(object):
         if 'field_is_required' in fieldAttributes:
             if not fieldAttributes['field_is_required'] == 'NON_REQUIRED' or not fieldAttributes[
                     'field_is_required'] == 'REQUIRED':
-                print 'ERROR: field is required should be "NON_REQUIRED" or "REQUIRED"'
+                print('ERROR: field is required should be "NON_REQUIRED" or "REQUIRED"')
 
                 # logger output
                 self.ES_logger.error('Field is required argument type error.')
@@ -3291,7 +3279,7 @@ class EDGAR_spatial(object):
         if 'field_domain' in fieldAttributes:
             if fieldAttributes['field_domain'] == '' or type(
                     fieldAttributes['field_domain']) != str:
-                print 'ERROR: field domain should be string type.'
+                print('ERROR: field domain should be string type.')
 
                 # logger output
                 self.ES_logger.error('Field domain argument type error.')
@@ -3310,14 +3298,14 @@ class EDGAR_spatial(object):
         return_fields = []
 
         if not fields:
-            print 'ERROR: fields are empty. Please check input.'
+            print('ERROR: fields are empty. Please check input.')
 
             # logger output
             self.ES_logger.error('input fields are empty.')
             return
         # 处理列表形式的添加字段属性的合规性
         elif type(fields) == list:
-            print 'Checking fields attributes...\n'
+            print('Checking fields attributes...\n')
 
             # logger output
             self.ES_logger.info('Checking fields attributes.')
@@ -3346,13 +3334,13 @@ class EDGAR_spatial(object):
     @addField_list_assembler.setter
     def addField_list_assembler(self, args):
         if not args['field_attributes_checker']:
-            print 'ERROR: fields are empty. Please check input.'
+            print('ERROR: fields are empty. Please check input.')
 
             # logger output
             self.ES_logger.error('input fields are empty.')
             return
         elif type(args['field_attributes_checker']) == list:
-            print 'Assembling attributes to data table name...\n'
+            print('Assembling attributes to data table name...\n')
 
             # logger output
             self.ES_logger.info('Assembling attributes to table name.')
@@ -3371,18 +3359,18 @@ class EDGAR_spatial(object):
     def do_add_fields(self, addField_list):
         # 检查添加的字段列表是不是空
         if not addField_list:
-            print 'ERROR: add field is empty. Please check input'
+            print('ERROR: add field is empty. Please check input')
 
             # logger output
             self.ES_logger.error('add field is empty.')
             return
 
-        print 'Adding fields...\n'
+        print('Adding fields...\n')
 
         for field in tqdm(addField_list):
             # 开始执行添加字段
             # logger output
-            self.ES_logger.info('Adding %s to %s' % (field['field_name'], field['in_table']))
+            self.ES_logger.info('Adding {} to {}'.format(field['field_name'], field['in_table']))
             try:
                 arcpy.AddField_management(field['in_table'], field['field_name'],
                                           field['field_type'], field['field_precision'],
@@ -3390,20 +3378,20 @@ class EDGAR_spatial(object):
                                           field['field_alias'], field['field_is_nullable'],
                                           field['field_is_required'], field['field_domain'])
                 # logger output
-                self.ES_logger.debug('Fields added:%s' % field['field_name'])
+                self.ES_logger.debug('Fields added:{}'.format(field['field_name']))
             except:
-                print 'Add field failed: %s' % field['field_name']
+                print('Add field failed: {}'.format(field['field_name']))
 
                 # logger output
-                self.ES_logger.error('Add field failed: %s' % field['field_name'])
+                self.ES_logger.error('Add field failed: {}'.format(field['field_name']))
 
-                print arcpy.GetMessages()
+                print(arcpy.GetMessages())
                 return
 
     # 执行为点数据添加需要归类整合的字段
     def addField_to_inPoint(self, inPoint, genFieldList):
         if type(genFieldList) != list:
-            print 'ERROR: result fields should be a list that values are dict that key-value are fields and attributes.'
+            print('ERROR: result fields should be a list that values are dict that key-value are fields and attributes.')
 
             # logger output
             self.ES_logger.error(
@@ -3437,7 +3425,7 @@ class EDGAR_spatial(object):
     def generalization_handle(self, gen_handle):
         # 检查输入参数gen_handle的类型是否为dict
         if type(gen_handle) != dict:
-            print 'Generalizing sectors need input a dict gen_handle.'
+            print('Generalizing sectors need input a dict gen_handle.')
 
             # logger output
             self.ES_logger.error('Input gen_handle type error.')
@@ -3513,7 +3501,7 @@ class EDGAR_spatial(object):
     @generalization_encode.setter
     def generalization_encode(self, encode_list):
         if not encode_list or encode_list == []:
-            print 'ERROR: encode list is empty. Please check the input is a list with values.'
+            print('ERROR: encode list is empty. Please check the input is a list with values.')
 
             # logger output
             self.ES_logger.error('input encode list is empty.')
@@ -3527,23 +3515,23 @@ class EDGAR_spatial(object):
     ############################################################################
     # 打印分类和对应编码的表格
     def print_categories(self, generalization_encode):
-        print 'Following table shows the categories and assigned codes for sectoral emission generalization.'
+        print('Following table shows the categories and assigned codes for sectoral emission generalization.')
 
         # 设置打印格式
         temp_table_header_fmt = ['Categories', 'Code']
 
         # 打印表格
-        print tabulate(
+        print(tabulate(
             list(zip(self.gen_encode, range(len(self.gen_encode)))),
             headers=temp_table_header_fmt,
-            tablefmt="grid")
+            tablefmt="grid"))
 
     # 这里需要传入两个参数：第一个参数，已经统计得到的分类和对应的排放量比例字典；第二个参数，自定义的编码方式
     # 函数将返回一个整数，这个整数的不同位置上的数字代表了对应部门的代码，同时整数的位数也表明了栅格部门的排放有多少个分类。
     def generalization_category_encoding(self, category_percentages, encode):
         # 检查两个输入变量是否为空，若为空则直接返回空字典
         if not category_percentages or not encode:
-            print 'ERROR: input category percentages or encode method is empty. Please check the input.'
+            print('ERROR: input category percentages or encode method is empty. Please check the input.')
 
             # logger output
             self.ES_logger.error('input category percentages or encode method is empty.')
@@ -3587,7 +3575,7 @@ class EDGAR_spatial(object):
     def generalization_summarize(self, arcpyCursor, categories, generalization_method):
         # 检查两个输入变量是否为空，若为空则直接返回空字典
         if not categories or not generalization_method:
-            print 'ERROR: input categories or generalization method is empty. Please check the input.'
+            print('ERROR: input categories or generalization method is empty. Please check the input.')
 
             # logger output
             self.ES_logger.error('input categories or generalization method is empty.')
@@ -3684,14 +3672,14 @@ class EDGAR_spatial(object):
     def sectors_generalize(self, inPoint, gen_handle, gen_fieldList):
         # 检查输入是否为空。为空则直接返回。
         if not inPoint or not gen_handle:
-            print 'ERROR: input inPoint or gen_handle is empty. Please check the inputs.'
+            print('ERROR: input inPoint or gen_handle is empty. Please check the inputs.')
 
             # logger output
             self.ES_logger.error('sectors generalize input arguments were empty.')
             return
 
         if gen_fieldList == []:
-            print 'WARNING: gen_fieldList is empty. Process will not add new field to data table.'
+            print('WARNING: gen_fieldList is empty. Process will not add new field to data table.')
 
             # logger output
             self.ES_logger.info('No new fields were added.')
@@ -3704,12 +3692,12 @@ class EDGAR_spatial(object):
     def year_sectors_generalize(self, year_range, gen_handle, gen_fieldList):
         # 检查输入年份变量参数是否合规
         if (type(year_range[0]) != int) or (type(year_range[1]) != int):
-            print 'Error! Processing starting year and ending year must be int value'
+            print('Error! Processing starting year and ending year must be int value')
             self.ES_logger.info('Year setting type error.')
             self.ES_logger.error('Year setting error!')
             return
         elif min(year_range) < self.__default_start_year or max(year_range) > self.__default_end_year:
-            print 'Error! Processing year range out of data support! The year must contain in 1970 to 2018'
+            print('Error! Processing year range out of data support! The year must contain in 1970 to 2018')
             self.ES_logger.info('Year settings are out of range.')
             self.ES_logger.error('Year setting error!')
             return
@@ -3718,32 +3706,32 @@ class EDGAR_spatial(object):
             self.ES_logger.info('Year has set.')
 
         for year in range(temp_start_year, temp_end_year + 1):
-            temp_inPoint = 'sectoral_weights_%s' % year
+            temp_inPoint = 'sectoral_weights_{}'.format(year)
             self.print_start_year(year=year)
             self.sectors_generalize(
                 inPoint=temp_inPoint, gen_handle=gen_handle, gen_fieldList=gen_fieldList)
             self.print_finish_year(year=year)
 
     def sorted_categories_rasterize(self, year, fieldName):
-        temp_point = 'sectoral_weights_%s' % year
-        save_raster_categories = 'sorted_categories_%s' % year
+        temp_point = 'sectoral_weights_{}'.format(year)
+        save_raster_categories = 'sorted_categories_{}'.format(year)
 
         # 用wraster列转栅格
         try:
             arcpy.PointToRaster_conversion(temp_point, fieldName, save_raster_categories,
                                            'MOST_FREQUENT', '#', '0.1')
 
-            print 'Create categories sorts raster: %s' % temp_point
+            print('Create categories sorts raster: {}'.format(temp_point))
 
             # logger output
-            self.ES_logger.debug('Categories sorts rasterize finished:%s' % year)
+            self.ES_logger.debug('Categories sorts rasterize finished:{}'.format(year))
         except:
-            print 'Create categories sorts raster field: %s' % temp_point
+            print('Create categories sorts raster field: {}'.format(temp_point))
 
             # logger output
-            self.ES_logger.error('categories sorts rasterize failed:%s' % year)
+            self.ES_logger.error('categories sorts rasterize failed:{}'.format(year))
 
-            print arcpy.GetMessages()
+            print(arcpy.GetMessages())
 
     # 这里inRaster是需要提取数据的原始栅格；inZone是用来分类的区域范围；center_range是生成分类兴趣区域的标准；outPath是最后csv文件的输出位置
     def zonal_sectors_generalize(self, year_range, inZone, center_range, zoneField, outPath):
@@ -3755,7 +3743,7 @@ class EDGAR_spatial(object):
 
         # 检查所用的分类区域范围是否存在
         if not (arcpy.Exists(inZone)):
-            print 'Error: input inZone not found.'
+            print('Error: input inZone not found.')
 
             # logger output
             self.ES_logger.error('input inZone does not exist.')
@@ -3764,10 +3752,10 @@ class EDGAR_spatial(object):
         for yr in tqdm(range(min(year_range), max(year_range) + 1)):
             # 生成需要提取数据的原始栅格
             # 生成需要提取数据的inRaster名称
-            temp_inRaster = 'sorted_categories_%s' % yr
+            temp_inRaster = 'sorted_categories_{}'.format(yr)
             # 检查所用的中心mask是否存在
             if not (arcpy.Exists(temp_inRaster)):
-                print 'Error: input sorted categories raster not found.'
+                print('Error: input sorted categories raster not found.')
 
                 # logger output
                 self.ES_logger.error('input sorted categories raster does not exist.')
@@ -3776,18 +3764,18 @@ class EDGAR_spatial(object):
 
             # 生成中心的栅格名称
             # 生成提取所用的中心mask名称
-            temp_mask_inRaster = 'center_mask_%s_%s' % (temp_center, yr)
+            temp_mask_inRaster = 'center_mask_{}_{}'.format(temp_center, yr)
             # 检查所用的中心mask是否存在
             if not (arcpy.Exists(temp_mask_inRaster)):
-                print 'Error: input mask raster not found.'
+                print('Error: input mask raster not found.')
 
                 # logger output
                 self.ES_logger.error('input mask raster does not exist.')
 
                 return
 
-            temp_outTable_path = 'table_sorted_categories_%s_%s' % (temp_center, yr)
-            temp_outRaster_path = 'raster_sorted_categories_%s_%s' % (temp_center, yr)
+            temp_outTable_path = 'table_sorted_categories_{}_{}'.format(temp_center, yr)
+            temp_outRaster_path = 'raster_sorted_categories_{}_{}'.format(temp_center, yr)
 
             # 这里要注意！！！
             # 为了提取最大的分类，这里采用了“//”整除计算，整除100000会获得最高位的数值。
@@ -3802,10 +3790,10 @@ class EDGAR_spatial(object):
                 outTable=temp_outTable_path)
 
             # logger output
-            self.ES_logger.debug('Zonal statistics finished:%s' % temp_inRaster)
+            self.ES_logger.debug('Zonal statistics finished:{}'.format(temp_inRaster))
 
             temp_outCsv = os.path.join(temp_out_csv_path,
-                                       'sorted_categories_%s_%s.csv' % (temp_center, yr))
+                                       'sorted_categories_{}_{}.csv'.format(temp_center, yr))
 
             self.do_zonal_table_to_csv(table=temp_outTable_path, year=yr, outPath=temp_outCsv)
 
@@ -3830,7 +3818,7 @@ class EDGAR_spatial(object):
         当此参数为False时，函数将不返回任何结果而结束。
         '''
         if not category_field_list :
-            print 'ERROR: please specify the center_list and the category_list'
+            print('ERROR: please specify the center_list and the category_list')
 
             # logger output
             self.ES_logger.error('input center list or category list does not exist.')
@@ -3838,7 +3826,7 @@ class EDGAR_spatial(object):
             return
 
         if not arcpy.Exists(inPoint):
-            print 'ERROR: input point data does not exist'
+            print('ERROR: input point data does not exist')
 
             # logger output
             self.ES_logger.error('input point data does not exist.')
@@ -3851,19 +3839,19 @@ class EDGAR_spatial(object):
         # 所以采取统一添加统一删除的策略
         try:
             # 逐一添加临时字段
-            temp_add_field = ['export_%s' % category for category in category_field_list]
+            temp_add_field = ['export_{}'.format(category) for category in category_field_list]
             for field in temp_add_field:
                 arcpy.AddField_management(inPoint, field, 'DOUBLE', '#', '#', '#', '#','NULLABLE', '#', '#')
 
             # logger output
             self.ES_logger.debug('export raster: temporary field added.')
         except:
-            print 'export raster: Add field to point failed in: %s' % inPoint
+            print('export raster: Add field to point failed in: {}'.format(inPoint))
 
             # logger output
-            self.ES_logger.error( 'Export raster: Add field to point failed in: %s' % inPoint)
+            self.ES_logger.error( 'Export raster: Add field to point failed in: {}'.format(inPoint))
 
-            print arcpy.GetMessages()
+            print(arcpy.GetMessages())
             exit()
         
         # 储存可能需要返回的结果列表
@@ -3878,7 +3866,7 @@ class EDGAR_spatial(object):
             # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
             # 准备需要列出的字段的名称
             # 需要列出的字段包括：储存临时计算结果的字段：EOF_TEMP总排放量对数值字段：grid_log_total_emission、各个分类的比例字段：从category_field_list中获取
-            temp_result_field = 'export_%s' % category
+            temp_result_field = 'export_{}'.format(category)
             temp_field_list = ['grid_log_total_emission', category, temp_result_field] 
 
             # 计算分类排放的排放量
@@ -3910,7 +3898,7 @@ class EDGAR_spatial(object):
                     cursor.updateRow(row)
 
             # 保存列数据为栅格
-            save_raster = '%s_%s' % (temp_result_field, inPoint[-4:])
+            save_raster = '{}_{}'.format(temp_result_field, inPoint[-4:])
 
             ################################################################################
             ################################################################################
@@ -3938,21 +3926,21 @@ class EDGAR_spatial(object):
                 temp_return_rasters.append(save_raster)
 
                 # logger output
-                self.ES_logger.debug('EOF rasterize finished:%s' % save_raster)
+                self.ES_logger.debug('EOF rasterize finished:{}'.format(save_raster))
             except:
-                print 'Create raster field: %s' % save_raster
+                print('Create raster field: {}'.format(save_raster))
 
                 # logger output
-                self.ES_logger.error('EOF rasterize failed:%s' % save_raster)
+                self.ES_logger.error('EOF rasterize failed:{}'.format(save_raster))
 
-                print arcpy.GetMessages()
+                print(arcpy.GetMessages())
 
         # 从点数据中删除添加的临时列
-        print 'Deleting temporary fields...'
+        print('Deleting temporary fields...')
         arcpy.DeleteField_management(inPoint, temp_add_field)
         # logger output
         self.ES_logger.info('Deleted temporary fields.')
-        print 'Deleted temporary fields.'
+        print('Deleted temporary fields.')
         
         # 决定返回模式
         if return_results:
@@ -3970,21 +3958,21 @@ class EDGAR_spatial(object):
                                           output_fmt):
         if not wild_card_fmt or type(
                 wild_card_fmt) != str or not emission_center_list or not year_range:
-            print 'ERROR: input emission_center_list or year is empty.'
+            print('ERROR: input emission_center_list or year is empty.')
 
             # logger output
             self.ES_logger.error('emission_center_list or year is empty.')
             return
 
         if len(year_range) != 2:
-            print 'ERROR: year range require a two ints tuple.'
+            print('ERROR: year range require a two ints tuple.')
 
             # logger output
             self.ES_logger.error('year range error.')
             return
 
         if max(year_range) > self.end_year or min(year_range) < self.start_year:
-            print 'ERROR: year is out range.'
+            print('ERROR: year is out range.')
 
             # logger output
             self.ES_logger.error('year range error.')
@@ -4001,9 +3989,9 @@ class EDGAR_spatial(object):
                                         wild_card_fmt,
                                         emission_center_list,
                                         year,
-                                        output_fmt='categories_center_merge_%s'):
+                                        output_fmt='categories_center_merge_{}'):
         if not wild_card_fmt or type(wild_card_fmt) != str or not emission_center_list or not year:
-            print 'ERROR: input emission_center_list or year is empty.'
+            print('ERROR: input emission_center_list or year is empty.')
 
             # logger output
             self.ES_logger.error('emission_center_list or year is empty.')
@@ -4015,12 +4003,11 @@ class EDGAR_spatial(object):
             # 列出需要合并的栅格列表
             # 这里需要用try...catch...来处理输入的output_fmt是无法格式化的。
             try:
-                temp_raster_name = wild_card_fmt % (center.return_center()[year]['peak_name'],
+                temp_raster_name = wild_card_fmt.format(center.return_center()[year]['peak_name'],
                                                     center.return_center()[year]['year'])
             except Exception as e:
                 # logger output
-                self.ES_logger.info('temp raster name formatting failed. raster name was %s.' %
-                                    wild_card_fmt)
+                self.ES_logger.info('temp raster name formatting failed. raster name was {}.'.format(wild_card_fmt))
 
             temp_center_peaks.append(temp_raster_name)
 
@@ -4029,13 +4016,12 @@ class EDGAR_spatial(object):
 
         # 这里需要用try...catch...来处理输入的output_fmt是无法格式化的。
         try:
-            temp_output = output_fmt % year
+            temp_output = output_fmt.format(year)
         except Exception as e:
             temp_output = output_fmt
 
             # logger output
-            self.ES_logger.info('temp raster name formatting failed. raster name was %s.' %
-                                temp_raster_name)
+            self.ES_logger.info('temp raster name formatting failed. raster name was {}.'.format(temp_raster_name))
 
         # 进行合并之前需要先获得原始栅格的像素深度参数。
         # 原因如下：MosaicToNewRaster_management（）函数中如果不设置像素类型，将使用默认值 8 位，而输出结果可能会不正确。
@@ -4058,21 +4044,21 @@ class EDGAR_spatial(object):
         if not wild_card_fmt or type(
                 wild_card_fmt
         ) != str or not emission_center_list or not year_range or not center_colormap:
-            print 'ERROR: input arguments were empty.'
+            print('ERROR: input arguments were empty.')
 
             # logger output
             self.ES_logger.error('input arguments were empty.')
             return
 
         if len(year_range) != 2:
-            print 'ERROR: year range require a two ints tuple.'
+            print('ERROR: year range require a two ints tuple.')
 
             # logger output
             self.ES_logger.error('year range error.')
             return
 
         if max(year_range) > self.end_year or min(year_range) < self.start_year:
-            print 'ERROR: year is out range.'
+            print('ERROR: year is out range.')
 
             # logger output
             self.ES_logger.error('year range error.')
@@ -4087,14 +4073,13 @@ class EDGAR_spatial(object):
                 # 列出需要合并的栅格列表
                 # 这里需要用try...catch...来处理输入的output_fmt是无法格式化的。
                 try:
-                    temp_raster_name = wild_card_fmt % (center.return_center()[yr]['peak_name'],
+                    temp_raster_name = wild_card_fmt.format(center.return_center()[yr]['peak_name'],
                                                         center.return_center()[yr]['year'])
                 except Exception as e:
                     temp_raster_name = wild_card_fmt
 
                     # logger output
-                    self.ES_logger.info('temp raster name formatting failed. raster name was %s.' %
-                                        temp_raster_name)
+                    self.ES_logger.info('temp raster name formatting failed. raster name was {}.'.format(temp_raster_name))
 
                 temp_center_peaks.append(temp_raster_name)
                 temp_raster_centers_name[temp_raster_name] = center.return_center(
@@ -4114,13 +4099,12 @@ class EDGAR_spatial(object):
 
             # 这里需要用try...catch...来处理输入的output_fmt是无法格式化的。
             try:
-                temp_output = output_fmt % yr
+                temp_output = output_fmt.format(yr)
             except Exception as e:
                 temp_output = output_fmt
 
                 # logger output
-                self.ES_logger.info('temp raster name formatting failed. raster name was %s.' %
-                                    temp_raster_name)
+                self.ES_logger.info('temp raster name formatting failed. raster name was {}.'.format(temp_raster_name))
 
             # 进行合并之前需要先获得原始栅格的像素深度参数。
             # 原因如下：MosaicToNewRaster_management（）函数中如果不设置像素类型，将使用默认值 8 位，而输出结果可能会不正确。
@@ -4142,9 +4126,9 @@ class EDGAR_spatial(object):
     ############################################################################
     ############################################################################
     # 为特定的排放中心栅格叠加历史排放区域
-    def EOF_center_mosaic_extend(self, center_list, center_raster_fmt='center_%s_%s', background_fmt='%s_geographical_extend_null_mask'):
+    def EOF_center_mosaic_extend(self, center_list, center_raster_fmt='center_{}_{}', background_fmt='{}_geographical_extend_null_mask'):
         if not center_list:
-            print 'ERROR: input arguments does not exist, please check the inputs.'
+            print('ERROR: input arguments does not exist, please check the inputs.')
 
             # logger output
             self.ES_logger.error('input arguments does not exist.')
@@ -4156,11 +4140,11 @@ class EDGAR_spatial(object):
             for emission_center in center_list:
                 # 获得中心的背景栅格
                 try:
-                    temp_background = background_fmt % emission_center.center_name
+                    temp_background = background_fmt.format(emission_center.center_name)
                 except Exception as e:
-                    print 'background raster formatting failed.'
+                    print('background raster formatting failed.')
                     # logger output
-                    self.ES_logger.error('get background raster name formatting failed. raster name formate was %s.' % temp_background)
+                    self.ES_logger.error('get background raster name formatting failed. raster name formate was {}.'.format(temp_background))
 
                     return
 
@@ -4172,13 +4156,13 @@ class EDGAR_spatial(object):
                 # 列出该中心的所有栅格
                 try:
                     temp_raster_list = [
-                        center_raster_fmt % (peak['peak_name'], year)
+                        center_raster_fmt.format(peak['peak_name'], year)
                         for (year, peak) in emission_center.return_center().items()
                     ]
                 except Exception as e:
-                    print 'center raster formatting failed.'
+                    print('center raster formatting failed.')
                     # logger output
-                    self.ES_logger.error('mosaicing center raster name formatting failed. raster name formate was %s.' % center_raster_fmt)
+                    self.ES_logger.error('mosaicing center raster name formatting failed. raster name formate was {}.'.format(center_raster_fmt))
 
                     return
 
@@ -4188,12 +4172,12 @@ class EDGAR_spatial(object):
         else:    # 如果只是传入单一中心，且没有用列表包括该中心
             # 获得中心的背景栅格
             try:
-                temp_background = background_fmt % emission_center.center_name
+                temp_background = background_fmt.format(emission_center.center_name)
             except Exception as e:
-                print 'background raster formatting failed.'
+                print('background raster formatting failed.')
 
                 # logger output
-                self.ES_logger.error('get background raster name formatting failed. raster name formate was %s.' % temp_background)
+                self.ES_logger.error('get background raster name formatting failed. raster name formate was {}.'.format(temp_background))
 
                 return
 
@@ -4205,13 +4189,13 @@ class EDGAR_spatial(object):
             # 列出该中心的所有栅格
             try:
                 temp_raster_list = [
-                    center_raster_fmt % (peak['peak_name'], year)
+                    center_raster_fmt.format(peak['peak_name'], year)
                     for (year, peak) in emission_center.return_center().items()
                 ]
             except Exception as e:
-                print 'center raster formatting failed.'
+                print('center raster formatting failed.')
                 # logger output
-                self.ES_logger.error('mosaicing center raster name formatting failed. raster name formate was %s.' % center_raster_fmt)
+                self.ES_logger.error('mosaicing center raster name formatting failed. raster name formate was {}.'.format(center_raster_fmt))
 
                 return
 
@@ -4220,9 +4204,9 @@ class EDGAR_spatial(object):
                                     background=temp_background)
 
     # 为一个中心里所有分类单独添加该分类对应的空间围背景
-    def EOF_center_category_mosaic_extend(self, center_name, category_list, background_fmt='%s_EOF_geographical_extend_null_mask'):
+    def EOF_center_category_mosaic_extend(self, center_name, category_list, background_fmt='{}_EOF_geographical_extend_null_mask'):
         if not center_name or not category_list:
-            print 'ERROR: input arguments does not exist, please check the inputs.'
+            print('ERROR: input arguments does not exist, please check the inputs.')
 
             # logger output
             self.ES_logger.error('input arguments does not exist.')
@@ -4231,17 +4215,17 @@ class EDGAR_spatial(object):
         for category in category_list:
             # 获得中心的背景栅格
             try:
-                temp_background = background_fmt % center_name
+                temp_background = background_fmt.format(center_name)
             except Exception as e:
-                print 'background raster formatting failed.'
+                print('background raster formatting failed.')
 
                 # logger output
-                self.ES_logger.error('get background raster name formatting failed. raster name formate was %s.' % temp_background)
+                self.ES_logger.error('get background raster name formatting failed. raster name formate was {}.'.format(temp_background))
 
                 return
 
             # 列出所有需要添加背景的栅格
-            temp_wildcard = ['%s_EOF_%s_\d+' % (center_name, category)]
+            temp_wildcard = ['{}_EOF_{}_\d+'.format(center_name, category)]
             temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard, wildcard_mode=False)
 
             # 执行叠加背景
@@ -4253,7 +4237,7 @@ class EDGAR_spatial(object):
     # 执行这个操作将改变输入栅格。请不要在原始数据上执行！
     def do_EOF_mosaic_extend(self, raster_list, background):
         if not raster_list or not background:
-            print 'ERROR: input arguments does not exist, please check the inputs.'
+            print('ERROR: input arguments does not exist, please check the inputs.')
 
             # logger output
             self.ES_logger.error('input arguments does not exist.')
@@ -4275,7 +4259,7 @@ class EDGAR_spatial(object):
     # def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list, add_background=True, background_raster='background', return_result=True):
     def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list,  return_result=True):
         if not inPoint or not center_list or not category_field_list:
-            print 'ERROR: The inputs does not exist. Please check the inputs.'  
+            print('ERROR: The inputs does not exist. Please check the inputs.'  )
 
             # logger output
             self.ES_logger.error('input does not exist.')
@@ -4334,7 +4318,7 @@ class EDGAR_spatial(object):
         当此参数为False时，函数将不返回任何结果而结束。
         '''
         if not center or not category_field_list :
-            print 'ERROR: please specify the center_list and the category_list'
+            print('ERROR: please specify the center_list and the category_list')
 
             # logger output
             self.ES_logger.error('input center list or category list does not exist.')
@@ -4342,7 +4326,7 @@ class EDGAR_spatial(object):
             return
 
         if not arcpy.Exists(inPoint):
-            print 'ERROR: input point data does not exist'
+            print('ERROR: input point data does not exist')
 
             # logger output
             self.ES_logger.error('input point data does not exist.')
@@ -4355,19 +4339,19 @@ class EDGAR_spatial(object):
         # 所以采取统一添加统一删除的策略
         try:
             # 逐一添加临时字段
-            temp_add_field = ['EOF_%s' % category for category in category_field_list]
+            temp_add_field = ['EOF_{}'.format(category) for category in category_field_list]
             for field in temp_add_field:
                 arcpy.AddField_management(inPoint, field, 'DOUBLE', '#', '#', '#', '#','NULLABLE', '#', '#')
 
             # logger output
             self.ES_logger.debug('EOF: temporary field added.')
         except:
-            print 'EOF: Add field to point failed in: %s' % inPoint
+            print('EOF: Add field to point failed in: {}'.format(inPoint))
 
             # logger output
-            self.ES_logger.error( 'EOF Add field to point failed in: %s' % inPoint)
+            self.ES_logger.error( 'EOF Add field to point failed in: {}'.format(inPoint))
 
-            print arcpy.GetMessages()
+            print(arcpy.GetMessages())
             exit()
         
         # 储存可能需要返回的结果列表
@@ -4382,11 +4366,11 @@ class EDGAR_spatial(object):
             # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
             # 准备需要列出的字段的名称
             # 需要列出的字段包括：储存临时计算结果的字段：EOF_TEMP总排放量对数值字段：grid_log_total_emission、各个分类的比例字段：从category_field_list中获取
-            temp_result_field = 'EOF_%s' % category
+            temp_result_field = 'EOF_{}'.format(category)
             temp_field_list = ['grid_log_total_emission', category, temp_result_field] 
 
             # 构建筛选中心的表达式
-            temp_where_clause = '"center_type"=\'%s\'' % center.center_name
+            temp_where_clause = '"center_type"=\'{}\''.format(center.center_name)
 
             with arcpy.da.UpdateCursor(in_table=inPoint, field_names=temp_field_list, where_clause=temp_where_clause) as cursor:
                 for row in tqdm(cursor):
@@ -4410,7 +4394,7 @@ class EDGAR_spatial(object):
                         cursor.updateRow(row)
 
             # 保存列数据为栅格
-            save_raster = '%s_%s_%s' % (center.center_name, temp_result_field, inPoint[-4:])
+            save_raster = '{}_{}_{}'.format(center.center_name, temp_result_field, inPoint[-4:])
 
             ################################################################################
             ################################################################################
@@ -4438,21 +4422,21 @@ class EDGAR_spatial(object):
                 temp_return_rasters.append(save_raster)
 
                 # logger output
-                self.ES_logger.debug('EOF rasterize finished:%s' % save_raster)
+                self.ES_logger.debug('EOF rasterize finished:{}'.format(save_raster))
             except:
-                print 'Create raster field: %s' % save_raster
+                print('Create raster field: {}'.format(save_raster))
 
                 # logger output
-                self.ES_logger.error('EOF rasterize failed:%s' % save_raster)
+                self.ES_logger.error('EOF rasterize failed:{}'.format(save_raster))
 
-                print arcpy.GetMessages()
+                print(arcpy.GetMessages())
 
         # 从点数据中删除添加的临时列
-        print 'Deleting temporary fields...'
+        print('Deleting temporary fields...')
         arcpy.DeleteField_management(inPoint, temp_add_field)
         # logger output
         self.ES_logger.info('Deleted temporary fields.')
-        print 'Deleted temporary fields.'
+        print('Deleted temporary fields.')
         
         # 决定返回模式
         if return_results:
@@ -4464,21 +4448,21 @@ class EDGAR_spatial(object):
     # 通过给定中心和分类的列表，生成一个中心里所有分类的空间分布范围
     def EOF_generate_center_categories_geographical_extend(self, center_name, category_field_list, background_raster='background'):
         if not center_name or not category_field_list or not background_raster:
-            print 'ERROR: The inputs does not exist. Please check the inputs.'  
+            print('ERROR: The inputs does not exist. Please check the inputs.'  )
 
             # logger output
             self.ES_logger.error('input does not exist.')
             return
 
         # 生成筛选排放中心的全部分类栅格的正则表达式列表
-        temp_wildcard_center_re = ('%s_EOF_' % center_name) + r'%s_\d+'
+        temp_wildcard_center_re = '{}_EOF_'.format(center_name) + r'%s_\d+'
         # 以下使用了解包操作，如果调试有困难就该写成for...loop
-        temp_wildcard_list = [temp_wildcard_center_re % category for category in category_field_list]
+        temp_wildcard_list = [temp_wildcard_center_re.fromat(category) for category in category_field_list]
         # 列出该中心里该分类的所有栅格作为待添加背景的栅格
         temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard_list, wildcard_mode=False)
 
         # 生成输出栅格的文件名
-        temp_output_name_fmt = ('%s_EOF_geographical_extend_' % center_name) + r'%s'
+        temp_output_name_fmt = '{}_EOF_geographical_extend_'.format(center_name) + r'%s'
         
         # 调用实际执行的do_generate_extend函数
         self.do_generate_center_geographical_extend(
@@ -4510,13 +4494,13 @@ class EDGAR_spatial(object):
     # 将栅格数据转换为numpy压缩格式并导出
     def EOF_raster_to_numpy(self, raster_list, nodata_to_value=None, export_to_npz=True, export_path=None):
         if not raster_list:
-            print 'ERROR: input rasters do not exist. Please check the inputs.'
+            print('ERROR: input rasters do not exist. Please check the inputs.')
 
             # logger output
             self.ES_logger.error('input rasters do not exist.')
             return
 
-        print 'Exporting rasters to npz...'
+        print('Exporting rasters to npz...')
         for raster in tqdm(raster_list):
             self.do_EOF_raster_to_numpy(inRaster=raster,
                                         export_path=export_path,
@@ -4530,7 +4514,7 @@ class EDGAR_spatial(object):
     # 可以通过export_to_npz参数控制是否将numpy数组保存为文件，若设定此参数请提供保存路径
     def do_EOF_raster_to_numpy(self, inRaster, export_path, export_to_npz=True, lower_left_corner=None, ncols=None, nrows=None, nodata_to_value=None):
         if not inRaster:
-            print 'ERROR: convert to numpy array failed! input raster does not exist: %s' % inRaster
+            print('ERROR: convert to numpy array failed! input raster does not exist: %s' % inRaster)
 
             # logger output
             self.ES_logger.error('input raster does not exist: %s' % inRaster)
@@ -4538,7 +4522,7 @@ class EDGAR_spatial(object):
 
         # 检查待转换的栅格是否存在
         if not arcpy.Exists(inRaster):
-            print 'ERROR: convert to numpy array failed! input raster does not exist: %s' % inRaster
+            print('ERROR: convert to numpy array failed! input raster does not exist: %s' % inRaster)
 
             # logger output
             self.ES_logger.error('input raster does not exist: %s' % inRaster)
@@ -4565,7 +4549,7 @@ class EDGAR_spatial(object):
         # 保存结果到NPZ文件
         if export_to_npz:
             if not export_path:
-                print 'ERROR: export NPZ file path does not exist: %s' % export_path
+                print('ERROR: export NPZ file path does not exist: %s' % export_path)
 
                 # logger output
                 self.ES_logger.error('Path does not exist: %s' % export_path)
@@ -4587,21 +4571,21 @@ class EDGAR_spatial(object):
     # 将结果的mode数据转换为raster
     def EOF_hdf_mode_to_raster(self, hdf_path, category_field_list, mode_name, num_eofs, output_fmt='%s_mode_%s', remove_value=None):
         if not category_field_list:
-            print 'ERROR: emission categories does not exist. Please check exist.'
+            print('ERROR: emission categories does not exist. Please check exist.')
 
             # logger output
             self.ES_logger.error('emission categories does not exist.')
             return
         
         if not os.path.exists(hdf_path):
-            print 'ERROR: hdf file does not exist. Please check the input.'
+            print('ERROR: hdf file does not exist. Please check the input.')
 
             # logger output
             self.ES_logger.error('hdf file does not exist.')
             return
         
         if not num_eofs:
-            print 'ERROR: eof mode numbers does not specified. Please check the input.'
+            print('ERROR: eof mode numbers does not specified. Please check the input.')
 
             # logger output
             self.ES_logger.error('eof mode numbers does not specified.')
@@ -4615,11 +4599,11 @@ class EDGAR_spatial(object):
                 try:
                     output_raster = output_fmt % (cate, eof)
                 except:
-                    print 'ERROR: can not format raster output name.'
+                    print('ERROR: can not format raster output name.')
 
                     # logger output
                     self.ES_logger.error('raster output name format failed.')
-                    returni
+                    return
 
                 # 生成hdf数据路径
                 temp_data_path = os.path.join('/EOF_mode/', cate)
@@ -4640,7 +4624,7 @@ class EDGAR_spatial(object):
         这里的完整保存路径是指包括文件后缀的文件绝对路径。
         '''
         if not os.path.exists(hdf_file_path):
-            print 'ERROR: hdf file does not exist. Please check the input.'
+            print('ERROR: hdf file does not exist. Please check the input.')
 
             # logger output
             self.ES_logger.error('hdf file does not exist.')
@@ -4657,7 +4641,7 @@ class EDGAR_spatial(object):
 
         # 检查数据是否存在
         if full_data_path not in hdf:
-            print 'ERROR: data not exist. Please check the input.'
+            print('ERROR: data not exist. Please check the input.')
 
             # logger output
             self.ES_logger.error('data not exist.')
@@ -4818,7 +4802,7 @@ class EDGAR_spatial(object):
     def EOF_export_raster(self, raster_wildcard, output_path):
         # 检查输出路径是否存在
         if not output_path:
-            print 'ERROR: output path does not exist, please check the input.'
+            print('ERROR: output path does not exist, please check the input.')
 
             # logger output
             self.ES_logger.error('output path does not exist.')
@@ -4826,7 +4810,7 @@ class EDGAR_spatial(object):
 
         # 检查输入参数是否存在
         if not raster_wildcard:
-            print 'WARNING: raster_wildcard is empty, which will export all rasters in database!'
+            print('WARNING: raster_wildcard is empty, which will export all rasters in database!')
 
             # logger output
             self.ES_logger.warning('raster wildcard is empty! All rasters will be export.')
@@ -4856,4 +4840,4 @@ if __name__ == '__main__':
     # aaa.proccess_year(start_year=2018, end_year=2018)
     # cProfile.run('aaa.proccess_year(start_year=2018, end_year=2018)','merge_sector_init_profile.prof')
 
-    print 'main process'
+    print('main process')
