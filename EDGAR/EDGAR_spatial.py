@@ -65,11 +65,6 @@ class EDGAR_spatial(object):
     ############################################################################
     def __init__(self,
                  workspace,
-                 background_flag=True,
-                 background_flag_label='BA',
-                 background_raster='background',
-                 sectors={},
-                 colormap={},
                  st_year=1970,
                  en_year=2018,
                  log_path='EDGAR.log'):
@@ -139,12 +134,17 @@ class EDGAR_spatial(object):
         self.ES_logger.info('Root initialization finished.')
 
     # 只进行合并分部门栅格为点数据时的构造函数
+    # TODO
+    # 这里出现了一个逻辑错误，假设使用的是无背景模式background_flag=False，
+    # 实际上构造函数无法从root_init的初始构造函数中获得变量信息。需要修改逻辑。
+    # 但是，似乎这个参数不影响data_analysis构造。但是data_analysis的构造过程也需要进行类似排查。
     @classmethod
     def merge_sectors(cls,
                       workspace,
                       background_flag=True,
                       background_flag_label='BA',
                       background_raster='background',
+                      default_raster_filter=True,
                       sectors={},
                       colormap={},
                       st_year=1970,
@@ -226,7 +226,7 @@ class EDGAR_spatial(object):
         # 这里要将初始化传入的部门参数字典“sectors”进行列表化并赋值
         # 和起始、终止时间传入
         temp_init_filter_label = {
-            'default': root_init.background[0],
+            'default':default_raster_filter,
             'background_label': root_init.background[1],
             'sectors': root_init.sectors_handle,
             'start_year': root_init.year_range[0],
@@ -906,6 +906,7 @@ class EDGAR_spatial(object):
             try:
                 self.background_flag = bool(flag_label_raster_dict['flag'])
                 self.background_label = ''
+                self.background_raster = ''
                 print('Background value flag closed!')
 
                 # logger output
