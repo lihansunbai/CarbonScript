@@ -1778,7 +1778,7 @@ class EDGAR_spatial(object):
 
         # 逐年处理
         for yr in range(start_year, end_year + 1):
-            self.print_start_yea((yr))
+            self.print_start_year((yr))
             self.year_total_sectors_merge(yr)
             self.year_sectors_emission_percentage(yr)
             self.year_weight_joint(yr, self.EDGAR_sectors)
