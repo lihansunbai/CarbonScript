@@ -2418,8 +2418,6 @@ class EDGAR_spatial(object):
                 temp_center_mask)
             temp_categories_center.save(temp_categories_center_output)
 
-        pass
-
     # 根据提供的排放中心生成该中心的全部排放的分布
     def generate_center_geographical_extend(self, emission_center_list, background_raster):
         if not emission_center_list or not background_raster:
@@ -4110,7 +4108,7 @@ class EDGAR_spatial(object):
             # 进行合并之前需要先获得原始栅格的像素深度参数。
             # 原因如下：MosaicToNewRaster_management（）函数中如果不设置像素类型，将使用默认值 8 位，而输出结果可能会不正确。
 
-            temp_pixel_type = self.__raster_pixel_type[temp_mosaic_list[0].pixelType]
+            temp_pixel_type = self.__raster_pixel_type['S8']
 
             arcpy.MosaicToNewRaster_management(
                 input_rasters=temp_mosaic_list,
@@ -4458,7 +4456,7 @@ class EDGAR_spatial(object):
         # 生成筛选排放中心的全部分类栅格的正则表达式列表
         temp_wildcard_center_re = '{}_EOF_'.format(center_name) + r'%s_\d+'
         # 以下使用了解包操作，如果调试有困难就该写成for...loop
-        temp_wildcard_list = [temp_wildcard_center_re.fromat(category) for category in category_field_list]
+        temp_wildcard_list = [temp_wildcard_center_re.format(category) for category in category_field_list]
         # 列出该中心里该分类的所有栅格作为待添加背景的栅格
         temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard_list, wildcard_mode=False)
 
