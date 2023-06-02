@@ -1,25 +1,14 @@
 # -*- coding: utf-8 -*-
-
 ################################################################################
 ################################################################################
 ## 备忘录：
 ################################################################################
 ################################################################################
-import os
 import sys
-import re
-import itertools
-import collections
-import logging
-
-# import eofs
-# from eofs.multivariate.standard import MultivariateEof
-
 # 以下为测试用DEBUG用库文件
 # 正式使用时请勿import
 sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/lib/eofs')
 from multivariate.standard import MultivariateEof
-
 import h5py
 import numpy
 import tqdm
@@ -29,6 +18,11 @@ import dask.array as da
 import dask_ml.preprocessing
 from dask_ml.preprocessing import StandardScaler
 from sklearn import preprocessing
+import os
+import re
+import itertools
+import collections
+import logging
 
 class EDGAR_eof():
     '''
