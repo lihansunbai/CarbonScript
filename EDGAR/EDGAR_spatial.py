@@ -125,8 +125,8 @@ class EDGAR_spatial(object):
         self.ES_logger.info('arcpy Spatial extension checked.')
         # 将多线程处理设置为100%
         #   吐槽：虽然没什么用，cpu利用率最多也只能达到5%
-        arcpy.env.parallelProcessingFactor = "100%"
-        self.ES_logger.info('arcpy parallelProcessingFactor set to 200%.')
+        arcpy.env.parallelProcessingFactor = "200%"
+        self.ES_logger.info('arcpy parallelProcessingFactor set to {}.'.format(arcpy.env.parallelProcessingFactor))
 
         arcpy.env.overwriteOutput = True
         self.ES_logger.info('arcpy overwriteOutput set to True.')
@@ -4454,14 +4454,14 @@ class EDGAR_spatial(object):
             return
 
         # 生成筛选排放中心的全部分类栅格的正则表达式列表
-        temp_wildcard_center_re = '{}_EOF_'.format(center_name) + r'%s_\d+'
+        temp_wildcard_center_re = '{}_EOF_'.format(center_name) + r'{}_\d+'
         # 以下使用了解包操作，如果调试有困难就该写成for...loop
         temp_wildcard_list = [temp_wildcard_center_re.format(category) for category in category_field_list]
         # 列出该中心里该分类的所有栅格作为待添加背景的栅格
         temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard_list, wildcard_mode=False)
 
         # 生成输出栅格的文件名
-        temp_output_name_fmt = '{}_EOF_geographical_extend_'.format(center_name) + r'%s'
+        temp_output_name_fmt = '{}_EOF_geographical_extend_'.format(center_name) + r'{}'
         
         # 调用实际执行的do_generate_extend函数
         self.do_generate_center_geographical_extend(
@@ -4507,24 +4507,24 @@ class EDGAR_spatial(object):
                                         nodata_to_value=nodata_to_value)
 
             # logger output
-            self.ES_logger.info('Raster saved to npz: %s' % raster)
+            self.ES_logger.info('Raster saved to npz: {}'.format(raster))
 
     # 函数将输入的栅格转换为numpy数组, 同时返回转换成功的numpy 数组。
     # 可以通过export_to_npz参数控制是否将numpy数组保存为文件，若设定此参数请提供保存路径
     def do_EOF_raster_to_numpy(self, inRaster, export_path, export_to_npz=True, lower_left_corner=None, ncols=None, nrows=None, nodata_to_value=None):
         if not inRaster:
-            print('ERROR: convert to numpy array failed! input raster does not exist: %s' % inRaster)
+            print('ERROR: convert to numpy array failed! input raster does not exist: {}'.format(inRaster))
 
             # logger output
-            self.ES_logger.error('input raster does not exist: %s' % inRaster)
+            self.ES_logger.error('input raster does not exist: {}'.format(inRaster))
             return
 
         # 检查待转换的栅格是否存在
         if not arcpy.Exists(inRaster):
-            print('ERROR: convert to numpy array failed! input raster does not exist: %s' % inRaster)
+            print('ERROR: convert to numpy array failed! input raster does not exist: {}'.format(inRaster))
 
             # logger output
-            self.ES_logger.error('input raster does not exist: %s' % inRaster)
+            self.ES_logger.error('input raster does not exist: {}'.format(inRaster))
             return
 
         # 执行转换为numpy array
@@ -4542,33 +4542,33 @@ class EDGAR_spatial(object):
         temp_numpy_arr = numpy.flipud(temp_numpy_arr)
         
         # logger output
-        self.ES_logger.debug('The numpy array size in memory are: %s' % temp_numpy_arr.nbytes)
-        self.ES_logger.debug('Raster converted to numpy array: %s' % inRaster)
+        self.ES_logger.debug('The numpy array size in memory are: {}'.format(temp_numpy_arr.nbytes))
+        self.ES_logger.debug('Raster converted to numpy array: {}'.format(inRaster))
 
         # 保存结果到NPZ文件
         if export_to_npz:
             if not export_path:
-                print('ERROR: export NPZ file path does not exist: %s' % export_path)
+                print('ERROR: export NPZ file path does not exist: {}'.format(export_path))
 
                 # logger output
-                self.ES_logger.error('Path does not exist: %s' % export_path)
+                self.ES_logger.error('Path does not exist: {}'.format(export_path))
                 return
 
             # 设置保存路径
-            temp_save_name = '%s.npz' % inRaster
+            temp_save_name = '{}.npz'.format(inRaster)
             temp_save_name = os.path.join(export_path, temp_save_name)
 
             # 执行保存
             numpy.savez_compressed(temp_save_name, temp_numpy_arr)
 
             # logger output 
-            self.ES_logger.debug('Numpy array saved to NPZ: %s' % temp_save_name)
+            self.ES_logger.debug('Numpy array saved to NPZ: {}'.format(temp_save_name))
     
         # 返回结果
         return temp_numpy_arr
 
     # 将结果的mode数据转换为raster
-    def EOF_hdf_mode_to_raster(self, hdf_path, category_field_list, mode_name, num_eofs, output_fmt='%s_mode_%s', remove_value=None):
+    def EOF_hdf_mode_to_raster(self, hdf_path, category_field_list, mode_name, num_eofs, output_fmt='{}_mode_{}', remove_value=None):
         if not category_field_list:
             print('ERROR: emission categories does not exist. Please check exist.')
 
@@ -4596,7 +4596,7 @@ class EDGAR_spatial(object):
             for eof in range(0, num_eofs):
                 # 检查输出文件名是否能够成功构建
                 try:
-                    output_raster = output_fmt % (cate, eof)
+                    output_raster = output_fmt.format(cate, eof)
                 except:
                     print('ERROR: can not format raster output name.')
 
@@ -4636,7 +4636,7 @@ class EDGAR_spatial(object):
         # 由于奇怪的msys bug，在这里使用os.path.join会误判分隔符为“\\”
         # 所以只能改用格式化字符串
         # full_data_path = os.path.join(hierarchical_data_path, data_name)
-        full_data_path = '%s/%s' % (hierarchical_data_path, data_name)
+        full_data_path = '{}/{}'.format(hierarchical_data_path, data_name)
 
         # 检查数据是否存在
         if full_data_path not in hdf:
@@ -4658,12 +4658,12 @@ class EDGAR_spatial(object):
         if remove_value is None:
             # 保存raster
             temp_raster.save(output_path)
-            self.ES_logger.info('raster saved: %s' % output_path)
+            self.ES_logger.info('raster saved: {}'.format(output_path))
         else:
-            temp_where_clause = 'VALUE = %s' % remove_value
+            temp_where_clause = 'VALUE = {}'.format(remove_value)
             temp_raster_setnull = SetNull(in_conditional_raster=temp_raster, in_false_raster_or_constant=temp_raster, where_clause=temp_where_clause)
             temp_raster_setnull.save(output_path)
-            self.ES_logger.info('raster saved at %s and removed value \'%s\'' % (output_path, remove_value))
+            self.ES_logger.info('raster saved at {} and removed value \'{}\''.format(output_path, remove_value))
 
     # # 将arcgis栅格数据转换成Numpy multivariates-EOF计算所用的格式
     # def EOF_raster_to_numpy_multivariates(self, raster_list, nodata_to_value, export_to_npz=True, export_path=None):
