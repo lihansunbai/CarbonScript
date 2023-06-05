@@ -1973,8 +1973,8 @@ class EDGAR_spatial(object):
             if len(emission_peak_range) == 2:
                 temp_peak_upper_bound = max(emission_peak_range)
                 temp_peak_lower_bound = min(emission_peak_range)
-                temp_peak = str(
-                    (temp_peak_lower_bound + temp_peak_upper_bound) / 2).replace('.', '')
+                temp_peak_value = (temp_peak_lower_bound + temp_peak_upper_bound) / 2
+                temp_peak = '{:.3f}'.format(temp_peak_value).replace('.','')
             else:
                 print("Error: emission peak require maximum and minimum range.")
 
@@ -2051,6 +2051,49 @@ class EDGAR_spatial(object):
     def return_emission_center_list(self):
         return self.emission_center_list
 
+    # 从json文件中批量生成center
+    def create_center_from_json(self, input_json_file):
+        '''
+        通过json生成对应的中心类。
+        json文件的格式和要求：
+            1、json文件中的所有内容应该包括在一个对象中，且除了这个对象外不应该包含其他内容。
+            2、最顶层的对象中应包含一个或若干个中心对象。
+                2.1 这些对象应该以center_name:object的形式保存，其中center_name为中心名称，object为保存emission_center类的相关信息。
+                2.2 保存emission_center的object因包含该中心的所有center_peak信息的object.
+                2.3 保存center_peak的object需要包含以下几个内容：
+                    2.3.1 时间信息：year
+                        year为一个array列表，只需要包括时间的起止，不需要逐个列出年份。如果对应center_peak的时间信息只包括一年，
+                        则year的array列表的起止时间相同。
+                    2.3.1 center_peak的范围：peak_range
+                        center_peak为一个array列表，只需要包括center_peak范围的最大值和最小值。
+            3、一个json文件的示例：
+                {
+                    "center_name_1":{
+                        "peak_1":{
+                            "year":[1970,2018],
+                            "peak_range":[5,9]
+                        }
+                    },
+                    "center_name_2":{
+                        "peak_1":{
+                            "year":[1970,2000],
+                            "peak_range":[3,4.5]
+                        },
+                        "peak_2":{
+                            "year":[2001,2018],
+                            "peak_range":[3,4]
+                        }
+                    }
+                }
+        '''
+        if not input_json_file:
+            print('ERROR: input json file does not exist. json file: \'{}\''.format(input_json_file))
+
+            # logger output
+            self.ES_logger.error('input json file does not exist. json file: \'{}\''.format(input_json_file))
+            exit(1)
+        
+
     ############################################################################
     # 排放峰值和排放中心分析计算相关函数/方法
     ############################################################################
@@ -2109,58 +2152,6 @@ class EDGAR_spatial(object):
             temp_mask.save(temp_center_mask_path)
 
         return temp_mask
-
-    # 这个函数已经被废弃
-    def deprecated_do_raster_extract_center_area(self,
-                                          emission_center_peak,
-                                          extract_raster,
-                                          output,
-                                          saveMask=False):
-        # # 检查输入的emission_center_peak是否存在，不存在则直接返回
-        # if not emission_center_peak:
-        #     print('ERROR: emission center does not exist.')
-
-        #     # logger output
-        #     self.ES_logger.error('input emission center does not exist.')
-        #     return
-
-        # # 检查输入的栅格是否存在
-        # if not (arcpy.Exists(extract_raster)):
-        #     print('Error: input raster does not exist')
-
-        #     # logger output
-        #     self.ES_logger.error('input raster not found.')
-        #     return
-
-        # # 检查输出路径是否存在
-        # if not output or type(output) != str:
-        #     print('Error: output path does not exist')
-
-        #     # logger output
-        #     self.ES_logger.error('output path does not exist.')
-        #     return
-
-        # # 将大于上界和小于下界范围的栅格设为nodata
-        # # Set local variables
-        # whereClause = "VALUE < {} OR VALUE > {}".format(emission_center_peak['peak_min'],
-        #                                             emission_center_peak['peak_max'])
-
-        # # 利用setnull的结果作为提取中心的mask
-        # # Execute SetNull
-        # temp_SetNull = SetNull(extract_raster, extract_raster, whereClause)
-
-        # temp_mask = Con(temp_SetNull, 1, '')
-        # # 通过saveMask参数
-        # # 在这里控制保存一个提取结果的mask（掩膜）结果
-        # if saveMask:
-        #     temp_center_mask_path = 'center_mask_{}_{}'.format(emission_center_peak['peak_name'],
-        #                                                    emission_center_peak['year'])
-        #     temp_mask.save(temp_center_mask_path)
-
-        # temp_result = temp_mask * extract_raster
-        # temp_result.save(output)
-
-        pass
 
     # 提取总排放量、最大排放部门和最大排放部门比例的函数
     def extract_raster_center_basic_info(self, emission_center, isLog):
@@ -2686,8 +2677,60 @@ class EDGAR_spatial(object):
 
         pass
 
+    # 这个函数已经被废弃
+    def deprecated_do_raster_extract_center_area(self,
+                                          emission_center_peak,
+                                          extract_raster,
+                                          output,
+                                          saveMask=False):
+        # # 检查输入的emission_center_peak是否存在，不存在则直接返回
+        # if not emission_center_peak:
+        #     print('ERROR: emission center does not exist.')
+
+        #     # logger output
+        #     self.ES_logger.error('input emission center does not exist.')
+        #     return
+
+        # # 检查输入的栅格是否存在
+        # if not (arcpy.Exists(extract_raster)):
+        #     print('Error: input raster does not exist')
+
+        #     # logger output
+        #     self.ES_logger.error('input raster not found.')
+        #     return
+
+        # # 检查输出路径是否存在
+        # if not output or type(output) != str:
+        #     print('Error: output path does not exist')
+
+        #     # logger output
+        #     self.ES_logger.error('output path does not exist.')
+        #     return
+
+        # # 将大于上界和小于下界范围的栅格设为nodata
+        # # Set local variables
+        # whereClause = "VALUE < {} OR VALUE > {}".format(emission_center_peak['peak_min'],
+        #                                             emission_center_peak['peak_max'])
+
+        # # 利用setnull的结果作为提取中心的mask
+        # # Execute SetNull
+        # temp_SetNull = SetNull(extract_raster, extract_raster, whereClause)
+
+        # temp_mask = Con(temp_SetNull, 1, '')
+        # # 通过saveMask参数
+        # # 在这里控制保存一个提取结果的mask（掩膜）结果
+        # if saveMask:
+        #     temp_center_mask_path = 'center_mask_{}_{}'.format(emission_center_peak['peak_name'],
+        #                                                    emission_center_peak['year'])
+        #     temp_mask.save(temp_center_mask_path)
+
+        # temp_result = temp_mask * extract_raster
+        # temp_result.save(output)
+
+        pass
+
     ############################################################################
-    # 表转CSV相关功能
+    # 统计制表相关功能
     ############################################################################
     # TODO
     # 需要继续改进，加入以下功能：
