@@ -27,6 +27,7 @@ import interval
 import numbers
 import shortuuid
 import h5py
+import json
 
 # # 性能测试相关模块
 # import cProfile
@@ -2086,6 +2087,26 @@ class EDGAR_spatial(object):
                     }
                 }
         '''
+        # 内置临时函数：
+        #   用于转换json中的列表为python tuple
+        def temp_list_to_tuple(inList):
+            if not inList:
+                print('ERROR: input list does not exist. Please check the json file.')
+
+                exit(1)
+            
+            return tuple(min(inList), max(inList))
+
+        # 内置临时函数：
+        #   用于生成emission_peak 所用的年份列表
+        def temp_year_list(inList):
+            if not inList:
+                print('ERROR: input list does not exist. Please check the json file.')
+
+                exit(1)
+            
+            return range(min(inList), max(inList)+1)
+
         if not input_json_file:
             print('ERROR: input json file does not exist. json file: \'{}\''.format(input_json_file))
 
@@ -2093,7 +2114,25 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input json file does not exist. json file: \'{}\''.format(input_json_file))
             exit(1)
         
+        # 尝试解包输入的json文件内容
+        with open(input_json_file, "r") as json_file:
+            json_centers = json.loads(json_file)
+        
+        # 输出函数运行状态信息
+        print('Generating emission centers form json file...')
+        # logger output
+        self.ES_logger.info('Generating emission centers form json file...')
 
+        # 逐个生成中心
+        for jc in json_centers.items():
+            # 添加中心名称
+            temp_center = self.create_center(outer_class=self, emission_center_name=jc[0])
+            # 逐个处理emission_peak信息
+            for ep in jc[1].items():
+                temp_peak_list = self.emission_peak(emission_peak_range=temp_list_to_tuple(ep[1]['peak_range']), year=temp_year_list(ep[1]['year']))
+            
+            self.add_emission_peaks(emission_center=temp_center, peaks_list=temp_peak_list)
+                
     ############################################################################
     # 排放峰值和排放中心分析计算相关函数/方法
     ############################################################################
