@@ -1134,7 +1134,7 @@ class EDGAR_spatial(object):
             # 列表不为空的情况
             else:
                 # 直接将参数传入list方式的方法列出需要栅格
-                self.do_prepare_arcpy_list_raster_list(wildcard_list=raster_filter_wildcard, wildcard_mode=wildcard_mode)
+                self.do_arcpy_list_raster_list(wildcard_list=raster_filter_wildcard, wildcard_mode=wildcard_mode)
 
                 # logger output
                 self.ES_logger.debug('rasters listed.')
@@ -1167,7 +1167,7 @@ class EDGAR_spatial(object):
     #       当该参数为True时，将认为wildcard_list中的元素为arcgis默认的wildcard，即查询条件，此时将
     #           会在使用时替换wildcard中的`*`为正则表达式的`.*`模式。
     #       当该参数为False时，将认为wildcard_list中的元素为正则表达式，此时将直接用该元素进行匹配。
-    def do_prepare_arcpy_list_raster_list(self, wildcard_list, wildcard_mode=True):
+    def deprecated_do_prepare_arcpy_list_raster_list(self, wildcard_list, wildcard_mode=True):
         # 列出所有数据库中的栅格进行匹配
         temp_all_rasters_in_path = arcpy.ListRasters()
 
