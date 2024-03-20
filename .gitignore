@@ -50,3 +50,5 @@ eof_mode_to_raster
 EDGAR/EDGAR_spatial.py
 negative_revise
 test_center_from_json
+EDGAR/.codemap/*
+test_extract_raster_and_convert_to_point

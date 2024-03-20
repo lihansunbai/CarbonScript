@@ -2110,6 +2110,7 @@ class EDGAR_spatial(object):
             
             return range(min(inList), max(inList)+1)
 
+        # create_center_form_json函数功能正式开始
         if not input_json_file:
             print('ERROR: input json file does not exist. json file: \'{}\''.format(input_json_file))
 
@@ -2141,10 +2142,12 @@ class EDGAR_spatial(object):
     # 排放峰值和排放中心分析计算相关函数/方法
     ############################################################################
     # 这个函数实际执行从一个年份的排放总量数据栅格中提取中心操作
-    def do_make_center_mask(self,
+    # 这个函数将返回一个元组，这个元组的第一个元素是arcgis raster类型的中心，
+    #       第二个元素是arcgis raster类型的中心掩膜
+    def do_raster_make_center_and_mask(self,
                             emission_center_peak,
                             total_emission_raster,
-                            output,
+                            output_center_name='',
                             saveMask=True):
         # 检查输入的emission_center_peak是否存在，不存在则直接返回
         if not emission_center_peak:
@@ -2162,14 +2165,6 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input raster not found.')
             exit(1)
 
-        # 检查输出路径是否存在
-        if not output or type(output) != str:
-            print('Error: output path does not exist')
-
-            # logger output
-            self.ES_logger.error('output path does not exist.')
-            exit(1)
-
         # 将大于上界和小于下界范围的栅格设为nodata
         # Set local variables
         whereClause = "VALUE < {} OR VALUE > {}".format(emission_center_peak['peak_min'],
@@ -2177,24 +2172,36 @@ class EDGAR_spatial(object):
 
         # 利用setnull的结果作为提取中心的mask
         # Execute SetNull
-        temp_SetNull = SetNull(total_emission_raster, total_emission_raster, whereClause)
+        temp_center = SetNull(total_emission_raster, total_emission_raster, whereClause)
+
+        # 判断是否按默认center命名格式保存提取的center文件名
+        if output_center_name=='':
+            temp_center_output = 'center_{}_{}'.format(emission_center_peak['peak_name'],
+                                                        emission_center_peak['year'])
+        else:
+            temp_center_output = output_center_name
 
         # 保存总量中心的raster
-        temp_center_output = 'center_{}_{}'.format(emission_center_peak['peak_name'],
-                                               emission_center_peak['year'])
-        temp_SetNull.save(temp_center_output)
+        temp_center.save(temp_center_output)
 
         # 生成中心mask
-        temp_mask = Con(temp_SetNull, 1, '')
+        temp_center_mask = Con(temp_center, 1, '')
 
         # 通过saveMask参数
         # 在这里控制保存一个提取结果的mask（掩膜）结果
         if saveMask:
-            temp_center_mask_path = 'center_mask_{}_{}'.format(emission_center_peak['peak_name'],
-                                                           emission_center_peak['year'])
-            temp_mask.save(temp_center_mask_path)
+            # 判断是否按默认center命名格式保存提取的center文件名
+            if output_center_name=='':
+                temp_center_mask_path = 'center_mask_{}_{}'.format(emission_center_peak['peak_name'],
+                                                                    emission_center_peak['year'])
+            else:
+                temp_center_mask_path = '{}_mask'.format(output_center_name)
+            
+            # 保存掩膜
+            temp_center_mask.save(temp_center_mask_path)
 
-        return temp_mask
+        # 返回提取后的中心结果
+        return (temp_center,temp_center_mask)
 
     # 提取总排放量、最大排放部门和最大排放部门比例的函数
     def extract_raster_center_basic_info(self, emission_center, isLog):
@@ -2265,11 +2272,10 @@ class EDGAR_spatial(object):
             # set the output
             temp_center_path = 'center_{}_{}'.format(temp_center_peak_name, yr)
 
-            temp_mask = self.do_make_center_mask(
+            temp_mask = self.do_raster_make_center_and_mask(
                 emission_center_peak=temp_center_peak,
                 total_emission_raster=temp_total_emission,
-                output=temp_center_path,
-                saveMask=True)
+                saveMask=True)[1]
 
             # 提取中心的最大排放部门类型属性
             temp_center_main_output = 'center_main_sector_{}_{}'.format(temp_center_peak_name, yr)
