@@ -1,33 +1,41 @@
 # -*- coding: utf-8 -*-
 ################################################################################
 ################################################################################
-## 备忘录：
+# 备忘录：
 ################################################################################
 ################################################################################
 import sys
 # 以下为测试用DEBUG用库文件
 # 正式使用时请勿import
-sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/lib/eofs')
-from multivariate.standard import MultivariateEof
-import h5py
-import numpy
-import tqdm
-from tqdm import tqdm
-import dask
-import dask.array as da
-import dask_ml.preprocessing
-from dask_ml.preprocessing import StandardScaler
-from sklearn import preprocessing
-import os
-import re
-import itertools
-import collections
+# For office
+# sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
+# For laptop
+sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
+from lib.eofs.multivariate.standard import MultivariateEof
+
+# 以下为正常使用eofs库的引用
+# from multivariate.standard import MultivariateEof
+
 import logging
+import collections
+import itertools
+import re
+import os
+from sklearn import preprocessing
+from dask_ml.preprocessing import StandardScaler
+import dask_ml.preprocessing
+import dask.array as da
+import dask
+from tqdm import tqdm
+import tqdm
+import numpy
+import h5py
 
 class EDGAR_eof():
     '''
     EOF analysis using EDGAR data
     '''
+
     def __init__(self,
                  st_year=1970,
                  en_year=2018,
@@ -54,7 +62,8 @@ class EDGAR_eof():
             self.EE_logger.error('Year setting error!')
             return
         elif st_year < self.__default_start_year or en_year > self.__default_end_year:
-            print('Error! Processing year range out of data support! The year must contain in 1970 to 2018')
+            print(
+                'Error! Processing year range out of data support! The year must contain in 1970 to 2018')
             self.EE_logger.info('Year settings are out of range.')
             self.EE_logger.error('Year setting error!')
             return
@@ -76,7 +85,8 @@ class EDGAR_eof():
     __default_end_year = 2018
 
     # 默认部门编码
-    __default_categories_list = ['G_ENE', 'G_IND', 'G_TRA', 'G_RCO', 'G_AGS', 'G_WST']
+    __default_categories_list = ['G_ENE', 'G_IND',
+                                 'G_TRA', 'G_RCO', 'G_AGS', 'G_WST']
 
     ############################################################################
     ############################################################################
@@ -94,7 +104,8 @@ class EDGAR_eof():
         self.start_year, self.end_year = start_end
 
         # logger output
-        self.EE_logger.debug('year range changed to:%s to %s', start_end[0], start_end[1])
+        self.EE_logger.debug('year range changed to:%s to %s',
+                             start_end[0], start_end[1])
 
     # 自定义metadata的属性
     @property
@@ -126,7 +137,7 @@ class EDGAR_eof():
             # logger output
             self.EE_logger.error('input area_file does not exist.')
             return
-        
+
         # 打开npz文件并导入数据
         area_data = numpy.load(area_file)['arr_0']
 
@@ -162,7 +173,7 @@ class EDGAR_eof():
         函数将返回两个内容：
             1、改编形状后的数据
             2、原始数据的维度信息
-        
+
         实现这个函数的目的是为了满足dask_ml在standardize时的维度限制。
 
         """
@@ -178,7 +189,7 @@ class EDGAR_eof():
         info['shapes'] = field.shape
 
         merged = field.reshape((field.shape[0], numpy.prod(field.shape[1:])))
-        flattened = merged.rechunk({0:'auto', 1:merged.shape[1]})
+        flattened = merged.rechunk({0: 'auto', 1: merged.shape[1]})
 
         return flattened, info
 
@@ -198,14 +209,15 @@ class EDGAR_eof():
             print('ERROR: flatten fields data should be a dask.array like')
 
             # logger output
-            self.EE_logger.error('flatten fields field type is not a dask.array')
+            self.EE_logger.error(
+                'flatten fields field type is not a dask.array')
             return
 
         return return_field
 
     # 对HDF数据中的分中心分类排放数据进行数据标准化
     def category_standardize(self, hdf_name, output_hdf_name, data_hdf_hierarchical_path):
-        if not hdf_name or not os.path.exists(hdf_name) :
+        if not hdf_name or not os.path.exists(hdf_name):
             print('ERROR: any data was found in hdf file. Please check the input.')
 
             # logger output
@@ -218,7 +230,7 @@ class EDGAR_eof():
             # logger output
             self.EE_logger.error('output file not set.')
             return
-        
+
         hdf = h5py.File(hdf_name, 'r')
         if data_hdf_hierarchical_path in hdf:
             hdf_data = hdf[data_hdf_hierarchical_path]
@@ -233,21 +245,24 @@ class EDGAR_eof():
         temp_init_dask_hdf = da.from_array(hdf_data, chunks='auto')
 
         # flatten dask.array to 2 dims
-        temp_dask_flatten_fields, origin_shape = self.flatten_fields(temp_init_dask_hdf)
+        temp_dask_flatten_fields, origin_shape = self.flatten_fields(
+            temp_init_dask_hdf)
 
         # 初始化dask_ml的standardizer
         cate_scaler = StandardScaler()
         cate_scaler.fit(temp_dask_flatten_fields)
-        temp_dask_flatten_standard = cate_scaler.transform(temp_dask_flatten_fields)
+        temp_dask_flatten_standard = cate_scaler.transform(
+            temp_dask_flatten_fields)
 
         # 重新将数据复原到输入栅格的形状
         temp_dask_to_hdf = self.unwrap_fields(flatten_fields=temp_dask_flatten_standard,
                                               field_shape_info=origin_shape['shapes'])
-        
+
         # 缩减储存体积为float32
         temp_dask_to_hdf = temp_dask_to_hdf.astype(numpy.float32)
         # 将数据写入HDF5文件
-        temp_dask_to_hdf.to_hdf5(output_hdf_name, data_hdf_hierarchical_path, compression='gzip', chunks=True)
+        temp_dask_to_hdf.to_hdf5(
+            output_hdf_name, data_hdf_hierarchical_path, compression='gzip', chunks=True)
 
     # 将hdf数据的南北方向恢复为arcgis南北方向
     def north_revise(self, hdf_file, data_path, data_name, north_dim=1):
@@ -258,12 +273,12 @@ class EDGAR_eof():
 
         hdf = h5py.File(hdf_file, 'r+')
         data = os.path.join(data_path, data_name)
-        
+
         if data not in hdf:
             print('ERROR: can find data in hdf file. Please check the input.')
 
             return
-        
+
         # dask version
         # warning: dask version may cause python segmentation fault...
         # data_dask_array = dask.array.from_array(hdf[data], chunks=True)
@@ -274,30 +289,31 @@ class EDGAR_eof():
         # numpy version
         data_numpy_array = numpy.array(hdf[data][:])
         data_fliped = numpy.flip(data_numpy_array, axis=1)
-        hdf[data][:] = data_fliped 
-        
+        hdf[data][:] = data_fliped
+
         # 释放内存
         hdf.close()
         del data_numpy_array
         del data_fliped
-    
+
     # 函数将为输入的hdf数据定义地理信息
     # 如果hdf本身包含地理范围信息则沿用文件已有范围信息。
     # 如果不包含地理范围信息，则使用玩家传入参数为地理范围信息，同时在hdf的最顶层位置保存地理范围信息。
-    def hdf_create_geographical_extend(self, hdf_file, data_path, data_name, lat_range=(-90,90), lon_range=(-180,180), resolution=0.1):
+    def hdf_create_geographical_extend(self, hdf_file, data_path, data_name, lat_range=(-90, 90), lon_range=(-180, 180), resolution=0.1):
         if not hdf_file:
             print('ERROR: hdf file dose not exist. Please check the input.')
 
             # logger output
             self.EE_logger.error('hdf file dose not exist.')
             return
-        
+
         hdf = h5py.File(hdf_file, 'r+')
 
         data = os.path.join(data_path, data_name)
-        
+
         if data not in hdf:
-            print('ERROR: can not find data in hdf file. Please check the input data path and name.')
+            print(
+                'ERROR: can not find data in hdf file. Please check the input data path and name.')
 
             # logger output
             self.EE_logger.error('data does not exist.')
@@ -312,27 +328,28 @@ class EDGAR_eof():
             temp_lon = hdf['lon']
 
             # logger output
-            self.EE_logger.info('HDF file have geographical extend. Data will use HDF file defind geographical extend.')
+            self.EE_logger.info(
+                'HDF file have geographical extend. Data will use HDF file defind geographical extend.')
         else:
             temp_lat = numpy.arange(lat_range[0], lat_range[1], resolution)
             temp_lon = numpy.arange(lon_range[0], lon_range[1], resolution)
-            
+
             hdf.create_dataset('lat', data=temp_lat)
             hdf.create_dataset('lon', data=temp_lon)
             hdf['lat'].make_scale('latitude')
             hdf['lon'].make_scale('longitude')
             # logger output
-            self.EE_logger.info('Data will use costume defind geographical extend.')
+            self.EE_logger.info(
+                'Data will use costume defind geographical extend.')
 
         # 执行为数据绑定地理范围信息
         hdf[data].attrs['DimensionNames'] = 'lat,lon'
         hdf[data].attrs['units'] = 't/km^2'
         hdf[data].dims[1].attach_scale(hdf['lat'])
         hdf[data].dims[2].attach_scale(hdf['lon'])
-        
+
         # logger output
         self.EE_logger.info('geographical extend add: {}'.format(data))
-
 
     def print_start_year(self, year):
         # logger output
@@ -370,7 +387,8 @@ class EDGAR_eof():
         return_decomposed_parts = {}
 
         for meta in metadata.items():
-            return_decomposed_parts[meta[0]] = [value for value in meta[1] if(value in filename)]
+            return_decomposed_parts[meta[0]] = [
+                value for value in meta[1] if (value in filename)]
 
         return return_decomposed_parts
 
@@ -384,10 +402,12 @@ class EDGAR_eof():
     # 所以，这里不再采取保存numpy数组的形式，只通过固定参数将数据保存到一个HDF5 格式的文件中。
     def numpy_to_hdf5(self, numpy_list, file_name_metadata, output_name=None, output_path=None, dask_style=False):
         if not numpy_list or not file_name_metadata:
-            print('ERROR: input rasters or file name metadata do not exist. Please check the inputs.')
+            print(
+                'ERROR: input rasters or file name metadata do not exist. Please check the inputs.')
 
             # logger output
-            self.EE_logger.error('input rasters or file name metadata do not exist.')
+            self.EE_logger.error(
+                'input rasters or file name metadata do not exist.')
             return
 
         # 检查输入路径是否存在
@@ -404,9 +424,10 @@ class EDGAR_eof():
         # 使用a参数打开文件，如果文件存在则追加啊，如果文件不存在则创建新文件
         with h5py.File(temp_full_path_name, 'a') as hdf:
             # 创建维度标尺信息
-            hdf.create_dataset('lat', data=numpy.arange(-90,90,0.1))
-            hdf.create_dataset('lon', data=numpy.arange(-180,180,0.1))
-            hdf.create_dataset('time', data=numpy.arange(self.start_year,self.end_year,1))
+            hdf.create_dataset('lat', data=numpy.arange(-90, 90, 0.1))
+            hdf.create_dataset('lon', data=numpy.arange(-180, 180, 0.1))
+            hdf.create_dataset('time', data=numpy.arange(
+                self.start_year, self.end_year, 1))
             hdf['lat'].make_scale('latitude')
             hdf['lon'].make_scale('longitude')
             hdf['time'].make_scale('time')
@@ -416,10 +437,10 @@ class EDGAR_eof():
             if dask_style:
                 # 逐npz文件写入
                 for numpy_file in tqdm(numpy_list):
-                    # 构建hdf5_hierarchical_path生成需要的传入参数                
-                    temp_save_name = {'file_name':numpy_file,
-                                        'metadata':file_name_metadata}
-                    
+                    # 构建hdf5_hierarchical_path生成需要的传入参数
+                    temp_save_name = {'file_name': numpy_file,
+                                      'metadata': file_name_metadata}
+
                     self.hdf5_dask_hierarchical_path = temp_save_name
 
                     # 从这里开始需要在DEBUG的时候留意内存使用情况
@@ -430,22 +451,25 @@ class EDGAR_eof():
                     temp_numpy_array = numpy.load(numpy_file)
 
                     # 取得数据集写入位置
-                    temp_dataset_path = '{}/grid_co2'.format(self.hdf5_dask_data_hierarchical_path)
+                    temp_dataset_path = '{}/grid_co2'.format(
+                        self.hdf5_dask_data_hierarchical_path)
 
                     # 检查写入路径是否存在
                     # 如果路径不存在则要先创建一个空数据再写入
                     if temp_dataset_path not in hdf:
                         # 设置保存的hdf 组的路径，并创建空数组
-                        temp_group = hdf.create_group(name=self.hdf5_dask_data_hierarchical_path)
+                        temp_group = hdf.create_group(
+                            name=self.hdf5_dask_data_hierarchical_path)
                         # 获取需要创建数组的数据类型和维度
                         temp_numpy_array_dtype = temp_numpy_array['arr_0'].dtype
                         temp_numpy_array_shape = temp_numpy_array['arr_0'].shape
                         # 创建空数据集
                         temp_dataset = temp_group.create_dataset(name='grid_co2',
-                                                  shape=(len(file_name_metadata['year']), temp_numpy_array_shape[0],temp_numpy_array_shape[1]),
-                                                  dtype=temp_numpy_array_dtype,
-                                                  chunks=True,
-                                                  compression="gzip")
+                                                                 shape=(len(
+                                                                     file_name_metadata['year']), temp_numpy_array_shape[0], temp_numpy_array_shape[1]),
+                                                                 dtype=temp_numpy_array_dtype,
+                                                                 chunks=True,
+                                                                 compression="gzip")
                         # 为空数据集的数据维度绑定标尺信息
                         # TEST1
                         # 取消绑定以测试维度是否影响daskde的chunk行为
@@ -456,25 +480,26 @@ class EDGAR_eof():
                         # 为dataset添加属性信息
                         temp_dataset.attrs['DimensionNames'] = 'time,nlat,nlon'
                         temp_dataset.attrs['units'] = 't/grid'
-                        temp_attrs = self.hdf5_dask_data_hierarchical_path.split('/')
+                        temp_attrs = self.hdf5_dask_data_hierarchical_path.split(
+                            '/')
                         temp_dataset.attrs['components'] = temp_attrs[0]
                         temp_dataset.attrs['region'] = temp_attrs[1]
-                        
+
                     else:
                         temp_dataset = hdf[temp_dataset_path]
 
                     # 确定写入的年份维度的位置
                     temp_file_year = int(numpy_file[-8:-4])
-                    temp_data_position = temp_file_year - self.start_year 
-                    temp_dataset[temp_data_position,...] = temp_numpy_array['arr_0']
+                    temp_data_position = temp_file_year - self.start_year
+                    temp_dataset[temp_data_position, ...] = temp_numpy_array['arr_0']
                     # 执行写入数据到磁盘
                     hdf.flush()
             else:
                 for numpy_file in tqdm(numpy_list):
-                    # 构建hdf5_hierarchical_path生成需要的传入参数                
-                    temp_save_name = {'file_name':numpy_file,
-                                        'metadata':file_name_metadata}
-                    
+                    # 构建hdf5_hierarchical_path生成需要的传入参数
+                    temp_save_name = {'file_name': numpy_file,
+                                      'metadata': file_name_metadata}
+
                     # 通过属性的生成方法生成hdf5_hierarchical_path
                     self.hdf5_separate_hierarchical_path = temp_save_name
 
@@ -483,14 +508,15 @@ class EDGAR_eof():
                     temp_numpy_array_dtype = temp_numpy_array['arr_0'].dtype
 
                     # 设置保存的hdf 组的路径
-                    temp_group = hdf.create_group(name=self.hdf5_separate_data_hierarchical_path)
+                    temp_group = hdf.create_group(
+                        name=self.hdf5_separate_data_hierarchical_path)
                     # 保存数据
                     temp_dataset = temp_group.create_dataset(name='grid_co2',
-                                            data=temp_numpy_array['arr_0'],
-                                            dtype=temp_numpy_array_dtype,
-                                            chunks=True,
-                                            compression="gzip")
-                    
+                                                             data=temp_numpy_array['arr_0'],
+                                                             dtype=temp_numpy_array_dtype,
+                                                             chunks=True,
+                                                             compression="gzip")
+
                     # 绑定维度标尺信息
                     temp_dataset.dims[0].attach_scale(hdf['lat'])
                     temp_dataset.dims[1].attach_scale(hdf['lon'])
@@ -509,7 +535,7 @@ class EDGAR_eof():
             return ''
         else:
             return self.hdf5_dask_data_hierarchical_path
-    
+
     @hdf5_dask_hierarchical_path.setter
     def hdf5_dask_hierarchical_path(self, data):
         '''
@@ -533,12 +559,14 @@ class EDGAR_eof():
             self.EE_logger.error('input metadata does not exist.')
             self.hdf5_dask_data_hierarchical_path = ''
             return
-        
+
         if not data['metadata']['year'] or not data['metadata']['emission_categories']:
-            print('ERROR: year and emission categories must contained in metadata. Please check the input.')
+            print(
+                'ERROR: year and emission categories must contained in metadata. Please check the input.')
 
             # logger output
-            self.EE_logger.error('year or emission categories is empty in metadata')
+            self.EE_logger.error(
+                'year or emission categories is empty in metadata')
             self.hdf5_dask_data_hierarchical_path = ''
             return
 
@@ -557,31 +585,37 @@ class EDGAR_eof():
 
         # 检查年份匹配结果，如果没有匹配到年份信息则直接退出
         if not return_decomposed_parts['year'] or not return_decomposed_parts['emission_categories']:
-            print('ERROR: No input year or emission categories was found in file name. Please check the input')
+            print(
+                'ERROR: No input year or emission categories was found in file name. Please check the input')
 
             # logger output
-            self.EE_logger.error('no year or emission categories information was found.')
+            self.EE_logger.error(
+                'no year or emission categories information was found.')
             self.hdf5_dask_data_hierarchical_path = ''
             return
-            
+
         # 以下构建路径的逻辑是从子路径向父路径逐层构建。
         # 采用这个方式构建的优点是最多只需要进行三层构建。
         # 不采用迭代的方式进行构建的原因是：尚未发现更简单或者更由效率的方法。
         # 判断是否需要构建中心
         if 'centers' in data['metadata']:
-            temp_hierarchical_path = temp_hierarchical_path.join('{}'.format(return_decomposed_parts['centers']))
+            temp_hierarchical_path = temp_hierarchical_path.join(
+                '{}'.format(return_decomposed_parts['centers']))
         else:
             temp_hierarchical_path = 'global'
 
         # 判断emission_components
         # 判断是否需要构建总量、部门或分类排放
         if 'emission_categories' in data['metadata']:
-            temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['emission_categories'], temp_hierarchical_path)
-        elif 'EDGAR_sectors' in data['metadata']:  
-            temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['EDGAR_sectors'], temp_hierarchical_path)
+            temp_hierarchical_path = '{}/{}'.format(
+                return_decomposed_parts['emission_categories'], temp_hierarchical_path)
+        elif 'EDGAR_sectors' in data['metadata']:
+            temp_hierarchical_path = '{}/{}'.format(
+                return_decomposed_parts['EDGAR_sectors'], temp_hierarchical_path)
         else:
-            temp_hierarchical_path = '{}/{}'.format('total', temp_hierarchical_path)
-        
+            temp_hierarchical_path = '{}/{}'.format(
+                'total', temp_hierarchical_path)
+
         # 保存最终结果
         self.hdf5_dask_data_hierarchical_path = temp_hierarchical_path
 
@@ -615,7 +649,7 @@ class EDGAR_eof():
             self.EE_logger.error('input metadata does not exist.')
             self.hdf5_data_hierarchical_path = ''
             return
-        
+
         if not data['metadata']['year']:
             print('ERROR: year must contained in metadata. Please check the input.')
 
@@ -645,27 +679,32 @@ class EDGAR_eof():
             self.EE_logger.error('no year information was found.')
             self.hdf5_data_hierarchical_path = ''
             return
-            
+
         # 以下构建路径的逻辑是从子路径向父路径逐层构建。
         # 采用这个方式构建的优点是最多只需要进行三层构建。
         # 不采用迭代的方式进行构建的原因是：尚未发现更简单或者更由效率的方法。
         # 判断是否需要构建中心
         if 'centers' in data['metadata']:
-            temp_hierarchical_path = temp_hierarchical_path.join('{}'.format(return_decomposed_parts['centers']))
+            temp_hierarchical_path = temp_hierarchical_path.join(
+                '{}'.format(return_decomposed_parts['centers']))
         else:
             temp_hierarchical_path = 'global'
 
         # 判断emission_components
         # 判断是否需要构建总量、部门或分类排放
         if 'emission_categories' in data['metadata']:
-            temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['emission_categories'], temp_hierarchical_path)
-        elif 'EDGAR_sectors' in data['metadata']:  
-            temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['EDGAR_sectors'], temp_hierarchical_path)
+            temp_hierarchical_path = '{}/{}'.format(
+                return_decomposed_parts['emission_categories'], temp_hierarchical_path)
+        elif 'EDGAR_sectors' in data['metadata']:
+            temp_hierarchical_path = '{}/{}'.format(
+                return_decomposed_parts['EDGAR_sectors'], temp_hierarchical_path)
         else:
-            temp_hierarchical_path = '{}/{}'.format('total', temp_hierarchical_path)
-        
+            temp_hierarchical_path = '{}/{}'.format(
+                'total', temp_hierarchical_path)
+
         # 构建年份路径
-        temp_hierarchical_path = '{}/{}'.format(return_decomposed_parts['year'], temp_hierarchical_path)
+        temp_hierarchical_path = '{}/{}'.format(
+            return_decomposed_parts['year'], temp_hierarchical_path)
 
         # 保存最终结果
         self.hdf5_separate_data_hierarchical_path = temp_hierarchical_path
@@ -692,9 +731,10 @@ class EDGAR_eof():
         # 检查必要键值是否存在，若不存在则直接返回空列表
         if not filter_label['category'] or not filter_label['time'] or not filter_label['delimiter'] or not filter_label['append']:
             print('ERROR: category and time and filter_fmt must be offered.')
-            
+
             # logger output
-            self.EE_logger.error('can not found category or time or filter_fmt in input dict.')
+            self.EE_logger.error(
+                'can not found category or time or filter_fmt in input dict.')
             return []
 
         # 将时间转换为列表
@@ -705,7 +745,8 @@ class EDGAR_eof():
             self.EE_logger.error('time is not a tuple.')
             return []
         else:
-            filter_label['time'] = ['{}'.format(i) for i in range(min(filter_label['time']), max(filter_label['time']) + 1)]
+            filter_label['time'] = ['{}'.format(i) for i in range(
+                min(filter_label['time']), max(filter_label['time']) + 1)]
 
         # 检查是否存在可选字段
         if 'prefix' in filter_label and bool(filter_label['prefix']):
@@ -719,21 +760,26 @@ class EDGAR_eof():
             temp_has_suffix = '0'
 
         # 保存可选字段检查结果
-        temp_has_costume = int(temp_has_prefix+temp_has_suffix,2)
+        temp_has_costume = int(temp_has_prefix+temp_has_suffix, 2)
 
         # 针对包含可选字段的情况展开所有标签
         if temp_has_costume == 0:
-            temp_iter = itertools.product(filter_label['category'],filter_label['delimiter'],filter_label['time'])
+            temp_iter = itertools.product(
+                filter_label['category'], filter_label['delimiter'], filter_label['time'])
         elif temp_has_costume == 1:
-            temp_iter = itertools.product(filter_label['category'],filter_label['delimiter'],filter_label['time'],filter_label['delimiter'],filter_label['suffix'])
+            temp_iter = itertools.product(filter_label['category'], filter_label['delimiter'],
+                                          filter_label['time'], filter_label['delimiter'], filter_label['suffix'])
         elif temp_has_costume == 2:
-            temp_iter = itertools.product(filter_label['prefix'],filter_label['delimiter'],filter_label['category'],filter_label['delimiter'],filter_label['time'])
+            temp_iter = itertools.product(filter_label['prefix'], filter_label['delimiter'],
+                                          filter_label['category'], filter_label['delimiter'], filter_label['time'])
         elif temp_has_costume == 3:
-            temp_iter = itertools.product(filter_label['prefix'],filter_label['delimiter'],filter_label['category'],filter_label['delimiter'],filter_label['time'],filter_label['delimiter'],filter_label['suffix'])
+            temp_iter = itertools.product(filter_label['prefix'], filter_label['delimiter'], filter_label['category'],
+                                          filter_label['delimiter'], filter_label['time'], filter_label['delimiter'], filter_label['suffix'])
 
         # list comprehensions生成返回结果列表
         return_numpy_filter = [''.join(it) for it in list(temp_iter)]
-        return_numpy_filter = [it + '.' + filter_label['append'] for it in return_numpy_filter]
+        return_numpy_filter = [it + '.' + filter_label['append']
+                               for it in return_numpy_filter]
 
         self.numpy_filter = return_numpy_filter
 
@@ -746,26 +792,28 @@ class EDGAR_eof():
             # logger output
             self.EE_logger.error('numpy filter in empty.')
             return
-    
+
         if not search_path:
             print('ERROR: search path is empty, please check the input')
 
             # logger output
             self.EE_logger.error('search path does not exists')
-            
+
             return
-        
+
         # 列出search_path路径下的所有文件
-        temp_search_files = [f for f in os.listdir(search_path) if os.path.isfile(os.path.join(search_path, f))]
+        temp_search_files = [f for f in os.listdir(
+            search_path) if os.path.isfile(os.path.join(search_path, f))]
 
         # 从当前路径的文件中找到标签指定的文件
-        numpy_files = list(set(temp_search_files).intersection(numpy_file_filter))
-        
+        numpy_files = list(
+            set(temp_search_files).intersection(numpy_file_filter))
+
         # 构建完整numpy文件路径
         numpy_files_path = [os.path.join(search_path, f) for f in numpy_files]
 
         return numpy_files_path
- 
+
     ############################################################################
     ############################################################################
     # 执行multivariates-EOF
@@ -791,7 +839,8 @@ class EDGAR_eof():
             return
 
         if 'emission_categories' not in hierarchical_path_metadata or not hierarchical_path_metadata['emission_categories']:
-            print('ERROR: metadata does not contain emission categories. Please check the input.')
+            print(
+                'ERROR: metadata does not contain emission categories. Please check the input.')
 
             # logger output
             self.EE_logger.error('emission categories is empty.')
@@ -812,35 +861,42 @@ class EDGAR_eof():
         # temp_eof_time_series.sort()
 
         # 打开HDF5文件
-        hdf = h5py.File(input_hdf,'r')
+        hdf = h5py.File(input_hdf, 'r')
 
         # 初始化最终返回列表
         return_state_vector = []
         # 按照state_vector给出的顺序进行操作
         for cate in state_vector:
             if cate not in hierarchical_path_metadata['emission_categories']:
-                print('ERROR: emission category of states not contain in hdf5 data. Please check the input.')
+                print(
+                    'ERROR: emission category of states not contain in hdf5 data. Please check the input.')
 
                 # logger output
                 self.EE_logger.error('state not in metadata.')
                 exit()
 
-            # 初始化需要stack 为结果数据的列表
-            temp_state_array = []
 
             # 逐部门提取hdf数据
             temp_data_path = '{}/{}/grid_co2'.format(cate, center_name)
 
+            # 使用原始数据精度
             temp_dask_hdf = da.from_array(hdf[temp_data_path], chunks='auto')
 
             return_state_vector.append(temp_dask_hdf)
+
 
         # 返回最终结果
         return return_state_vector
 
     # 实际执行eofs计算
-    def multivariates_EOF_run(self, input_data, hierarchical_path_metadata, center=True, state_vector=__default_categories_list, center_name=None, weights=None):
-        if not input_data or not os.path.exists(input_data) :
+    def multivariates_EOF_run(self, input_data, hierarchical_path_metadata, center=True, state_vector=__default_categories_list, center_name=None, weights=None, max_eof_results=0):
+        '''
+            注意：计算全球的eof数据量可能非常大，甚至到了氪金才能解决的地步。
+                    但是最重要的是，这样的计算没办法进行任何测试或者错误检查，或者更进一步的分析。
+                    所以，一定要使用修改后的eofs版本进行计算，并在本函数中指定max_eof_results参数。
+                        *** max_eof_reults指定了需要返回的eof场的数量。
+        '''
+        if not input_data or not os.path.exists(input_data):
             print('ERROR: input data does not exist. Please check the input.')
 
             # logger output
@@ -854,19 +910,23 @@ class EDGAR_eof():
             self.EE_logger.error('metadata is empty.')
             return
 
+        if max_eof_results == 0:
+            print('Warning !! eof will return all the results! If you are using vary larg or big data, please confirm your operation.')
+
         # 获得state_vector的数据
         state_vector_array_list = self.hdf_to_dask_array(input_hdf=input_data,
-                                                        hierarchical_path_metadata=hierarchical_path_metadata,
-                                                        state_vector=state_vector,
-                                                        center_name=center_name)
-        
-        return self.multivariates_EOF_solver(datasets=state_vector_array_list, center=center, weights=weights)
-                    
+                                                         hierarchical_path_metadata=hierarchical_path_metadata,
+                                                         state_vector=state_vector,
+                                                         center_name=center_name)
+
+        # 这里使用的是经过修改的eofs库，注意进行正确的引用库
+        return self.multivariates_EOF_solver(datasets=state_vector_array_list, center=center, weights=weights, max_eof_results=max_eof_results)
+
     # eofs库solver的自定义封装
     # 直接返回eofs库的solver。
-    def multivariates_EOF_solver(self, datasets, weights=None, center=True, ddof=1):
+    def multivariates_EOF_solver(self, datasets, weights=None, center=True, ddof=1, max_eof_results=0):
         # 使用eofs库执行EOF，得到solver
-        return MultivariateEof(datasets=datasets, weights=weights, center=center, ddof=ddof)
+        return MultivariateEof(datasets=datasets, weights=weights, center=center, ddof=ddof, max_eof_results=max_eof_results)
 
     # 导出EOF结果到HDF文件
     # 函数需要传入一个EOF_results字典
@@ -939,19 +999,20 @@ class EDGAR_eof():
         可以设定save_to_hdf为True保存结果到指定位置文件中。使用此功能时必须提供一个保存文件的路径。
         '''
         if not multivariates_eof_solver:
-            print('ERROR: eof solver has not create. Please run multivariates_EOF_solver() or check the input')
+            print(
+                'ERROR: eof solver has not create. Please run multivariates_EOF_solver() or check the input')
 
             # logger output
             self.EE_logger.error('input eof solver does not exists')
             return
-        
+
         if not state_vector:
             print('ERROR: state vector is empty. Please check the input.')
 
             # logger output
             self.EE_logger.error('state vector is empty')
             return
-        
+
         # 初始化返回的字典
         return_dict = dict([(state, []) for state in state_vector])
         return_dict.update(dict(pcs=[]))
@@ -959,7 +1020,9 @@ class EDGAR_eof():
         # 保存eof场的结果
         # 因为EOF场的结果又分为state_vector的对应部分，所以保存需要经历两次分类。
         # 首先获得所有eof分量，并存入列表
-        temp_eofs = [eof for eof in multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)]
+        # temp_eofs = [eof for eof in multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)]
+        temp_eofs = multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)
+
         # 将分量eof和对应的名称绑定
         # 因为返回的分量的顺序是按照输入的分量顺序返回所以可以做到一一对应
         temp_state_eof = zip(state_vector, temp_eofs)
@@ -968,11 +1031,11 @@ class EDGAR_eof():
             return_dict[it[0]] = it[1]
 
         # 保存pc的结果
+        # 这里的pcs需要考虑是否需要归一化到1
         temp_pcs = multivariates_eof_solver.pcs(pcscaling=0, npcs=eof_num)
         return_dict['pcs'] = numpy.transpose(temp_pcs)
 
         return return_dict
-
 
     ############################################################################
     ############################################################################
@@ -983,6 +1046,7 @@ class EDGAR_eof():
     ############################################################################
     # 类定义
     ############################################################################
+
     class emission_center():
         '''
         Description of emission_center:
@@ -1037,7 +1101,8 @@ class EDGAR_eof():
             # 检查center_peaks_buffer是否存在
             # 存在时则将其按年份排序，再组成一个排序字典
             if not self.center_peaks_buffer:
-                print('ERROR: center peak is empty, please run emission_center.emission_peak_assembler to add peaks.')
+                print(
+                    'ERROR: center peak is empty, please run emission_center.emission_peak_assembler to add peaks.')
 
                 # logger output
                 self.outer_class.EE_logger.error('center peaks is empty.')
@@ -1098,7 +1163,8 @@ class EDGAR_eof():
             return
 
         if not year or year > self.end_year or year < self.start_year:
-            print('ERROR: removing peak failed, please assign a correct year to index the peak.')
+            print(
+                'ERROR: removing peak failed, please assign a correct year to index the peak.')
 
             # logger output
             self.EE_logger.error('Input year is empty.')

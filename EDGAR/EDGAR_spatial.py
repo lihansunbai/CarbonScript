@@ -2508,10 +2508,50 @@ class EDGAR_spatial(object):
                 output_name_fmt=temp_output_name_fmt)
 
     # 叠加时间序列上所有发生排放的区域得到全部排放的分布
+    #   中心的历史范围提取：
+    #       1.1 利用碳排放总量，按照中心排放你量值的范围，提取每年的中心空间分布
+    #       1.2 每个年份的中心范围mosaic背景0值
+    #       1.2 叠加所有年份总量的历史范围，得到中心的总范围
+    def do_generate_center_geographical_extend(self,
+                                        center,
+                                        background_raster,
+                                        output_name_fmt='extend_{}'):
+        # 检查是否传入中心
+        if not center:
+            print('ERROR: input center does not exist, please check the inputs.')
+
+            # logger output
+            self.ES_logger.error('input center does not exist.')
+            exit(1)
+
+        # 检查是否传入全0值背景栅格
+        if not background_raster:
+            print('ERROR: input backgroud raster does not exist, please check the inputs.')
+
+            # logger output
+            self.ES_logger.error('input backgroud raster does not exist.')
+            exit(1)
+
+        # 检查传入的输出文件名格式是否正确
+        # 保存生成的两个结果
+        # 生成待统计的栅格名称
+        try:
+            temp_save_extend = output_name_fmt.format('mask')
+            temp_save_null_extend = output_name_fmt.format('null_mask')
+        except Exception as e:
+            print('background formatting failed. Save raster name formatting failed. raster name formate was {}.'')
+
+            # logger output
+            self.ES_logger.error('save raster name formatting failed. raster name formate was {}.'.format(output_name_fmt))
+
+            exit(1)
+
+    # !!! 注意：这个函数已经被废弃，请勿使用！
+    # 叠加时间序列上所有发生排放的区域得到全部排放的分布
     # 这个方法会生成两个类型的栅格：
     #   1、输出文件名加后缀`mask`，该栅格中`1`值表示排放范围，`0`值表示其他；
     #   2、输出文件名加后缀`null_mask`，该栅格中`1`值表示排放范围，nodata值表示其他；
-    def do_generate_center_geographical_extend(self,
+    def deprecated_do_generate_center_geographical_extend(self,
                                         raster_list,
                                         background_raster,
                                         output_name_fmt='extend_{}'):
@@ -4567,27 +4607,6 @@ class EDGAR_spatial(object):
             raster_list=temp_working_rasters,
             background_raster=background_raster,
             output_name_fmt=temp_output_name_fmt)
-
-        # # 旧代码备份
-        # # 逐个处理分类
-        # for category in category_list:
-        #     # 生成输出栅格的文件名
-        #     temp_output_name_fmt = '%s_%s_geographical_extend' % (center.center_name, category)
-
-        #     # 列出该中心里该分类的所有栅格
-        #     # 注意：
-        #     #       这里的正则表达式很暴力，需要再考虑……
-        #     temp_wildcard_list = ['%s_EOF_%s_\d+' % (center.center_name, category)]
-        #     temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard_list, wildcard_mode=False)
-
-        #     # 生成输出栅格的文件名
-        #     temp_output_name_fmt = ('%s_EOF_%s_geographical_extend_' % (center.center_name, category)) + r'%s'
-            
-        #     # 调用实际执行的do_generate_extend函数
-        #     self.do_generate_geographical_extend(
-        #         raster_list=temp_working_rasters,
-        #         background_raster=background_raster,
-        #         output_name_fmt=temp_output_name_fmt)
 
     # 将栅格数据转换为numpy压缩格式并导出
     def EOF_raster_to_numpy(self, raster_list, nodata_to_value=None, export_to_npz=True, export_path=None):
