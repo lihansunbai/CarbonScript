@@ -1168,27 +1168,28 @@ class EDGAR_spatial(object):
     #           会在使用时替换wildcard中的`*`为正则表达式的`.*`模式。
     #       当该参数为False时，将认为wildcard_list中的元素为正则表达式，此时将直接用该元素进行匹配。
     def deprecated_do_prepare_arcpy_list_raster_list(self, wildcard_list, wildcard_mode=True):
-        # 列出所有数据库中的栅格进行匹配
-        temp_all_rasters_in_path = arcpy.ListRasters()
+        # # 列出所有数据库中的栅格进行匹配
+        # temp_all_rasters_in_path = arcpy.ListRasters()
 
-        # 通过正则表达在列表中搜索的方式筛选要进行操作的栅格
-        for wildcard in wildcard_list:
-            # 检查wildcard_mode并指定合适的正则表达式编译模式
-            if wildcard_mode:
-                # 替换wildcard中的通配符*为正则表达的通配符‘.’
-                # 然后构造正则表达匹配模式
-                temp_wildcard_re = re.compile(wildcard.replace('*','.*'))
-            else:
-                # 直接使用wildcard_list中的元素构造正则表达式匹配模式
-                temp_wildcard_re = re.compile(wildcard)
+        # # 通过正则表达在列表中搜索的方式筛选要进行操作的栅格
+        # for wildcard in wildcard_list:
+        #     # 检查wildcard_mode并指定合适的正则表达式编译模式
+        #     if wildcard_mode:
+        #         # 替换wildcard中的通配符*为正则表达的通配符‘.’
+        #         # 然后构造正则表达匹配模式
+        #         temp_wildcard_re = re.compile(wildcard.replace('*','.*'))
+        #     else:
+        #         # 直接使用wildcard_list中的元素构造正则表达式匹配模式
+        #         temp_wildcard_re = re.compile(wildcard)
 
-            # filter函数会返回一个列表，所以这里要用extend()方法
-            self.all_prepare_working_rasters.extend(filter(temp_wildcard_re.match, temp_all_rasters_in_path))
-            # 直接的对逐个项使用ListRasters()方法可能会消耗大量的时间，导致程序假死
-            # 放弃使用以下方法！
-            # self.all_prepare_working_rasters.extend(arcpy.ListRasters(wild_card=i))
-        # logger output
-        self.ES_logger.debug('working rasters changed to:{}'.format(self.all_prepare_working_rasters)) 
+        #     # filter函数会返回一个列表，所以这里要用extend()方法
+        #     self.all_prepare_working_rasters.extend(filter(temp_wildcard_re.match, temp_all_rasters_in_path))
+        #     # 直接的对逐个项使用ListRasters()方法可能会消耗大量的时间，导致程序假死
+        #     # 放弃使用以下方法！
+        #     # self.all_prepare_working_rasters.extend(arcpy.ListRasters(wild_card=i))
+        # # logger output
+        # self.ES_logger.debug('working rasters changed to:{}'.format(self.all_prepare_working_rasters)) 
+        pass
 
     # 实际执行列出栅格的方法，这个为str方式
     def do_arcpy_list_raster_str(self, wildcard_str):
@@ -2142,14 +2143,17 @@ class EDGAR_spatial(object):
     # 排放峰值和排放中心分析计算相关函数/方法
     ############################################################################
     # 这个函数实际执行从一个年份的排放总量数据栅格中提取中心操作
-    # 这个函数将返回一个元组，这个元组的第一个元素是arcgis raster类型的中心，
-    #       第二个元素是arcgis raster类型的中心掩膜
+    # 本质上这个函数就是按照一定的排放量范围，在栅格中提取属于这个排放量范围的栅格
     def do_raster_make_center_and_mask(self,
                             emission_center_peak,
                             total_emission_raster,
                             output_center_name='',
                             saveMask=True):
-        # 检查输入的emission_center_peak是否存在，不存在则直接返回
+        '''
+        这个函数将返回一个元组，这个元组的第一个元素是arcgis raster类型的中心，
+            第二个元素是arcgis raster类型的中心掩膜。
+        '''
+        # 检查是否给出了中心的排放量范围
         if not emission_center_peak:
             print('ERROR: emission center does not exist.')
 
@@ -2461,6 +2465,8 @@ class EDGAR_spatial(object):
             temp_categories_center.save(temp_categories_center_output)
 
     # 根据提供的排放中心生成该中心的全部排放的分布
+    # 这个函数需要进一步修改：
+    #   首先，所有列出的栅格raster都应该是对应年份的总碳排放量栅格！
     def generate_center_geographical_extend(self, emission_center_list, background_raster):
         if not emission_center_list or not background_raster:
             print('ERROR: input argument is empty, please check the input')
@@ -2511,11 +2517,22 @@ class EDGAR_spatial(object):
     #   中心的历史范围提取：
     #       1.1 利用碳排放总量，按照中心排放你量值的范围，提取每年的中心空间分布
     #       1.2 每个年份的中心范围mosaic背景0值
-    #       1.2 叠加所有年份总量的历史范围，得到中心的总范围
+    #       1.3 叠加所有年份总量的历史范围，得到中心的总范围
+    # 注意：
+    #     该函数传入的raster_list是对应要提取年份的
     def do_generate_center_geographical_extend(self,
+                                        raster_list,
                                         center,
                                         background_raster,
                                         output_name_fmt='extend_{}'):
+        # 检查是否传入总量栅格
+        if not raster_list:
+            print('ERROR: input total emission raster does not exist, please check the inputs.')
+
+            # logger output
+            self.ES_logger.error('input total emission raster does not exist.')
+            exit(1)
+
         # 检查是否传入中心
         if not center:
             print('ERROR: input center does not exist, please check the inputs.')
@@ -2545,6 +2562,35 @@ class EDGAR_spatial(object):
             self.ES_logger.error('save raster name formatting failed. raster name formate was {}.'.format(output_name_fmt))
 
             exit(1)
+
+        # 保存每年中心的分布范围的列表
+        temp_year_emission_center_list = []
+        for raster in raster_list:
+            # 1.1 利用碳排放总量，按照中心排放你量值的范围，提取每年的中心空间分布
+            # 直接调用do_raster_make_center_and_mask生成每个年份的中心
+            # 根据函数的返回值，只需要元组中第一个返回栅格即可。
+            temp_center_extend = self.do_raster_make_center_and_mask(emission_center_peak=center.peak(),
+                                                total_emission_raster=raster,
+                                                output_center_name=temp_save_extend,
+                                                saveMask=False)[0]
+
+            # 1.2 每个年份的中心范围mosaic背景0值
+            self.mosaic_background_to_raster(inRaster= temp_save_extend,
+                                            background=background_raster)
+            # 将生成值添加到待叠加合并列表
+            temp_year_emission_center_list.append(temp_center_extend)
+
+        # 1.3 叠加所有年份总量的历史范围，得到中心的总范围
+        temp_final_center_extend = self.do_raster_add(temp_year_emission_center_list)
+
+        # 执行保存
+        temp_final_center_extend.save(temp_save_extend)
+        temp_null_extend.save(temp_save_null_extend)
+        # logger output
+        self.ES_logger.info('geographical extend generated')
+
+        # 删除临时栅格
+        self.temp_year_emission_center_list(temp_mosaic_background)
 
     # !!! 注意：这个函数已经被废弃，请勿使用！
     # 叠加时间序列上所有发生排放的区域得到全部排放的分布
