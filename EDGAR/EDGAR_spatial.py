@@ -1990,12 +1990,12 @@ class EDGAR_spatial(object):
             print("Error: emission peak range require a tuple. Please check the input.")
 
         # 年份变量检查
-        if year < self.start_year or year > self.end_year:
-            print("Error: emission peak require a correct year.")
+        # if year < self.start_year or year > self.end_year:
+        #     print("Error: emission peak require a correct year.")
 
-            # logger output
-            self.ES_logger.error('Emission peak year error.')
-            exit(1)
+        #     # logger output
+        #     self.ES_logger.error('Emission peak year error.')
+        #     exit(1)
 
         # 这里实际上定义了emission_peak的结构。
         return {
@@ -2556,7 +2556,7 @@ class EDGAR_spatial(object):
             temp_save_extend = output_name_fmt.format('mask')
             temp_save_null_extend = output_name_fmt.format('null_mask')
         except Exception as e:
-            print('background formatting failed. Save raster name formatting failed. raster name formate was {}.'')
+            print('background formatting failed. Save raster name formatting failed. raster name formate was {}.')
 
             # logger output
             self.ES_logger.error('save raster name formatting failed. raster name formate was {}.'.format(output_name_fmt))
@@ -4541,6 +4541,51 @@ class EDGAR_spatial(object):
         # 储存可能需要返回的结果列表
         temp_return_rasters = []
 
+        ################################################################################
+        ################################################################################
+        ## 以下是游标算法的更新思路：
+        #   首先如果每次只进行一个字段（也就是部门）的计算，会极大的减慢计算的速度。
+        #   所以应该考虑在一次游标操作中，实现计算所有字段。
+        ################################################################################
+        ################################################################################
+        # 构建cursor需要的字段
+        # 这里字段的结构设计为：[总量，部门比例_1，EOF_部门结果_1,...,部门比例_n，EOF_部门结果_n].
+        # 所以，每个EOF部门结果，EOF_部门结果_n是field_list[2*n] = field_list[0] + log10(field_list[2n-1])
+
+        # 注意：所以添加的EOF结果字段已经保存在了上面的temp_add_field中。
+        temp_field_list = ['grid_log_total_emission'].extend([cate,eof_cate for cate,eof_cate in zip(category_field_list, temp_add_field)])
+        # 构建筛选中心的表达式
+        temp_where_clause = '"center_type"=\'{}\''.format(center.center_name)
+
+        with arcpy.da.UpdateCursor(in_table=inPoint, field_names=temp_field_list, where_clause=temp_where_clause) as cursor:
+            for row in tqdm(cursor):
+                # 计算每个每个分类的排放量，通过“总量*分类比例”得到需要值。
+                # 注意:
+                #       这里由于使用的是对数值，所以实际的进行的运算是加法运算。
+                # 注意2:
+                #       由于很多部门的排放是0，在计算log10的时候会出错。
+                #       并且就现实中的情况来说，一个区域的某一部门排放是0那就意味着这个地区没有这个部门，
+                #       也就没有必要对这个部门进行计算了
+                # 注意3：
+                #       这里字段的结构设计为：[总量，部门比例_1，EOF_部门结果_1,...,部门比例_n，EOF_部门结果_n].
+                #       所以，每个EOF部门结果，EOF_部门结果_n是field_list[2*n] = field_list[0] + log10(field_list[2n-1])
+                
+                # 该栅格没有某一部门排放的情况
+                if row[1] == 0:
+                    continue
+                # 该栅格存在某一部门排放
+                else:
+                    # 计算每个部门对应的EOF结果
+                    for i in range(len(category_field_list)):
+                        row[2*i] = row[0] + numpy.log10(row[2*i-1])
+
+                    # 更新行信息
+                    cursor.updateRow(row)
+        ################################################################################
+        ################################################################################
+        ## 旧版本
+        ################################################################################
+        ################################################################################
         # 对每个分类进行中心提取操作
         for category in category_field_list:
             # 构造游标需要的列名称
@@ -4555,6 +4600,7 @@ class EDGAR_spatial(object):
 
             # 构建筛选中心的表达式
             temp_where_clause = '"center_type"=\'{}\''.format(center.center_name)
+
 
             with arcpy.da.UpdateCursor(in_table=inPoint, field_names=temp_field_list, where_clause=temp_where_clause) as cursor:
                 for row in tqdm(cursor):
