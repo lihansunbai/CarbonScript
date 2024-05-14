@@ -2467,8 +2467,8 @@ class EDGAR_spatial(object):
     # 根据提供的排放中心生成该中心的全部排放的分布
     # 这个函数需要进一步修改：
     #   首先，所有列出的栅格raster都应该是对应年份的总碳排放量栅格！
-    def generate_center_geographical_extend(self, emission_center_list, background_raster):
-        if not emission_center_list or not background_raster:
+    def generate_center_geographical_extend(self, emission_center_list,  background_raster):
+        if not emission_center_list or not background_raster :
             print('ERROR: input argument is empty, please check the input')
 
             # logger output
@@ -2488,15 +2488,16 @@ class EDGAR_spatial(object):
                 #     for (year, peak) in emission_center.return_center().items():
                 #         temp_raster = 'center_mask_%s_%s' % (peak['peak_name'], year)
 
-                # 列出该中心的所有栅格
+                # 列出所有总量的栅格
                 temp_raster_list = [
-                    'center_mask_{}_{}'.format(peak['peak_name'], year)
-                    for (year, peak) in emission_center.return_center().items()
+                    'total_emission_{}'.format(year)
+                    for year in emission_center.return_center().items()
                 ]
 
                 # 执行生成范围的
                 self.do_generate_center_geographical_extend(
                     raster_list=temp_raster_list,
+                    center=emission_center,
                     background_raster=background_raster,
                     output_name_fmt=temp_output_name_fmt)
         else:    # 如果只是传入单一中心，且没有用列表包括该中心
@@ -2556,7 +2557,7 @@ class EDGAR_spatial(object):
             temp_save_extend = output_name_fmt.format('mask')
             temp_save_null_extend = output_name_fmt.format('null_mask')
         except Exception as e:
-            print('background formatting failed. Save raster name formatting failed. raster name formate was {}.'')
+            print('background formatting failed. Save raster name formatting failed. raster name formate was {}.')
 
             # logger output
             self.ES_logger.error('save raster name formatting failed. raster name formate was {}.'.format(output_name_fmt))
@@ -2569,7 +2570,7 @@ class EDGAR_spatial(object):
             # 1.1 利用碳排放总量，按照中心排放你量值的范围，提取每年的中心空间分布
             # 直接调用do_raster_make_center_and_mask生成每个年份的中心
             # 根据函数的返回值，只需要元组中第一个返回栅格即可。
-            temp_center_extend = self.do_raster_make_center_and_mask(emission_center_peak=center.peak(),
+            temp_center_extend = self.do_raster_make_center_and_mask(emission_center_peak=center.return_emission_center()[int(raster[-4:-1])],
                                                 total_emission_raster=raster,
                                                 output_center_name=temp_save_extend,
                                                 saveMask=False)[0]
