@@ -2520,7 +2520,7 @@ class EDGAR_spatial(object):
     #       1.2 每个年份的中心范围mosaic背景0值
     #       1.3 叠加所有年份总量的历史范围，得到中心的总范围
     # 注意：
-    #     该函数传入的raster_list是对应要提取年份的
+    #     该函数传入的raster_list是对应要提取年份的总量栅格
     def do_generate_center_geographical_extend(self,
                                         raster_list,
                                         center,
@@ -2568,9 +2568,17 @@ class EDGAR_spatial(object):
         temp_year_emission_center_list = []
         for raster in raster_list:
             # 1.1 利用碳排放总量，按照中心排放你量值的范围，提取每年的中心空间分布
+
+            # 确定栅格的年份
+            # 通过正则表达式的方式进行
+            temp_year_re = r'\d{4}'
+            temp_re_search = re.search(temp_year_re, raster)
+            # 以下使用了解包操作，如果调试有困难就该写成for...loop
+            temp_year = int(raster[temp_re_search.span()[0]:temp_re_search.span()[1]])
+
             # 直接调用do_raster_make_center_and_mask生成每个年份的中心
             # 根据函数的返回值，只需要元组中第一个返回栅格即可。
-            temp_center_extend = self.do_raster_make_center_and_mask(emission_center_peak=center.return_emission_center()[int(raster[-4:-1])],
+            temp_center_extend = self.do_raster_make_center_and_mask(emission_center_peak=center.return_center()[temp_year],
                                                 total_emission_raster=raster,
                                                 output_center_name=temp_save_extend,
                                                 saveMask=False)[0]
@@ -4713,27 +4721,30 @@ class EDGAR_spatial(object):
             return
             
     # 通过给定中心和分类的列表，生成一个中心里所有分类的空间分布范围
-    def EOF_generate_center_categories_geographical_extend(self, center_name, category_field_list, background_raster='background'):
-        if not center_name or not category_field_list or not background_raster:
+    def EOF_generate_center_categories_geographical_extend(self, center, total_emission_list, background_raster='background'):
+        if not center or not total_emission_list or not background_raster:
             print('ERROR: The inputs does not exist. Please check the inputs.'  )
 
             # logger output
             self.ES_logger.error('input does not exist.')
             exit(1)
 
-        # 生成筛选排放中心的全部分类栅格的正则表达式列表
-        temp_wildcard_center_re = '{}_EOF_'.format(center_name) + r'{}_\d+'
-        # 以下使用了解包操作，如果调试有困难就该写成for...loop
-        temp_wildcard_list = [temp_wildcard_center_re.format(category) for category in category_field_list]
-        # 列出该中心里该分类的所有栅格作为待添加背景的栅格
-        temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard_list, wildcard_mode=False)
+        # 以下这部分生成中心分类列表的操作已经不再需要了
+        # # 生成筛选排放中心的全部分类栅格的正则表达式列表
+        # temp_wildcard_center_re = '{}_EOF_'.format(center.center_name) + r'{}_\d+'
+        # # 以下使用了解包操作，如果调试有困难就该写成for...loop
+        # temp_wildcard_list = [temp_wildcard_center_re.format(category) for category in category_field_list]
+
+        # 检查总量栅格是否存在
+        temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=total_emission_list, wildcard_mode=True)
 
         # 生成输出栅格的文件名
-        temp_output_name_fmt = '{}_EOF_geographical_extend_'.format(center_name) + r'{}'
+        temp_output_name_fmt = '{}_EOF_geographical_extend_'.format(center.center_name) + r'{}'
         
         # 调用实际执行的do_generate_extend函数
         self.do_generate_center_geographical_extend(
             raster_list=temp_working_rasters,
+            center=center,
             background_raster=background_raster,
             output_name_fmt=temp_output_name_fmt)
 
