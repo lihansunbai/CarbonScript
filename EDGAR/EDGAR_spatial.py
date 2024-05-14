@@ -2511,20 +2511,19 @@ class EDGAR_spatial(object):
             # 调用实际执行的do_generate_extend函数
             self.do_generate_center_geographical_extend(
                 raster_list=temp_raster_list,
+                center=emission_center_list,
                 background_raster=background_raster,
                 output_name_fmt=temp_output_name_fmt)
 
     # 叠加时间序列上所有发生排放的区域得到全部排放的分布
     #   中心的历史范围提取：
     #       1.1 利用碳排放总量，按照中心排放你量值的范围，提取每年的中心空间分布
-    #       1.2 每个年份的中心范围mosaic背景0值
-    #       1.3 叠加所有年份总量的历史范围，得到中心的总范围
+    #       1.2 Mosaic所有年份总量的历史范围，得到中心的总范围
     # 注意：
     #     该函数传入的raster_list是对应要提取年份的总量栅格
     def do_generate_center_geographical_extend(self,
                                         raster_list,
                                         center,
-                                        background_raster,
                                         output_name_fmt='extend_{}'):
         # 检查是否传入总量栅格
         if not raster_list:
@@ -2542,20 +2541,11 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input center does not exist.')
             exit(1)
 
-        # 检查是否传入全0值背景栅格
-        if not background_raster:
-            print('ERROR: input backgroud raster does not exist, please check the inputs.')
-
-            # logger output
-            self.ES_logger.error('input backgroud raster does not exist.')
-            exit(1)
-
         # 检查传入的输出文件名格式是否正确
         # 保存生成的两个结果
         # 生成待统计的栅格名称
         try:
-            temp_save_extend = output_name_fmt.format('mask')
-            temp_save_null_extend = output_name_fmt.format('null_mask')
+            temp_save_extend = output_name_fmt.format('null')
         except Exception as e:
             print('background formatting failed. Save raster name formatting failed. raster name formate was {}.')
 
@@ -2568,7 +2558,6 @@ class EDGAR_spatial(object):
         temp_year_emission_center_list = []
         for raster in raster_list:
             # 1.1 利用碳排放总量，按照中心排放你量值的范围，提取每年的中心空间分布
-
             # 确定栅格的年份
             # 通过正则表达式的方式进行
             temp_year_re = r'\d{4}'
@@ -2577,29 +2566,41 @@ class EDGAR_spatial(object):
             temp_year = int(raster[temp_re_search.span()[0]:temp_re_search.span()[1]])
 
             # 直接调用do_raster_make_center_and_mask生成每个年份的中心
-            # 根据函数的返回值，只需要元组中第一个返回栅格即可。
+            # 根据函数的返回值，只需要元组中第二个返回栅格即可。即其中范围为1值，其余为null的栅格
             temp_center_extend = self.do_raster_make_center_and_mask(emission_center_peak=center.return_center()[temp_year],
                                                 total_emission_raster=raster,
                                                 output_center_name=temp_save_extend,
-                                                saveMask=False)[0]
+                                                saveMask=True)[1]
 
-            # 1.2 每个年份的中心范围mosaic背景0值
-            self.mosaic_background_to_raster(inRaster= temp_save_extend,
-                                            background=background_raster)
             # 将生成值添加到待叠加合并列表
-            temp_year_emission_center_list.append(temp_center_extend)
+            # 注意这里只需要给出栅格的名字而不用给出整个arcpy.Raster对象
+            temp_year_emission_center_list.append(temp_center_extend.catalogPath)
 
-        # 1.3 叠加所有年份总量的历史范围，得到中心的总范围
-        temp_final_center_extend = self.do_raster_add(temp_year_emission_center_list)
+        # 1.3 Mosaic所有年份总量的历史范围，得到中心的总范围
+        # 初步mosaic栅格的文件名
+        temp_mosaic = 'mosaic_' + temp_save_extend
+        # 确定输出栅格的pixel_type
+        temp_pixel_type = self.__raster_pixel_type[arcpy.Raster(temp_year_emission_center_list[0]).pixelType]
+        # Mosaic 所有年份的排放量区域栅格到新栅格中
+        arcpy.MosaicToNewRaster_management(
+            input_rasters=temp_year_emission_center_list,
+            output_location=self.__workspace,
+            raster_dataset_name_with_extension=temp_mosaic,
+            pixel_type=temp_pixel_type,
+            number_of_bands=1,
+            mosaic_method="FIRST",
+            mosaic_colormap_mode="FIRST")
 
-        # 执行保存
-        temp_final_center_extend.save(temp_save_extend)
-        temp_null_extend.save(temp_save_null_extend)
+        # 将所有1值转换为0值，作为eof的背景使用
+        temp_save_extend_con = Con(arcpy.Raster(temp_mosaic), 0, '', 'VALUE = 1')
+        temp_save_extend_con.save(temp_save_extend)
+
         # logger output
         self.ES_logger.info('geographical extend generated')
 
         # 删除临时栅格
-        self.temp_year_emission_center_list(temp_mosaic_background)
+        self.delete_temporary_raster(temp_year_emission_center_list)
+        self.delete_temporary_raster([temp_mosaic])
 
     # !!! 注意：这个函数已经被废弃，请勿使用！
     # 叠加时间序列上所有发生排放的区域得到全部排放的分布
@@ -4721,8 +4722,8 @@ class EDGAR_spatial(object):
             return
             
     # 通过给定中心和分类的列表，生成一个中心里所有分类的空间分布范围
-    def EOF_generate_center_categories_geographical_extend(self, center, total_emission_list, background_raster='background'):
-        if not center or not total_emission_list or not background_raster:
+    def EOF_generate_center_categories_geographical_extend(self, center, total_emission_list):
+        if not center or not total_emission_list :
             print('ERROR: The inputs does not exist. Please check the inputs.'  )
 
             # logger output
@@ -4745,7 +4746,6 @@ class EDGAR_spatial(object):
         self.do_generate_center_geographical_extend(
             raster_list=temp_working_rasters,
             center=center,
-            background_raster=background_raster,
             output_name_fmt=temp_output_name_fmt)
 
     # 将栅格数据转换为numpy压缩格式并导出
