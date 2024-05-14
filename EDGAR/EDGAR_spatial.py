@@ -2545,7 +2545,7 @@ class EDGAR_spatial(object):
         # 保存生成的两个结果
         # 生成待统计的栅格名称
         try:
-            temp_save_extend = output_name_fmt.format('null')
+            temp_save_extend = output_name_fmt.format('null_mask')
         except Exception as e:
             print('background formatting failed. Save raster name formatting failed. raster name formate was {}.')
 
