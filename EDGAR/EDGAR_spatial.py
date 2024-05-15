@@ -4423,6 +4423,11 @@ class EDGAR_spatial(object):
             temp_wildcard = ['{}_EOF_{}_\d+'.format(center_name, category)]
             temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard, wildcard_mode=False)
 
+            # 这里还要加一个判断待添加背景的栅格是否是所需时间段内的栅格
+            temp_working_rasters = [raster for raster in temp_working_rasters if int(raster[-4:]) >= self.start_year and int(raster[-4:]) <= self.end_year ]
+
+
+
             # 执行叠加背景
             self.do_EOF_mosaic_extend(raster_list=temp_working_rasters,
                                     background=temp_background)
