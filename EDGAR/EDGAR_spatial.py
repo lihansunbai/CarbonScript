@@ -2188,9 +2188,6 @@ class EDGAR_spatial(object):
         # 保存总量中心的raster
         temp_center.save(temp_center_output)
 
-        # 生成中心mask
-        temp_center_mask = Con(temp_center, 1, '')
-
         # 通过saveMask参数
         # 在这里控制保存一个提取结果的mask（掩膜）结果
         if saveMask:
@@ -2201,11 +2198,16 @@ class EDGAR_spatial(object):
             else:
                 temp_center_mask_path = '{}_mask'.format(output_center_name)
             
-            # 保存掩膜
+            # 生成中心mask
+            temp_center_mask = Con(temp_center, 1, '')
+            # 保存中心mask
             temp_center_mask.save(temp_center_mask_path)
 
-        # 返回提取后的中心结果
-        return (temp_center,temp_center_mask)
+            # 返回提取后的中心结果和mask结果
+            return (temp_center,temp_center_mask)
+        else:
+            # 返回提取后的中心结果，并保留mask结果为none
+            return (temp_center,None)
 
     # 提取总排放量、最大排放部门和最大排放部门比例的函数
     def extract_raster_center_basic_info(self, emission_center, isLog):
@@ -2498,7 +2500,6 @@ class EDGAR_spatial(object):
                 self.do_generate_center_geographical_extend(
                     raster_list=temp_raster_list,
                     center=emission_center,
-                    background_raster=background_raster,
                     output_name_fmt=temp_output_name_fmt)
         else:    # 如果只是传入单一中心，且没有用列表包括该中心
             # 生成输出栅格的文件名
@@ -2541,19 +2542,6 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input center does not exist.')
             exit(1)
 
-        # 检查传入的输出文件名格式是否正确
-        # 保存生成的两个结果
-        # 生成待统计的栅格名称
-        try:
-            temp_save_extend = output_name_fmt.format('null_mask')
-        except Exception as e:
-            print('background formatting failed. Save raster name formatting failed. raster name formate was {}.')
-
-            # logger output
-            self.ES_logger.error('save raster name formatting failed. raster name formate was {}.'.format(output_name_fmt))
-
-            exit(1)
-
         # 保存每年中心的分布范围的列表
         temp_year_emission_center_list = []
         for raster in raster_list:
@@ -2564,6 +2552,19 @@ class EDGAR_spatial(object):
             temp_re_search = re.search(temp_year_re, raster)
             # 以下使用了解包操作，如果调试有困难就该写成for...loop
             temp_year = int(raster[temp_re_search.span()[0]:temp_re_search.span()[1]])
+
+            # 检查传入的输出文件名格式是否正确
+            # 保存生成的两个结果
+            # 生成待统计的栅格名称
+            try:
+                temp_save_extend = output_name_fmt.format(temp_year,'null')
+            except Exception as e:
+                print('background formatting failed. Save raster name formatting failed. raster name formate was {}.')
+
+                # logger output
+                self.ES_logger.error('save raster name formatting failed. raster name formate was {}.'.format(output_name_fmt))
+
+                exit(1)
 
             # 直接调用do_raster_make_center_and_mask生成每个年份的中心
             # 根据函数的返回值，只需要元组中第二个返回栅格即可。即其中范围为1值，其余为null的栅格
@@ -2578,7 +2579,7 @@ class EDGAR_spatial(object):
 
         # 1.3 Mosaic所有年份总量的历史范围，得到中心的总范围
         # 初步mosaic栅格的文件名
-        temp_mosaic = 'mosaic_' + temp_save_extend
+        temp_mosaic = 'mosaic_' + center.center_name + '_EOF_geographical_extend_null_mask'
         # 确定输出栅格的pixel_type
         temp_pixel_type = self.__raster_pixel_type[arcpy.Raster(temp_year_emission_center_list[0]).pixelType]
         # Mosaic 所有年份的排放量区域栅格到新栅格中
@@ -2593,7 +2594,7 @@ class EDGAR_spatial(object):
 
         # 将所有1值转换为0值，作为eof的背景使用
         temp_save_extend_con = Con(arcpy.Raster(temp_mosaic), 0, '', 'VALUE = 1')
-        temp_save_extend_con.save(temp_save_extend)
+        temp_save_extend_con.save(temp_mosaic[7:])
 
         # logger output
         self.ES_logger.info('geographical extend generated')
@@ -4567,8 +4568,6 @@ class EDGAR_spatial(object):
         # 其实，我也看不懂。
         # 但是，它可以用。并且从这个可运行的解包操作中可以认识到，python的list解包操作是从后到前解析的。
         # 我的粗浅理解只能到这里了。
-        # 奇怪，这里竟然不能用extend方法来扩展列表……
-        # temp_field_list = ['grid_log_total_emission'].extend([cate_eof_pair for zip_cate_eof in zip(category_field_list, temp_add_field) for cate_eof_pair in zip_cate_eof])
         temp_field_list = ['grid_log_total_emission'] + [cate_eof_pair for zip_cate_eof in zip(category_field_list, temp_add_field) for cate_eof_pair in zip_cate_eof]
 
         # 构建筛选中心的表达式
@@ -4629,84 +4628,6 @@ class EDGAR_spatial(object):
 
                 print(arcpy.GetMessages())
 
-        ################################################################################
-        ################################################################################
-        ## 旧版本
-        ################################################################################
-        ################################################################################
-        # 对每个分类进行中心提取操作
-        # for category in category_field_list:
-        #     # 构造游标需要的列名称
-        #     # 注意：
-        #     # 根据arcpy文档给出的说明：
-        #     # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
-        #     # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
-        #     # 准备需要列出的字段的名称
-        #     # 需要列出的字段包括：储存临时计算结果的字段：EOF_TEMP总排放量对数值字段：grid_log_total_emission、各个分类的比例字段：从category_field_list中获取
-        #     temp_result_field = 'EOF_{}'.format(category)
-        #     temp_field_list = ['grid_log_total_emission', category, temp_result_field] 
-
-        #     # 构建筛选中心的表达式
-        #     temp_where_clause = '"center_type"=\'{}\''.format(center.center_name)
-        #     with arcpy.da.UpdateCursor(in_table=inPoint, field_names=temp_field_list, where_clause=temp_where_clause) as cursor:
-        #         for row in tqdm(cursor):
-        #             # 计算每个每个分类的排放量，通过“总量*分类比例”得到需要值。
-        #             # 注意:
-        #             #       这里由于使用的是对数值，所以实际的进行的运算是加法运算。
-        #             # 注意2:
-        #             #       由于很多部门的排放是0，在计算log10的时候会出错。
-        #             #       并且就现实中的情况来说，一个区域的某一部门排放是0那就意味着这个地区没有这个部门，
-        #             #       也就没有必要对这个部门进行计算了
-                    
-        #             # 该栅格没有某一部门排放的情况
-        #             if row[1] == 0:
-        #                 continue
-        #             # 该栅格存在某一部门排放
-        #             else:
-        #                 temp_category_property = numpy.log10(row[1])
-        #                 row[2] = row[0] + temp_category_property
-
-        #                 # 更新行信息
-        #                 cursor.updateRow(row)
-
-        #     # 保存列数据为栅格
-        #     save_raster = '{}_{}_{}'.format(center.center_name, temp_result_field, inPoint[-4:])
-
-        #     ################################################################################
-        #     ################################################################################
-        #     # 以下部分是一段python segmentation fault debug 使用的代码
-        #     # arcpy.PointToRaster_conversion(inPoint,temp_result_field, save_raster,'MOST_FREQUENT', '#', '0.1')
-        #     # arcpy.PointToRaster_conversion(in_features=inPoint,
-        #     #                                 value_field=temp_result_field,
-        #     #                                 out_rasterdataset=save_raster,
-        #     #                                 cell_assignment="MOST_FREQUENT",
-        #     #                                 cellsize=0.1)
-
-        #     # # 添加转换结果到待返回列表
-        #     # temp_return_rasters.append(save_raster)
-
-        #     # # logger output
-        #     # self.ES_logger.debug('EOF rasterize finished:%s' % save_raster)
-        #     # debug 结束
-        #     ################################################################################
-        #     ################################################################################
-
-        #     try:
-        #         arcpy.PointToRaster_conversion(inPoint,temp_result_field, save_raster,'MOST_FREQUENT', '#', '0.1')
-
-        #         # 添加转换结果到待返回列表
-        #         temp_return_rasters.append(save_raster)
-
-        #         # logger output
-        #         self.ES_logger.debug('EOF rasterize finished:{}'.format(save_raster))
-        #     except:
-        #         print('Create raster field: {}'.format(save_raster))
-
-        #         # logger output
-        #         self.ES_logger.error('EOF rasterize failed:{}'.format(save_raster))
-
-        #         print(arcpy.GetMessages())
-
         # 从点数据中删除添加的临时列
         print('Deleting temporary fields...')
         arcpy.DeleteField_management(inPoint, temp_add_field)
@@ -4740,7 +4661,8 @@ class EDGAR_spatial(object):
         temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=total_emission_list, wildcard_mode=True)
 
         # 生成输出栅格的文件名
-        temp_output_name_fmt = '{}_EOF_geographical_extend_'.format(center.center_name) + r'{}'
+        # 生成文件名示例：center_678_1970_EOF_geographical_extend_null_mask
+        temp_output_name_fmt = '{}_'.format(center.center_name) + r'{}' +'_EOF_geographical_extend_' + r'{}'
         
         # 调用实际执行的do_generate_extend函数
         self.do_generate_center_geographical_extend(
