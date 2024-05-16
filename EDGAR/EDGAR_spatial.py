@@ -2581,7 +2581,7 @@ class EDGAR_spatial(object):
         # 初步mosaic栅格的文件名
         temp_mosaic = 'mosaic_' + center.center_name + '_EOF_geographical_extend_null_mask'
         # 确定输出栅格的pixel_type
-        temp_pixel_type = self.__raster_pixel_type[arcpy.Raster(temp_year_emission_center_list[0]).pixelType]
+        temp_pixel_type = '32_BIT_FLOAT'
         # Mosaic 所有年份的排放量区域栅格到新栅格中
         arcpy.MosaicToNewRaster_management(
             input_rasters=temp_year_emission_center_list,
@@ -2593,7 +2593,7 @@ class EDGAR_spatial(object):
             mosaic_colormap_mode="FIRST")
 
         # 将所有1值转换为0值，作为eof的背景使用
-        temp_save_extend_con = Con(arcpy.Raster(temp_mosaic), 0, '', 'VALUE = 1')
+        temp_save_extend_con = Con(arcpy.Raster(temp_mosaic), 0.0, '')
         temp_save_extend_con.save(temp_mosaic[7:])
 
         # logger output
@@ -4407,18 +4407,18 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input arguments does not exist.')
             exit(1)
 
+        # 获得中心的背景栅格
+        try:
+            temp_background = background_fmt.format(center_name)
+        except Exception as e:
+            print('background raster formatting failed.')
+
+            # logger output
+            self.ES_logger.error('get background raster name formatting failed. raster name formate was {}.'.format(background_fmt))
+
+            exit(1)
+
         for category in category_list:
-            # 获得中心的背景栅格
-            try:
-                temp_background = background_fmt.format(center_name)
-            except Exception as e:
-                print('background raster formatting failed.')
-
-                # logger output
-                self.ES_logger.error('get background raster name formatting failed. raster name formate was {}.'.format(temp_background))
-
-                exit(1)
-
             # 列出所有需要添加背景的栅格
             temp_wildcard = ['{}_EOF_{}_\d+'.format(center_name, category)]
             temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard, wildcard_mode=False)
@@ -4426,10 +4426,20 @@ class EDGAR_spatial(object):
             # 这里还要加一个判断待添加背景的栅格是否是所需时间段内的栅格
             temp_working_rasters = [raster for raster in temp_working_rasters if int(raster[-4:]) >= self.start_year and int(raster[-4:]) <= self.end_year ]
 
+            # 为了防止mosaic栅格时由于数据类型不相同导致的数据丢失
+            # 需要转换background的栅格类型为inRaster的类型
+            # 使用copyraster进行数据转换
+            arcpy.management.CopyRaster(in_raster=temp_background,
+                                        out_rasterdataset='temp_converted_background',
+                                        pixel_type=self.__raster_pixel_type[arcpy.Raster(temp_working_rasters[0]).pixelType])
+
             # 执行叠加背景
             self.do_EOF_mosaic_extend(raster_list=temp_working_rasters,
-                                    background=temp_background)
-
+                                    background='temp_converted_background')
+            
+            # 删除临时生成的背景栅格
+            self.delete_temporary_raster(['temp_converted_background'])
+            
     # 执行为任意栅格叠加背景值的
     # 注意！
     # 执行这个操作将改变输入栅格。请不要在原始数据上执行！
