@@ -4426,8 +4426,6 @@ class EDGAR_spatial(object):
             # 这里还要加一个判断待添加背景的栅格是否是所需时间段内的栅格
             temp_working_rasters = [raster for raster in temp_working_rasters if int(raster[-4:]) >= self.start_year and int(raster[-4:]) <= self.end_year ]
 
-
-
             # 执行叠加背景
             self.do_EOF_mosaic_extend(raster_list=temp_working_rasters,
                                     background=temp_background)
@@ -4435,6 +4433,9 @@ class EDGAR_spatial(object):
     # 执行为任意栅格叠加背景值的
     # 注意！
     # 执行这个操作将改变输入栅格。请不要在原始数据上执行！
+    # 注意！！
+    # 这个函数得出的排放量栅格是非对数值的栅格
+    #   由于对数计算在使用0值为背景存在现实意义的错误，所以EOF计算的过程应该采用一般数量进行
     def do_EOF_mosaic_extend(self, raster_list, background):
         if not raster_list or not background:
             print('ERROR: input arguments does not exist, please check the inputs.')
@@ -4448,6 +4449,13 @@ class EDGAR_spatial(object):
 
         # 逐个对栅格执行mosaic背景栅格
         for raster in tqdm(temp_working_rasters):
+            # 1、将输入的对数栅格转换为一般数量的栅格
+            #   准备arcgis地图代数幂运算需要的10值栅格
+            temp_power_background = Con(raster, 10, '')
+            #   转换对数值为一般数量
+            temp_linear_raster = Power(temp_power_background, raster)
+            temp_linear_raster.save(raster)
+            # 2、为栅格添加0值背景
             self.mosaic_background_to_raster(inRaster=raster, background=background)
 
     # 从点数据中生成各个中心中的不同分类的排放分量栅格
