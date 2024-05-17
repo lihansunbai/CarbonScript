@@ -578,8 +578,9 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.debug('New raster was mosaiced with background: {}'.format(temp_output_path))
         else:
+            temp_inputs = '{};{}'.format(inRaster,background)
             arcpy.Mosaic_management(
-                inputs=[inRaster, background],
+                temp_inputs,
                 target=inRaster,
                 mosaic_type="FIRST",
                 colormap="FIRST",
@@ -4426,19 +4427,9 @@ class EDGAR_spatial(object):
             # 这里还要加一个判断待添加背景的栅格是否是所需时间段内的栅格
             temp_working_rasters = [raster for raster in temp_working_rasters if int(raster[-4:]) >= self.start_year and int(raster[-4:]) <= self.end_year ]
 
-            # 为了防止mosaic栅格时由于数据类型不相同导致的数据丢失
-            # 需要转换background的栅格类型为inRaster的类型
-            # 使用copyraster进行数据转换
-            arcpy.management.CopyRaster(in_raster=temp_background,
-                                        out_rasterdataset='temp_converted_background',
-                                        pixel_type=self.__raster_pixel_type[arcpy.Raster(temp_working_rasters[0]).pixelType])
-
             # 执行叠加背景
             self.do_EOF_mosaic_extend(raster_list=temp_working_rasters,
-                                    background='temp_converted_background')
-            
-            # 删除临时生成的背景栅格
-            self.delete_temporary_raster(['temp_converted_background'])
+                                    background=temp_background)
             
     # 执行为任意栅格叠加背景值的
     # 注意！
@@ -4461,10 +4452,14 @@ class EDGAR_spatial(object):
         for raster in tqdm(temp_working_rasters):
             # 1、将输入的对数栅格转换为一般数量的栅格
             #   准备arcgis地图代数幂运算需要的10值栅格
-            temp_power_background = Con(raster, 10, '')
+            temp_power_background = Con(raster, 10.0, '')
             #   转换对数值为一般数量
             temp_linear_raster = Power(temp_power_background, raster)
+            # 这里要进行一个栅格的交换：
+            # 首先删除原来的raster，再将内存中的temp_linear_raster固定到raster的位置
+            self.delete_temporary_raster([raster])
             temp_linear_raster.save(raster)
+
             # 2、为栅格添加0值背景
             self.mosaic_background_to_raster(inRaster=raster, background=background)
 
