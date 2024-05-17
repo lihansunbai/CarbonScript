@@ -4455,13 +4455,18 @@ class EDGAR_spatial(object):
             temp_power_background = Con(raster, 10.0, '')
             #   转换对数值为一般数量
             temp_linear_raster = Power(temp_power_background, raster)
+            #   临时存储一般排放量的位置
+            temp_linear_raster_path = raster + '_linear'
+            temp_linear_raster.save(temp_linear_raster_path)
             # 这里要进行一个栅格的交换：
             # 首先删除原来的raster，再将内存中的temp_linear_raster固定到raster的位置
             self.delete_temporary_raster([raster])
-            temp_linear_raster.save(raster)
+            arcpy.Raster(temp_linear_raster_path).save(raster)
 
             # 2、为栅格添加0值背景
             self.mosaic_background_to_raster(inRaster=raster, background=background)
+            # 删除临时栅格
+            self.delete_temporary_raster([temp_linear_raster_path])
 
     # 从点数据中生成各个中心中的不同分类的排放分量栅格
     # 这里的设计思路是只传入一个点数据。因为，如果一次传入一组点数据，很可能导致这个函数一旦进入就
