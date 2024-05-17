@@ -4460,7 +4460,8 @@ class EDGAR_spatial(object):
             temp_linear_raster.save(temp_linear_raster_path)
             # 这里要进行一个栅格的交换：
             # 首先删除原来的raster，再将内存中的temp_linear_raster固定到raster的位置
-            self.delete_temporary_raster([raster])
+            temp_delete_raster_regex = '^' + raster + '$'
+            self.delete_temporary_raster([temp_delete_raster_regex])
             arcpy.Raster(temp_linear_raster_path).save(raster)
 
             # 2、为栅格添加0值背景
