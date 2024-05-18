@@ -2170,6 +2170,7 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input raster not found.')
             exit(1)
 
+        self.ES_logger.info('Start extract total emission center: {}'.format(total_emission_raster))
         # 将大于上界和小于下界范围的栅格设为nodata
         # Set local variables
         whereClause = "VALUE < {} OR VALUE > {}".format(emission_center_peak['peak_min'],
@@ -2192,6 +2193,7 @@ class EDGAR_spatial(object):
         # 通过saveMask参数
         # 在这里控制保存一个提取结果的mask（掩膜）结果
         if saveMask:
+            self.ES_logger.debug('Using saveMask mode.')
             # 判断是否按默认center命名格式保存提取的center文件名
             if output_center_name=='':
                 temp_center_mask_path = 'center_mask_{}_{}'.format(emission_center_peak['peak_name'],
@@ -2207,6 +2209,7 @@ class EDGAR_spatial(object):
             # 返回提取后的中心结果和mask结果
             return (temp_center,temp_center_mask)
         else:
+            self.ES_logger.debug('Using no Mask mode.')
             # 返回提取后的中心结果，并保留mask结果为none
             return (temp_center,None)
 
