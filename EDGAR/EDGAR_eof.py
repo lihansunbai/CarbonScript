@@ -30,6 +30,7 @@ from tqdm import tqdm
 import tqdm
 import numpy
 import h5py
+import json
 
 class EDGAR_eof():
     '''
@@ -1297,6 +1298,88 @@ class EDGAR_eof():
     def return_emission_center_list(self):
         return self.emission_center_list
 
+    def create_center_from_json(self, input_json_file):
+        '''
+        通过json生成对应的中心类。
+        json文件的格式和要求：
+            1、json文件中的所有内容应该包括在一个对象中，且除了这个对象外不应该包含其他内容。
+            2、最顶层的对象中应包含一个或若干个中心对象。
+                2.1 这些对象应该以center_name:object的形式保存，其中center_name为中心名称，object为保存emission_center类的相关信息。
+                2.2 保存emission_center的object因包含该中心的所有center_peak信息的object.
+                2.3 保存center_peak的object需要包含以下几个内容：
+                    2.3.1 时间信息：year
+                        year为一个array列表，只需要包括时间的起止，不需要逐个列出年份。如果对应center_peak的时间信息只包括一年，
+                        则year的array列表的起止时间相同。
+                    2.3.1 center_peak的范围：peak_range
+                        center_peak为一个array列表，只需要包括center_peak范围的最大值和最小值。
+            3、一个json文件的示例：
+                {
+                    "center_name_1":{
+                        "peak_1":{
+                            "year":[1970,2018],
+                            "peak_range":[5,9]
+                        }
+                    },
+                    "center_name_2":{
+                        "peak_1":{
+                            "year":[1970,2000],
+                            "peak_range":[3,4.5]
+                        },
+                        "peak_2":{
+                            "year":[2001,2018],
+                            "peak_range":[3,4]
+                        }
+                    }
+                }
+        '''
+        # 内置临时函数：
+        #   用于转换json中的列表为python tuple
+        def temp_list_to_tuple(inList):
+            if not inList:
+                print('ERROR: input list does not exist. Please check the json file.')
+
+                exit(1)
+            
+            return (min(inList), max(inList))
+
+        # 内置临时函数：
+        #   用于生成emission_peak 所用的年份列表
+        def temp_year_list(inList):
+            if not inList:
+                print('ERROR: input list does not exist. Please check the json file.')
+
+                exit(1)
+            
+            return range(min(inList), max(inList)+1)
+
+        # create_center_form_json函数功能正式开始
+        if not input_json_file:
+            print('ERROR: input json file does not exist. json file: \'{}\''.format(input_json_file))
+
+            # logger output
+            self.ES_logger.error('input json file does not exist. json file: \'{}\''.format(input_json_file))
+            exit(1)
+        
+        # 尝试解包输入的json文件内容
+        with open(input_json_file, "r") as json_file:
+            json_centers = json.loads(json_file.read())
+        
+        # 输出函数运行状态信息
+        print('Generating emission centers form json file...')
+        # logger output
+        self.ES_logger.info('Generating emission centers form json file...')
+
+        # 逐个生成中心
+        for jc in json_centers.items():
+            # 添加中心名称
+            temp_center = self.create_center(outer_class=self, emission_center_name=str(jc[0]))
+            # 逐个处理emission_peak信息
+            temp_peak_list = []
+            for ep in jc[1].items():
+                temp_peak_list.extend(self.emission_peak(emission_peak_range=temp_list_to_tuple(ep[1]['peak_range']), year=temp_year_list(ep[1]['year'])))
+            
+            self.add_emission_peaks(emission_center=temp_center, peaks_list=temp_peak_list)
+                
 
 if __name__ == '__main__':
     print('main process')
