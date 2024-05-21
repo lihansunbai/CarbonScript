@@ -27,7 +27,7 @@ import dask_ml.preprocessing
 import dask.array as da
 import dask
 from tqdm import tqdm
-import tqdm
+# import tqdm
 import numpy
 import h5py
 import json
@@ -61,13 +61,13 @@ class EDGAR_eof():
             print('Error! Processing starting year and ending year must be int value')
             self.EE_logger.info('Year setting type error.')
             self.EE_logger.error('Year setting error!')
-            return
+            exit()
         elif st_year < self.__default_start_year or en_year > self.__default_end_year:
             print(
                 'Error! Processing year range out of data support! The year must contain in 1970 to 2018')
             self.EE_logger.info('Year settings are out of range.')
             self.EE_logger.error('Year setting error!')
-            return
+            exit()
         else:
             self.year_range = (st_year, en_year)
             self.EE_logger.info('Year has set.')
@@ -87,7 +87,7 @@ class EDGAR_eof():
 
     # 默认部门编码
     __default_categories_list = ['G_ENE', 'G_IND',
-                                 'G_TRA', 'G_RCO', 'G_AGS', 'G_WST']
+                                 'G_TRA', 'G_RCO', 'G_AGS']
 
     ############################################################################
     ############################################################################
@@ -120,7 +120,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input metadata dict is empty.')
-            return
+            exit()
 
         self._metadata = metadata
 
@@ -137,7 +137,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input area_file does not exist.')
-            return
+            exit()
 
         # 打开npz文件并导入数据
         area_data = numpy.load(area_file)['arr_0']
@@ -183,7 +183,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input field type is not a dask.array')
-            return
+            exit()
 
         # 保存原始数据的维度信息
         info = {'shapes': []}
@@ -201,7 +201,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input field_shape_info is empty.')
-            return
+            exit()
 
         # dask reshape
         if isinstance(flatten_fields, dask.array.Array):
@@ -212,7 +212,7 @@ class EDGAR_eof():
             # logger output
             self.EE_logger.error(
                 'flatten fields field type is not a dask.array')
-            return
+            exit()
 
         return return_field
 
@@ -223,14 +223,14 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input data is empty.')
-            return
+            exit()
 
         if not output_hdf_name:
             print('ERROR: output hdf file was not specify. Please check the input.')
 
             # logger output
             self.EE_logger.error('output file not set.')
-            return
+            exit()
 
         hdf = h5py.File(hdf_name, 'r')
         if data_hdf_hierarchical_path in hdf:
@@ -240,7 +240,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('hdf hierarchical path not exists.')
-            return
+            exit()
 
         # hdf data to dask.array
         temp_init_dask_hdf = da.from_array(hdf_data, chunks='auto')
@@ -270,7 +270,7 @@ class EDGAR_eof():
         if not hdf_file or not data_path or not data_name:
             print('ERROR: cant find data in hdf file. Please check the input.')
 
-            return
+            exit()
 
         hdf = h5py.File(hdf_file, 'r+')
         data = os.path.join(data_path, data_name)
@@ -278,7 +278,7 @@ class EDGAR_eof():
         if data not in hdf:
             print('ERROR: can find data in hdf file. Please check the input.')
 
-            return
+            exit()
 
         # dask version
         # warning: dask version may cause python segmentation fault...
@@ -306,7 +306,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('hdf file dose not exist.')
-            return
+            exit()
 
         hdf = h5py.File(hdf_file, 'r+')
 
@@ -318,7 +318,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('data does not exist.')
-            return
+            exit()
 
         # 初始化存储地理范围信息
         temp_lon = []
@@ -409,7 +409,7 @@ class EDGAR_eof():
             # logger output
             self.EE_logger.error(
                 'input rasters or file name metadata do not exist.')
-            return
+            exit()
 
         # 检查输入路径是否存在
         # 如果路径存在则组合为HDF文件的绝对路径
@@ -420,7 +420,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('HDF file location does not exist.')
-            return
+            exit()
 
         # 使用a参数打开文件，如果文件存在则追加啊，如果文件不存在则创建新文件
         with h5py.File(temp_full_path_name, 'a') as hdf:
@@ -559,7 +559,7 @@ class EDGAR_eof():
             # logger output
             self.EE_logger.error('input metadata does not exist.')
             self.hdf5_dask_data_hierarchical_path = ''
-            return
+            exit()
 
         if not data['metadata']['year'] or not data['metadata']['emission_categories']:
             print(
@@ -569,7 +569,7 @@ class EDGAR_eof():
             self.EE_logger.error(
                 'year or emission categories is empty in metadata')
             self.hdf5_dask_data_hierarchical_path = ''
-            return
+            exit()
 
         # 保存返回的结果路径
         temp_hierarchical_path = ''
@@ -593,7 +593,7 @@ class EDGAR_eof():
             self.EE_logger.error(
                 'no year or emission categories information was found.')
             self.hdf5_dask_data_hierarchical_path = ''
-            return
+            exit()
 
         # 以下构建路径的逻辑是从子路径向父路径逐层构建。
         # 采用这个方式构建的优点是最多只需要进行三层构建。
@@ -649,7 +649,7 @@ class EDGAR_eof():
             # logger output
             self.EE_logger.error('input metadata does not exist.')
             self.hdf5_data_hierarchical_path = ''
-            return
+            exit()
 
         if not data['metadata']['year']:
             print('ERROR: year must contained in metadata. Please check the input.')
@@ -657,7 +657,7 @@ class EDGAR_eof():
             # logger output
             self.EE_logger.error('year is empty in metadata')
             self.hdf5_data_hierarchical_path = ''
-            return
+            exit()
 
         # 保存返回的结果路径
         temp_hierarchical_path = ''
@@ -679,7 +679,7 @@ class EDGAR_eof():
             # logger output
             self.EE_logger.error('no year information was found.')
             self.hdf5_data_hierarchical_path = ''
-            return
+            exit()
 
         # 以下构建路径的逻辑是从子路径向父路径逐层构建。
         # 采用这个方式构建的优点是最多只需要进行三层构建。
@@ -792,7 +792,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('numpy filter in empty.')
-            return
+            exit()
 
         if not search_path:
             print('ERROR: search path is empty, please check the input')
@@ -800,7 +800,7 @@ class EDGAR_eof():
             # logger output
             self.EE_logger.error('search path does not exists')
 
-            return
+            exit()
 
         # 列出search_path路径下的所有文件
         temp_search_files = [f for f in os.listdir(
@@ -830,14 +830,14 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('HDF5 file does not exists.')
-            return
+            exit()
 
         if not hierarchical_path_metadata:
             print('ERROR: metadata is empty. Please check the input.')
 
             # logger output
             self.EE_logger.error('hierarchical path metadata is empty')
-            return
+            exit()
 
         if 'emission_categories' not in hierarchical_path_metadata or not hierarchical_path_metadata['emission_categories']:
             print(
@@ -845,7 +845,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('emission categories is empty.')
-            return
+            exit()
 
         # 判断是否传入中心
         # 如果传入中心名称则保持不变，
@@ -902,14 +902,14 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input data does not exist.')
-            return
+            exit()
 
         if not hierarchical_path_metadata:
             print('ERROR: hierarchical metadata is empty. Please check the input.')
 
             # logger output
             self.EE_logger.error('metadata is empty.')
-            return
+            exit()
 
         if max_eof_results == 0:
             print('Warning !! eof will return all the results! If you are using vary larg or big data, please confirm your operation.')
@@ -942,14 +942,14 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input eof_result_dict is empty.')
-            return
+            exit()
 
         if not os.path.exists(os.path.dirname(output_path)):
             print('ERROR: hdf save path does not exists. Please check the input.')
 
             # logger output
             self.EE_logger.error('hdf save path error.')
-            return
+            exit()
 
         print('Saving EOF results into {}'.format(output_path))
         # logger output
@@ -1005,14 +1005,14 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input eof solver does not exists')
-            return
+            exit()
 
         if not state_vector:
             print('ERROR: state vector is empty. Please check the input.')
 
             # logger output
             self.EE_logger.error('state vector is empty')
-            return
+            exit()
 
         # 初始化返回的字典
         return_dict = dict([(state, []) for state in state_vector])
@@ -1065,11 +1065,11 @@ class EDGAR_eof():
         # 初始化函数
         # 创建一个emission_center类必须提供一个名称用于标识类
         def __init__(self, outer_class, center_name='default_center'):
-            # 需要检查是否输入EDGAR_spatial类,输入类的作用是保证共享的参数可以获取
+            # 需要检查是否输入EDGAR_eof类,输入类的作用是保证共享的参数可以获取
             if not outer_class:
-                print('ERROR: please input a EDGAR_spatial class.')
+                print('ERROR: please input a EDGAR_eof class.')
 
-                return
+                exit()
 
             self.outer_class = outer_class
 
@@ -1089,7 +1089,7 @@ class EDGAR_eof():
 
                 # logger output
                 self.outer_class.EE_logger.error('Emission peak is empty.')
-                return
+                exit()
 
             # 这里为peak中补充中心名称的信息
             emission_peak['center_name'] = self.center_name
@@ -1107,7 +1107,7 @@ class EDGAR_eof():
 
                 # logger output
                 self.outer_class.EE_logger.error('center peaks is empty.')
-                return
+                exit()
             # 若不存在则直接报错并返回
             else:
                 # 重新排序center_peaks
@@ -1122,7 +1122,7 @@ class EDGAR_eof():
         def return_center(self):
             if not self.center_peaks:
                 print('Center list has not been create in this work.')
-                return
+                exit()
             else:
                 return self.center_peaks
 
@@ -1148,7 +1148,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input emission center does not exist.')
-            return
+            exit()
 
         return emission_center.return_center()
 
@@ -1161,7 +1161,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input emission center does not exist.')
-            return
+            exit()
 
         if not year or year > self.end_year or year < self.start_year:
             print(
@@ -1169,7 +1169,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('Input year is empty.')
-            return
+            exit()
 
         emission_center.center_peaks.pop(year)
 
@@ -1181,7 +1181,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input emission center does not exist.')
-            return
+            exit()
 
         # 从peak_buffer 中删除待修改数据
         emission_center.center_peaks_buffer.pop(emission_peak['year'])
@@ -1211,7 +1211,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input year error.')
-            return
+            exit()
 
     # 实际执行构建排放峰值
     def do_emission_peak(self, emission_peak_range, year):
@@ -1227,17 +1227,17 @@ class EDGAR_eof():
 
                 # logger output
                 self.EE_logger.error('Emission peak range error.')
-                return
+                exit()
         else:
             print("Error: emission peak range require a tuple. Please check the input.")
 
-        # 年份变量检查
-        if year < self.start_year or year > self.end_year:
-            print("Error: emission peak require a correct year.")
+        # # 年份变量检查
+        # if year < self.start_year or year > self.end_year:
+        #     print("Error: emission peak require a correct year.")
 
-            # logger output
-            self.EE_logger.error('Emission peak year error.')
-            return
+        #     # logger output
+        #     self.EE_logger.error('Emission peak year error.')
+        #     exit()
 
         # 这里实际上定义了emission_peak的结构。
         return {
@@ -1255,7 +1255,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('center name type error.')
-            return
+            exit()
 
         # 创建一个仅包含名称的emission_center实例
         return self.emission_center(outer_class=outer_class, center_name=emission_center_name)
@@ -1268,7 +1268,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input emission center does not exist.')
-            return
+            exit()
 
         # 检查输入的peak_list是否存在，不存在则直接返回
         if not peaks_list:
@@ -1276,7 +1276,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('input peak list does not exist.')
-            return
+            exit()
 
         # 支持将emission_peak或者由它组成的列表传入类中
         if type(peaks_list) == list:
@@ -1289,7 +1289,7 @@ class EDGAR_eof():
 
             # logger output
             self.EE_logger.error('emission peak type or structure error.')
-            return
+            exit()
 
         # 添加emission_peak后重新整理emission_center的内容
         emission_center.generate_center()
@@ -1357,7 +1357,7 @@ class EDGAR_eof():
             print('ERROR: input json file does not exist. json file: \'{}\''.format(input_json_file))
 
             # logger output
-            self.ES_logger.error('input json file does not exist. json file: \'{}\''.format(input_json_file))
+            self.EE_logger.error('input json file does not exist. json file: \'{}\''.format(input_json_file))
             exit(1)
         
         # 尝试解包输入的json文件内容
@@ -1367,7 +1367,7 @@ class EDGAR_eof():
         # 输出函数运行状态信息
         print('Generating emission centers form json file...')
         # logger output
-        self.ES_logger.info('Generating emission centers form json file...')
+        self.EE_logger.info('Generating emission centers form json file...')
 
         # 逐个生成中心
         for jc in json_centers.items():
