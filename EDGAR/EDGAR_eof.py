@@ -8,9 +8,9 @@ import sys
 # 以下为测试用DEBUG用库文件
 # 正式使用时请勿import
 # For office
-# sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
+sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
 # For laptop
-sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
+# sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
 from lib.eofs.multivariate.standard import MultivariateEof
 
 # 以下为正常使用eofs库的引用
