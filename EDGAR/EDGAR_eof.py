@@ -1066,13 +1066,14 @@ class EDGAR_eof():
         # 初始化返回的字典
         return_dict = dict([(state, []) for state in state_vector])
         return_dict.update(dict(pcs=[]))
+        return_dict.update(dict(eigenvalue=[]))
 
         # 保存eof场的结果
         # 因为EOF场的结果又分为state_vector的对应部分，所以保存需要经历两次分类。
         # 首先获得所有eof分量，并存入列表
         # temp_eofs = [eof for eof in multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)]
         # temp_eofs = multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)
-        temp_covariance = multivariates_eof_solver.eofsAsCovariance(eofscaling=1, neofs=eof_num)
+        temp_covariance = multivariates_eof_solver.eofsAsCovariance(pcscaling=1, neofs=eof_num)
 
         # 将分量eof和对应的名称绑定
         # 因为返回的分量的顺序是按照输入的分量顺序返回所以可以做到一一对应
@@ -1085,6 +1086,10 @@ class EDGAR_eof():
         # 这里的pcs需要考虑是否需要归一化到1
         temp_pcs = multivariates_eof_solver.pcs(pcscaling=0, npcs=eof_num)
         return_dict['pcs'] = numpy.transpose(temp_pcs)
+
+        # 保存eigenvalue的结果
+        temp_eigenvalue = multivariates_eof_solver.eigenvalues(neigs=eof_num)
+        return_dict['eigenvalue'] = temp_eigenvalue
 
         return return_dict
 
