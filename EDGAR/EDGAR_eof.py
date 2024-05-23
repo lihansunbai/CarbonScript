@@ -1039,6 +1039,56 @@ class EDGAR_eof():
         return return_dict
 
     # 生成EOF结果
+    # 或者变化场结果。
+    def multivariates_EOF_covariance_results(self, state_vector, multivariates_eof_solver, eof_num=1):
+        '''
+        生成EOF结果
+        注意：这个函数返回的是变化场结果。
+        这个函数将返回一个字典。字典包括eofs对应的每个分量的字典和场列表；和pcs列表。
+        使用eof_num参数可以指定生成的场和对应的pc数量。默认生成第一个场。
+        可以设定save_to_hdf为True保存结果到指定位置文件中。使用此功能时必须提供一个保存文件的路径。
+        '''
+        if not multivariates_eof_solver:
+            print(
+                'ERROR: eof solver has not create. Please run multivariates_EOF_solver() or check the input')
+
+            # logger output
+            self.EE_logger.error('input eof solver does not exists')
+            exit()
+
+        if not state_vector:
+            print('ERROR: state vector is empty. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('state vector is empty')
+            exit()
+
+        # 初始化返回的字典
+        return_dict = dict([(state, []) for state in state_vector])
+        return_dict.update(dict(pcs=[]))
+
+        # 保存eof场的结果
+        # 因为EOF场的结果又分为state_vector的对应部分，所以保存需要经历两次分类。
+        # 首先获得所有eof分量，并存入列表
+        # temp_eofs = [eof for eof in multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)]
+        # temp_eofs = multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)
+        temp_covariance = multivariates_eof_solver.eofsAsCovariance(eofscaling=1, neofs=eof_num)
+
+        # 将分量eof和对应的名称绑定
+        # 因为返回的分量的顺序是按照输入的分量顺序返回所以可以做到一一对应
+        temp_state_eof = zip(state_vector, temp_covariance)
+        # 逐项合并入返回字典中
+        for it in list(temp_state_eof):
+            return_dict[it[0]] = it[1]
+
+        # 保存pc的结果
+        # 这里的pcs需要考虑是否需要归一化到1
+        temp_pcs = multivariates_eof_solver.pcs(pcscaling=0, npcs=eof_num)
+        return_dict['pcs'] = numpy.transpose(temp_pcs)
+
+        return return_dict
+
+    # 生成EOF结果
     # 或者相关性场结果。
     def multivariates_EOF_correlative_results(self, state_vector, multivariates_eof_solver, eof_num=1):
         '''
@@ -1071,11 +1121,11 @@ class EDGAR_eof():
         # 因为EOF场的结果又分为state_vector的对应部分，所以保存需要经历两次分类。
         # 首先获得所有eof分量，并存入列表
         # temp_eofs = [eof for eof in multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)]
-        temp_eofs = multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)
+        temp_correlative = multivariates_eof_solver.eofsAsCorrelation(neofs=eof_num)
 
         # 将分量eof和对应的名称绑定
         # 因为返回的分量的顺序是按照输入的分量顺序返回所以可以做到一一对应
-        temp_state_eof = zip(state_vector, temp_eofs)
+        temp_state_eof = zip(state_vector, temp_correlative)
         # 逐项合并入返回字典中
         for it in list(temp_state_eof):
             return_dict[it[0]] = it[1]
