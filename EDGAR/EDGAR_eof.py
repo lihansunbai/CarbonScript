@@ -428,7 +428,7 @@ class EDGAR_eof():
             hdf.create_dataset('lat', data=numpy.arange(-90, 90, 0.1))
             hdf.create_dataset('lon', data=numpy.arange(-180, 180, 0.1))
             hdf.create_dataset('time', data=numpy.arange(
-                self.start_year, self.end_year, 1))
+                self.start_year, self.end_year + 1, 1))
             hdf['lat'].make_scale('latitude')
             hdf['lon'].make_scale('longitude')
             hdf['time'].make_scale('time')
