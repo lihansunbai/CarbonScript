@@ -8,9 +8,9 @@ import sys
 # 以下为测试用DEBUG用库文件
 # 正式使用时请勿import
 # For office
-sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
+# sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
 # For laptop
-# sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
+sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
 from lib.eofs.multivariate.standard import MultivariateEof
 
 # 以下为正常使用eofs库的引用
@@ -190,7 +190,7 @@ class EDGAR_eof():
         info['shapes'] = field.shape
 
         merged = field.reshape((field.shape[0], numpy.prod(field.shape[1:])))
-        flattened = merged.rechunk({0: 'auto', 1: merged.shape[1]})
+        flattened = merged.rechunk({0: -1, 1: 4096})
 
         return flattened, info
 
@@ -1129,7 +1129,6 @@ class EDGAR_eof():
 
         # 初始化返回的字典
         return_dict = dict([(state, []) for state in state_vector])
-        return_dict.update(dict(pcs=[]))
 
         # 保存eof场的结果
         # 因为EOF场的结果又分为state_vector的对应部分，所以保存需要经历两次分类。
@@ -1186,14 +1185,10 @@ class EDGAR_eof():
 
         # 初始化返回的字典
         return_dict = dict([(state, []) for state in state_vector])
-        return_dict.update(dict(pcs=[]))
-        return_dict.update(dict(eigenvalue=[]))
 
         # 保存eof场的结果
         # 因为EOF场的结果又分为state_vector的对应部分，所以保存需要经历两次分类。
         # 首先获得所有eof分量，并存入列表
-        # temp_eofs = [eof for eof in multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)]
-        # temp_eofs = multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)
         temp_covariance = multivariates_eof_solver.eofsAsCovariance(pcscaling=1, neofs=eof_num)
 
         # 将分量eof和对应的名称绑定
@@ -1202,12 +1197,6 @@ class EDGAR_eof():
         # 逐项合并入返回字典中
         for it in list(temp_state_eof):
             return_dict[it[0]] = it[1]
-
-        # 保存pc的结果
-        # 这里的pcs需要考虑是否需要归一化到1
-        temp_pcs = multivariates_eof_solver.pcs(pcscaling=0, npcs=eof_num)
-        return_dict['pcs'] = numpy.transpose(temp_pcs)
-
 
         return return_dict
 
@@ -1238,12 +1227,10 @@ class EDGAR_eof():
 
         # 初始化返回的字典
         return_dict = dict([(state, []) for state in state_vector])
-        return_dict.update(dict(pcs=[]))
 
         # 保存eof场的结果
         # 因为EOF场的结果又分为state_vector的对应部分，所以保存需要经历两次分类。
         # 首先获得所有eof分量，并存入列表
-        # temp_eofs = [eof for eof in multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)]
         temp_correlative = multivariates_eof_solver.eofsAsCorrelation(neofs=eof_num)
 
         # 将分量eof和对应的名称绑定
@@ -1252,11 +1239,6 @@ class EDGAR_eof():
         # 逐项合并入返回字典中
         for it in list(temp_state_eof):
             return_dict[it[0]] = it[1]
-
-        # 保存pc的结果
-        # 这里的pcs需要考虑是否需要归一化到1
-        temp_pcs = multivariates_eof_solver.pcs(pcscaling=0, npcs=eof_num)
-        return_dict['pcs'] = numpy.transpose(temp_pcs)
 
         return return_dict
 
