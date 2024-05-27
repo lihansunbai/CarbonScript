@@ -8,9 +8,9 @@ import sys
 # 以下为测试用DEBUG用库文件
 # 正式使用时请勿import
 # For office
-sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
+# sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
 # For laptop
-# sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
+sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
 from lib.eofs.multivariate.standard import MultivariateEof
 
 # 以下为正常使用eofs库的引用
@@ -190,7 +190,7 @@ class EDGAR_eof():
         info['shapes'] = field.shape
 
         merged = field.reshape((field.shape[0], numpy.prod(field.shape[1:])))
-        flattened = merged.rechunk({0: 'auto', 1: merged.shape[1]})
+        flattened = merged.rechunk({0: -1, 1: 4096})
 
         return flattened, info
 
@@ -929,6 +929,102 @@ class EDGAR_eof():
         # 使用eofs库执行EOF，得到solver
         return MultivariateEof(datasets=datasets, weights=weights, center=center, ddof=ddof, max_eof_results=max_eof_results)
 
+    # 导出correlative map EOF结果到HDF文件
+    # 函数需要传入一个EOF_results字典
+    def multivariates_EOF_correlative_exporter(self, eof_results_dict, output_path=None):
+        '''
+        导出使用correlative map表达的EOF结果到HDF文件
+        函数需要传入一个EOF_results字典
+        '''
+
+        if not eof_results_dict:
+            print('ERROR: no data could save. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('input eof_result_dict is empty.')
+            exit()
+
+        if not os.path.exists(os.path.dirname(output_path)):
+            print('ERROR: hdf save path does not exists. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('hdf save path error.')
+            exit()
+
+        print('Saving EOF results on correlative map into {}'.format(output_path))
+        # logger output
+        self.EE_logger.info('Start saving EOF results on correlative map.')
+
+        temp_save_dict = eof_results_dict.copy()
+
+        # 链接HDF文件
+        hdf = h5py.File(output_path, 'a')
+        temp_mode_path = '/EOF_correlative_map/'
+
+        # 写入场数据
+        # 先创建保存数据的组路径
+        temp_mode_group = hdf.create_group(temp_mode_path)
+        # 将逐个分量保存到对应名字的组之下
+        for item in temp_save_dict.items():
+            temp_mode_state_group = temp_mode_group.create_group(str(item[0]))
+            temp_mode_state_date = temp_mode_state_group.create_dataset(name='modes',
+                                                                        data=item[1],
+                                                                        dtype=item[1].dtype,
+                                                                        chunks=True,
+                                                                        compression='gzip')
+            hdf.flush()
+        print('EOF results on correlative map were saved.')
+        # logger output
+        self.EE_logger.info('EOF results on correlative map were saved.')
+
+    # 导出covariance map EOF结果到HDF文件
+    # 函数需要传入一个EOF_results字典
+    def multivariates_EOF_covariance_exporter(self, eof_results_dict, output_path=None):
+        '''
+        导出使用covariance map表达的EOF结果到HDF文件
+        函数需要传入一个EOF_results字典
+        '''
+
+        if not eof_results_dict:
+            print('ERROR: no data could save. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('input eof_result_dict is empty.')
+            exit()
+
+        if not os.path.exists(os.path.dirname(output_path)):
+            print('ERROR: hdf save path does not exists. Please check the input.')
+
+            # logger output
+            self.EE_logger.error('hdf save path error.')
+            exit()
+
+        print('Saving EOF results on covariance map into {}'.format(output_path))
+        # logger output
+        self.EE_logger.info('Start saving EOF results on covariance map.')
+
+        temp_save_dict = eof_results_dict.copy()
+
+        # 链接HDF文件
+        hdf = h5py.File(output_path, 'a')
+        temp_mode_path = '/EOF_covariance_map/'
+
+        # 写入场数据
+        # 先创建保存数据的组路径
+        temp_mode_group = hdf.create_group(temp_mode_path)
+        # 将逐个分量保存到对应名字的组之下
+        for item in temp_save_dict.items():
+            temp_mode_state_group = temp_mode_group.create_group(str(item[0]))
+            temp_mode_state_date = temp_mode_state_group.create_dataset(name='modes',
+                                                                        data=item[1],
+                                                                        dtype=item[1].dtype,
+                                                                        chunks=True,
+                                                                        compression='gzip')
+            hdf.flush()
+        print('EOF results on covariance map were saved.')
+        # logger output
+        self.EE_logger.info('EOF results on covariance map were saved.')
+
     # 导出EOF结果到HDF文件
     # 函数需要传入一个EOF_results字典
     def multivariates_EOF_exporter(self, eof_results_dict, output_path=None):
@@ -960,10 +1056,27 @@ class EDGAR_eof():
         # 链接HDF文件
         hdf = h5py.File(output_path, 'a')
         temp_mode_path = '/EOF_mode/'
-        temp_pc_path = '/EOF_pc/'
 
+        # 先写入varianceFraction数据，用pop把它弹出
+        temp_pc_group = hdf.create_group('/EOF_varianceFraction/')
+        temp_pcs = temp_save_dict.pop('varianceFraction')
+        temp_pc_data = temp_pc_group.create_dataset(name='varianceFraction',
+                                                    data=temp_pcs,
+                                                    dtype=temp_pcs.dtype,
+                                                    chunks=True,
+                                                    compression='gzip')
+        hdf.flush()
+        # 先写入eigenvalue数据，用pop把它弹出
+        temp_pc_group = hdf.create_group('/EOF_eigenvalue/')
+        temp_pcs = temp_save_dict.pop('eigenvalue')
+        temp_pc_data = temp_pc_group.create_dataset(name='eigenvalue',
+                                                    data=temp_pcs,
+                                                    dtype=temp_pcs.dtype,
+                                                    chunks=True,
+                                                    compression='gzip')
+        hdf.flush()
         # 先写入pc数据，用pop把它弹出
-        temp_pc_group = hdf.create_group(temp_pc_path)
+        temp_pc_group = hdf.create_group('EOF_pc')
         temp_pcs = temp_save_dict.pop('pcs')
         temp_pc_data = temp_pc_group.create_dataset(name='pcs',
                                                     data=temp_pcs,
@@ -1016,12 +1129,11 @@ class EDGAR_eof():
 
         # 初始化返回的字典
         return_dict = dict([(state, []) for state in state_vector])
-        return_dict.update(dict(pcs=[]))
 
         # 保存eof场的结果
         # 因为EOF场的结果又分为state_vector的对应部分，所以保存需要经历两次分类。
         # 首先获得所有eof分量，并存入列表
-        # temp_eofs = [eof for eof in multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)]
+        # 这里返回的结果是没有缩放的eof场。也只需要返回未缩放值就可以
         temp_eofs = multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)
 
         # 将分量eof和对应的名称绑定
@@ -1035,6 +1147,14 @@ class EDGAR_eof():
         # 这里的pcs需要考虑是否需要归一化到1
         temp_pcs = multivariates_eof_solver.pcs(pcscaling=0, npcs=eof_num)
         return_dict['pcs'] = numpy.transpose(temp_pcs)
+
+        # 保存eigenvalue的结果
+        temp_eigenvalue = multivariates_eof_solver.eigenvalues(neigs=eof_num)
+        return_dict['eigenvalue'] = temp_eigenvalue
+
+        # 保存各场解释比例
+        temp_eigenvalue = multivariates_eof_solver.varianceFraction(neigs=eof_num)
+        return_dict['varianceFraction'] = temp_eigenvalue
 
         return return_dict
 
@@ -1065,14 +1185,10 @@ class EDGAR_eof():
 
         # 初始化返回的字典
         return_dict = dict([(state, []) for state in state_vector])
-        return_dict.update(dict(pcs=[]))
-        return_dict.update(dict(eigenvalue=[]))
 
         # 保存eof场的结果
         # 因为EOF场的结果又分为state_vector的对应部分，所以保存需要经历两次分类。
         # 首先获得所有eof分量，并存入列表
-        # temp_eofs = [eof for eof in multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)]
-        # temp_eofs = multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)
         temp_covariance = multivariates_eof_solver.eofsAsCovariance(pcscaling=1, neofs=eof_num)
 
         # 将分量eof和对应的名称绑定
@@ -1081,15 +1197,6 @@ class EDGAR_eof():
         # 逐项合并入返回字典中
         for it in list(temp_state_eof):
             return_dict[it[0]] = it[1]
-
-        # 保存pc的结果
-        # 这里的pcs需要考虑是否需要归一化到1
-        temp_pcs = multivariates_eof_solver.pcs(pcscaling=0, npcs=eof_num)
-        return_dict['pcs'] = numpy.transpose(temp_pcs)
-
-        # 保存eigenvalue的结果
-        temp_eigenvalue = multivariates_eof_solver.eigenvalues(neigs=eof_num)
-        return_dict['eigenvalue'] = temp_eigenvalue
 
         return return_dict
 
@@ -1120,12 +1227,10 @@ class EDGAR_eof():
 
         # 初始化返回的字典
         return_dict = dict([(state, []) for state in state_vector])
-        return_dict.update(dict(pcs=[]))
 
         # 保存eof场的结果
         # 因为EOF场的结果又分为state_vector的对应部分，所以保存需要经历两次分类。
         # 首先获得所有eof分量，并存入列表
-        # temp_eofs = [eof for eof in multivariates_eof_solver.eofs(eofscaling=0, neofs=eof_num)]
         temp_correlative = multivariates_eof_solver.eofsAsCorrelation(neofs=eof_num)
 
         # 将分量eof和对应的名称绑定
@@ -1134,11 +1239,6 @@ class EDGAR_eof():
         # 逐项合并入返回字典中
         for it in list(temp_state_eof):
             return_dict[it[0]] = it[1]
-
-        # 保存pc的结果
-        # 这里的pcs需要考虑是否需要归一化到1
-        temp_pcs = multivariates_eof_solver.pcs(pcscaling=0, npcs=eof_num)
-        return_dict['pcs'] = numpy.transpose(temp_pcs)
 
         return return_dict
 
