@@ -966,13 +966,19 @@ class EDGAR_eof():
         temp_mode_group = hdf.create_group(temp_mode_path)
         # 将逐个分量保存到对应名字的组之下
         for item in temp_save_dict.items():
+            # DEBUG logger
+            self.EE_logger.debug('Export eof correlative to hdf: {}'.format(str(item[0])))
+
+            # 由于dask 计算的特性，这里需要先将数据主动计算出结果
+            temp_write_data = item[1].compute()
             temp_mode_state_group = temp_mode_group.create_group(str(item[0]))
             temp_mode_state_date = temp_mode_state_group.create_dataset(name='modes',
-                                                                        data=item[1],
+                                                                        data=temp_write_data,
                                                                         dtype=item[1].dtype,
                                                                         chunks=True,
                                                                         compression='gzip')
             hdf.flush()
+            self.EE_logger.debug('Finished export eof correlative to hdf: {}'.format(str(item[0])))
         print('EOF results on correlative map were saved.')
         # logger output
         self.EE_logger.info('EOF results on correlative map were saved.')
@@ -1014,13 +1020,20 @@ class EDGAR_eof():
         temp_mode_group = hdf.create_group(temp_mode_path)
         # 将逐个分量保存到对应名字的组之下
         for item in temp_save_dict.items():
+            # DEBUG logger
+            self.EE_logger.debug('Export eof covariance to hdf: {}'.format(str(item[0])))
+
+            # 由于dask 计算的特性，这里需要先将数据主动计算出结果
+            temp_write_data = item[1].compute()
             temp_mode_state_group = temp_mode_group.create_group(str(item[0]))
             temp_mode_state_date = temp_mode_state_group.create_dataset(name='modes',
-                                                                        data=item[1],
+                                                                        data=temp_write_data,
                                                                         dtype=item[1].dtype,
                                                                         chunks=True,
                                                                         compression='gzip')
             hdf.flush()
+            # DEBUG logger
+            self.EE_logger.debug('Finished export eof covariance to hdf: {}'.format(str(item[0])))
         print('EOF results on covariance map were saved.')
         # logger output
         self.EE_logger.info('EOF results on covariance map were saved.')
@@ -1090,13 +1103,20 @@ class EDGAR_eof():
         temp_mode_group = hdf.create_group(temp_mode_path)
         # 将逐个分量保存到对应名字的组之下
         for item in temp_save_dict.items():
+            # DEBUG logger
+            self.EE_logger.debug('Export eof modes to hdf: {}'.format(str(item[0])))
+
+            # 由于dask 计算的特性，这里需要先将数据主动计算出结果
+            temp_write_data = item[1].compute()
             temp_mode_state_group = temp_mode_group.create_group(str(item[0]))
             temp_mode_state_date = temp_mode_state_group.create_dataset(name='modes',
-                                                                        data=item[1],
+                                                                        data=temp_write_data,
                                                                         dtype=item[1].dtype,
                                                                         chunks=True,
                                                                         compression='gzip')
             hdf.flush()
+            # DEBUG logger
+            self.EE_logger.debug('Finished export eof modes to hdf: {}'.format(str(item[0])))
         print('EOF modes and pcs were saved.')
         # logger output
         self.EE_logger.info('EOF modes and pcs were saved.')
