@@ -8,9 +8,9 @@ import sys
 # 以下为测试用DEBUG用库文件
 # 正式使用时请勿import
 # For office
-# sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
+sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
 # For laptop
-sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
+# sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
 from lib.eofs.multivariate.standard import MultivariateEof
 
 # 以下为正常使用eofs库的引用
@@ -1184,7 +1184,7 @@ class EDGAR_eof():
             exit()
 
         # 初始化返回的字典
-        return_dict = dict([(state, []) for state in state_vector])
+        return_dict_covariance = dict([(state, []) for state in state_vector])
 
         # 保存eof场的结果
         # 因为EOF场的结果又分为state_vector的对应部分，所以保存需要经历两次分类。
@@ -1196,9 +1196,9 @@ class EDGAR_eof():
         temp_state_eof = zip(state_vector, temp_covariance)
         # 逐项合并入返回字典中
         for it in list(temp_state_eof):
-            return_dict[it[0]] = it[1]
+            return_dict_covariance[it[0]] = it[1]
 
-        return return_dict
+        return return_dict_covariance
 
     # 生成EOF结果
     # 或者相关性场结果。
@@ -1226,7 +1226,7 @@ class EDGAR_eof():
             exit()
 
         # 初始化返回的字典
-        return_dict = dict([(state, []) for state in state_vector])
+        return_dict_correlative = dict([(state, []) for state in state_vector])
 
         # 保存eof场的结果
         # 因为EOF场的结果又分为state_vector的对应部分，所以保存需要经历两次分类。
@@ -1238,9 +1238,9 @@ class EDGAR_eof():
         temp_state_eof = zip(state_vector, temp_correlative)
         # 逐项合并入返回字典中
         for it in list(temp_state_eof):
-            return_dict[it[0]] = it[1]
+            return_dict_correlative[it[0]] = it[1]
 
-        return return_dict
+        return return_dict_correlative
 
     ############################################################################
     ############################################################################
