@@ -190,7 +190,7 @@ class EDGAR_eof():
         info['shapes'] = field.shape
 
         merged = field.reshape((field.shape[0], numpy.prod(field.shape[1:])))
-        flattened = merged.rechunk({0: -1, 1: 4096})
+        flattened = merged.rechunk({0: -1, 1: 10000})
 
         return flattened, info
 
@@ -978,8 +978,7 @@ class EDGAR_eof():
                                                                         chunks=True,
                                                                         compression='gzip')
             hdf.flush()
-            # 删除已经导出的结果，节约内存
-            del temp_save_dict[item[0]]
+            temp_save_dict[item[0]] = []
             # DEBUG logger
             self.EE_logger.debug('Finished export eof correlative to hdf: {}'.format(str(item[0])))
         print('EOF results on correlative map were saved.')
@@ -1035,8 +1034,7 @@ class EDGAR_eof():
                                                                         chunks=True,
                                                                         compression='gzip')
             hdf.flush()
-            # 删除已经导出的结果，节约内存
-            del temp_save_dict[item[0]]
+            temp_save_dict[item[0]] = []
             # DEBUG logger
             self.EE_logger.debug('Finished export eof covariance to hdf: {}'.format(str(item[0])))
         print('EOF results on covariance map were saved.')
@@ -1120,8 +1118,7 @@ class EDGAR_eof():
                                                                         chunks=True,
                                                                         compression='gzip')
             hdf.flush()
-            # 删除已经导出的结果，节约内存
-            del temp_save_dict[item[0]]
+            temp_save_dict[item[0]] = []
             # DEBUG logger
             self.EE_logger.debug('Finished export eof modes to hdf: {}'.format(str(item[0])))
         print('EOF modes and pcs were saved.')
