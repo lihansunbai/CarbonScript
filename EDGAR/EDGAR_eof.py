@@ -8,9 +8,9 @@ import sys
 # 以下为测试用DEBUG用库文件
 # 正式使用时请勿import
 # For office
-sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
+# sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
 # For laptop
-# sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
+sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
 from lib.eofs.multivariate.standard import MultivariateEof
 
 # 以下为正常使用eofs库的引用
@@ -190,7 +190,7 @@ class EDGAR_eof():
         info['shapes'] = field.shape
 
         merged = field.reshape((field.shape[0], numpy.prod(field.shape[1:])))
-        flattened = merged.rechunk({0: -1, 1: 10000})
+        flattened = merged.rechunk({0: -1, 1: 'auto'}, block_size_limit=1e8)
 
         return flattened, info
 
@@ -970,10 +970,12 @@ class EDGAR_eof():
             self.EE_logger.debug('Export eof correlative to hdf: {}'.format(str(item[0])))
 
             # 由于dask 计算的特性，这里需要先将数据主动计算出结果
-            temp_write_data = item[1].compute()
+            item[1].compute_chunk_sizes()
+            temp_write_data = item[1].rechunk({0: -1, 1: 'auto'}, block_size_limit=1e8)
+            temp_write_data_chunked = temp_write_data.compute()
             temp_mode_state_group = temp_mode_group.create_group(str(item[0]))
             temp_mode_state_date = temp_mode_state_group.create_dataset(name='modes',
-                                                                        data=temp_write_data,
+                                                                        data=temp_write_data_chunked,
                                                                         dtype=item[1].dtype,
                                                                         chunks=True,
                                                                         compression='gzip')
@@ -1026,10 +1028,12 @@ class EDGAR_eof():
             self.EE_logger.debug('Export eof covariance to hdf: {}'.format(str(item[0])))
 
             # 由于dask 计算的特性，这里需要先将数据主动计算出结果
-            temp_write_data = item[1].compute()
+            item[1].compute_chunk_sizes()
+            temp_write_data = item[1].rechunk({0: -1, 1: 'auto'}, block_size_limit=1e8)
+            temp_write_data_chunked = temp_write_data.compute()
             temp_mode_state_group = temp_mode_group.create_group(str(item[0]))
             temp_mode_state_date = temp_mode_state_group.create_dataset(name='modes',
-                                                                        data=temp_write_data,
+                                                                        data=temp_write_data_chunked,
                                                                         dtype=item[1].dtype,
                                                                         chunks=True,
                                                                         compression='gzip')
@@ -1110,10 +1114,12 @@ class EDGAR_eof():
             self.EE_logger.debug('Export eof modes to hdf: {}'.format(str(item[0])))
 
             # 由于dask 计算的特性，这里需要先将数据主动计算出结果
-            temp_write_data = item[1].compute()
+            item[1].compute_chunk_sizes()
+            temp_write_data = item[1].rechunk({0: -1, 1: 'auto'}, block_size_limit=1e8)
+            temp_write_data_chunked = temp_write_data.compute()
             temp_mode_state_group = temp_mode_group.create_group(str(item[0]))
             temp_mode_state_date = temp_mode_state_group.create_dataset(name='modes',
-                                                                        data=temp_write_data,
+                                                                        data=temp_write_data_chunked,
                                                                         dtype=item[1].dtype,
                                                                         chunks=True,
                                                                         compression='gzip')
