@@ -971,7 +971,7 @@ class EDGAR_eof():
 
             # 由于dask 计算的特性，这里需要先将数据主动计算出结果
             item[1].compute_chunk_sizes()
-            temp_write_data = item[1].rechunk({0: -1, 1: 'auto'}, block_size_limit=1e8)
+            temp_write_data = item[1].rechunk({0: -1, 1: 'auto'}, block_size_limit=5e8)
             temp_write_data_chunked = temp_write_data.compute()
             temp_mode_state_group = temp_mode_group.create_group(str(item[0]))
             temp_mode_state_date = temp_mode_state_group.create_dataset(name='modes',
@@ -1114,8 +1114,8 @@ class EDGAR_eof():
             self.EE_logger.debug('Export eof modes to hdf: {}'.format(str(item[0])))
 
             # 由于dask 计算的特性，这里需要先将数据主动计算出结果
-            item[1].compute_chunk_sizes()
-            temp_write_data = item[1].rechunk({0: -1, 1: 'auto'}, block_size_limit=1e8)
+            # item[1].compute_chunk_sizes()
+            temp_write_data = item[1].rechunk({0: -1, 1: 'auto'}, block_size_limit=1e9)
             temp_write_data_chunked = temp_write_data.compute()
             temp_mode_state_group = temp_mode_group.create_group(str(item[0]))
             temp_mode_state_date = temp_mode_state_group.create_dataset(name='modes',
