@@ -4678,12 +4678,6 @@ class EDGAR_spatial(object):
             self.ES_logger.error('input does not exist.')
             exit(1)
 
-        # 以下这部分生成中心分类列表的操作已经不再需要了
-        # # 生成筛选排放中心的全部分类栅格的正则表达式列表
-        # temp_wildcard_center_re = '{}_EOF_'.format(center.center_name) + r'{}_\d+'
-        # # 以下使用了解包操作，如果调试有困难就该写成for...loop
-        # temp_wildcard_list = [temp_wildcard_center_re.format(category) for category in category_field_list]
-
         # 检查总量栅格是否存在
         temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=total_emission_list, wildcard_mode=True)
 
