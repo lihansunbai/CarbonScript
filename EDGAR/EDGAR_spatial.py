@@ -4790,11 +4790,10 @@ class EDGAR_spatial(object):
             # logger output
             self.ES_logger.error('eof mode numbers does not specified.')
             exit(1)
-
         
-        for cate in category_field_list:
+        for cate in tqdm(category_field_list):
             # 按照场数量逐个输出
-            for eof in range(0, num_eofs):
+            for eof in tqdm(range(0, num_eofs)):
                 # 检查输出文件名是否能够成功构建
                 try:
                     output_raster = output_fmt.format(cate, eof)
@@ -4811,6 +4810,89 @@ class EDGAR_spatial(object):
                 # 执行数据提取
                 self.do_EOF_hdf_mode_to_raster(hdf_file_path=hdf_path, hierarchical_data_path=temp_data_path, data_name=mode_name, output_path=output_raster, mode=eof, remove_value=remove_value)
 
+    # 将结果的covariance map数据转换为raster
+    def EOF_hdf_covariance_map_to_raster(self, hdf_path, category_field_list, mode_name, num_eofs, output_fmt='{}_covariance_map_{}', remove_value=None):
+        if not category_field_list:
+            print('ERROR: emission categories does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('emission categories does not exist.')
+            exit(1)
+        
+        if not os.path.exists(hdf_path):
+            print('ERROR: hdf file does not exist. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('hdf file does not exist.')
+            exit(1)
+        
+        if not num_eofs:
+            print('ERROR: eof mode numbers does not specified. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('eof mode numbers does not specified.')
+            exit(1)
+        
+        for cate in tqdm(category_field_list):
+            # 按照场数量逐个输出
+            for eof in tqdm(range(0, num_eofs)):
+                # 检查输出文件名是否能够成功构建
+                try:
+                    output_raster = output_fmt.format(cate, eof)
+                except:
+                    print('ERROR: can not format raster output name.')
+
+                    # logger output
+                    self.ES_logger.error('raster output name format failed.')
+                    exit(1)
+
+                # 生成hdf数据路径
+                temp_data_path = os.path.join('/EOF_covariance_map/', cate)
+
+                # 执行数据提取
+                self.do_EOF_hdf_mode_to_raster(hdf_file_path=hdf_path, hierarchical_data_path=temp_data_path, data_name=mode_name, output_path=output_raster, mode=eof, remove_value=remove_value)
+
+    # 将结果的correlative map数据转换为raster
+    def EOF_hdf_correlative_map_to_raster(self, hdf_path, category_field_list, mode_name, num_eofs, output_fmt='{}_correlative_map_{}', remove_value=None):
+        if not category_field_list:
+            print('ERROR: emission categories does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('emission categories does not exist.')
+            exit(1)
+        
+        if not os.path.exists(hdf_path):
+            print('ERROR: hdf file does not exist. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('hdf file does not exist.')
+            exit(1)
+        
+        if not num_eofs:
+            print('ERROR: eof mode numbers does not specified. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('eof mode numbers does not specified.')
+            exit(1)
+        
+        for cate in tqdm(category_field_list):
+            # 按照场数量逐个输出
+            for eof in tqdm(range(0, num_eofs)):
+                # 检查输出文件名是否能够成功构建
+                try:
+                    output_raster = output_fmt.format(cate, eof)
+                except:
+                    print('ERROR: can not format raster output name.')
+
+                    # logger output
+                    self.ES_logger.error('raster output name format failed.')
+                    exit(1)
+
+                # 生成hdf数据路径
+                temp_data_path = os.path.join('/EOF_correlative_map/', cate)
+
+                # 执行数据提取
+                self.do_EOF_hdf_mode_to_raster(hdf_file_path=hdf_path, hierarchical_data_path=temp_data_path, data_name=mode_name, output_path=output_raster, mode=eof, remove_value=remove_value)
 
     # 从HDF5中的eof mode数据转换为Arcgis raster
     # 使用这个函数要注意output_path参数，如果在构造函数初始化的过程中定义了工作空间，则可以直接传入不带后缀的保存文件名，
