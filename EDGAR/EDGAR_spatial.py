@@ -5107,6 +5107,162 @@ class EDGAR_spatial(object):
                                 output_path=output_path,
                                 output_formate='TIFF')
 
+    # 批量将同中心不同部门的eof统计到各个部门的名称中
+    def EOF_joint_modes_to_point(self, center, category_list, mode_type_list, num_eofs):
+        '''
+        这个函数用于将不同排放量级中心的EOF的各场结果合并到一个点类型文件中。
+        这个函数需要提供三个参数:
+            center：中心名称。
+            category_list：一个包含部分类型的列表。
+            mode_typelist：一个包含不同类型EOF场的列表。例如原始的EOF场，correlative map，covariance map。
+        '''
+        for i in category_list:
+            self.do_EOF_joint_modes_to_point(center=center,
+                                                category=i,
+                                                mode_type_list=mode_type_list,
+                                                num_eofs=num_eofs)
+
+    # 将同一中心的EOF结果统计到同一个部门名称的点数据中
+    def do_EOF_joint_modes_to_point(self, center, category, mode_type_list, num_eofs):
+        '''
+        这个函数用于将不同排放量级中心的EOF的各场结果合并到一个点类型文件中。
+        这个函数需要提供三个参数:
+            center：中心名称。
+            category：确定的部门名称
+            mode_typelist：一个包含不同类型EOF场的列表。例如原始的EOF场，correlative map，covariance map。
+        '''
+        #######################################################################
+        #######################################################################
+        # 这个函数的设计思想来源于指针和指针的操作。
+        # 有若干个变量被当作指针进行使用，要注意这些变量在不同的位置被指向了
+        # 不同的实际数据.通过不停的改变他们指向的对象，来完成空间链接的操作。
+        # C/C++万岁！！！指针天下第一！！！
+        #######################################################################
+        #######################################################################
+        if not center:
+            print('ERROR: emission center name does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('emission center name does not exist.')
+            exit(1)
+        
+        if not category or not mode_type_list:
+            print('ERROR: category or mode type list does not specified or not list. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('category or mode type list does not specified or not list.')
+            exit(1)
+
+        if not num_eofs:
+            print('ERROR: eof mode numbers does not specified. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('eof mode numbers does not specified.')
+            exit(1)
+        # 初始化部分参数
+        # 设定的保存的文件名的格式
+        output_eof_points = 'eof_{}_{}_points'.format(center.center_name, category)
+        
+        # 设定需要删除的临时生成文件列表
+        delete_temporary = []
+
+        # 筛选需要计算的部门
+        # 列出提取值的栅格
+        temp_eof_num_list = [i for i in range(0,num_eofs)]
+        # 是不是又看不懂这个复杂的解包操作了？其实，这里只是准备了对应的部门名称和eof结果的配对。
+        temp_wildcard_pair = zip(mode_type_list*len(temp_eof_num_list), temp_eof_num_list*len(temp_eof_num_list))
+        temp_wildcard = ['{}_{}_{}_{}'.format(center.center_name, category, i[0], i[1]) for i in temp_wildcard_pair]
+        temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard)
+
+        # 从这里开始，通过ETP方法整合所有栅格数据到同一个点数据中
+        # 1、利用待提取列表中的任意一个栅格，转为输出结果的点数据，同时作为提取的起点
+        # 2、基于输出结果的点数据，开始提取剩余栅格中的数据。
+        # logger output
+        self.ES_logger.debug('Create eof ouput point file')
+        # 栅格数据转点对象。
+        # 生成输出的点文件
+        # 这里用到了arcpy.AlterField_management()这个函数可能在10.2版本中没有
+        temp_convert_raster_name = temp_working_rasters.pop()
+        try:
+            # transform to point features
+            arcpy.RasterToPoint_conversion(temp_convert_raster_name, output_eof_points,
+                                           'VALUE')
+
+            # logger output
+            self.ES_logger.debug('EOF mode raster convert to point:{}'.format(output_eof_points) )
+
+            # rename value field
+            # 将字段的名字修改为mode的名称
+            arcpy.AlterField_management(output_eof_points, 'grid_code', new_field_name=temp_convert_raster_name[len('{}_{}_'.format(center.center_name, category)):])
+            # 删除表链接结果结果中生成的统计字段'pointid'和'grid_code'
+            arcpy.DeleteField_management(output_eof_points, 'pointid')
+
+            # logger output
+            self.ES_logger.debug('EOF mode raster conver to point:{}'.format(temp_convert_raster_name) )
+
+            print('EOF mode raster conver to point:{}'.format(temp_convert_raster_name))
+        except:
+            print('Failed convert EOF mode raster to point : {}'.format(temp_convert_raster_name) )
+
+            # logger output
+            self.ES_logger.error('Failed convert EOF mode raster to point : {}'.format(temp_convert_raster_name) )
+
+            print(arcpy.GetMessages())
+
+        # 构造三个特殊变量来完成操作和循环的大和谐~、
+        # 因为sa.ExtractValuesToPoint函数需要一个输出表，同时又不能覆盖替换另一个表
+        # 所以需要用前两个表生成第一个循环用的表
+        # 在程序的结尾用最后（其实可以是任意一个表）来完成年份的输出
+        temp_point_trigger = 'ETP_trigger'
+        temp_point_iter_root = 'ETP_iter'
+        temp_point_output = 'ETP_output'
+
+        delete_temporary.append(temp_point_trigger)
+        delete_temporary.append(temp_point_output)
+
+        # 保存最后一个栅格为最后一次提取的结果以完成输出
+        temp_last_job = temp_working_rasters.pop()
+        # 需要先进行一次提取操作，输入到EPT_iter中
+        # 这里需要开启覆盖操作，或者执行一个del工作
+        temp_ETP_1_raster = temp_working_rasters.pop()
+        self.do_ETP(
+            ExtractPoint=output_eof_points,
+            ValueRaster=temp_ETP_1_raster,
+            outPoint=temp_point_trigger,
+            NewFieldName=('RASTERVALU', temp_ETP_1_raster[len('{}_{}_'.format(center.center_name, category)):]))
+
+        # 逐个处理剩下的部门
+        for raster in tqdm(temp_working_rasters):
+            # 从字典中获得部门和对应的待提取值栅格
+            temp_new_filed_name = raster[len('{}_{}_'.format(center.center_name, category)):]
+            temp_point_output = temp_point_iter_root + temp_new_filed_name
+
+            self.do_ETP(
+                ExtractPoint=temp_point_trigger,
+                ValueRaster=raster,
+                outPoint=temp_point_output,
+                NewFieldName=('RASTERVALU', temp_new_filed_name))
+
+            # 交换temp_point_iter和temp_point_output指针
+            temp_point_trigger = temp_point_output
+
+            # 添加到删除名单
+            delete_temporary.append(temp_point_output)
+
+        # 保存最后的输出结果
+            self.do_ETP(
+                ExtractPoint=temp_point_trigger,
+                ValueRaster=temp_last_job,
+                outPoint=output_eof_points,
+                NewFieldName=('RASTERVALU', temp_point_trigger[len('{}_{}_'.format(center.center_name, category)):]))
+
+        print('{} {} EOF mode merge to point'.format(center.center_name, category) )
+
+        # 删除临时生成的迭代变量
+        self.delete_temporary_feature_classes(delete_temporary)
+
+        # logger output
+        self.ES_logger.debug('working_rasters cleaned!')
 
 
 # ======================================================================

@@ -54,3 +54,9 @@ EDGAR/.codemap/*
 test_extract_raster_and_convert_to_point
 delete_temp_raster
 raster_export
+center_4_eof2.png
+center_4_eof3_correlative.png
+center_4_eof3.png
+center_5_eof1_correlative.png
+center_5_eof2_correlative.png
+merge_eof_mode_to_point
