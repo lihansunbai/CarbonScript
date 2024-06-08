@@ -42,8 +42,6 @@ __metaclass__ = type
 # ======================================================================
 # Memorandum:
 # 备忘录：
-#       TODO 叠加栅格的过程中需要先清楚栅格中的小于0值，
-#            防止对数操作中的各种问题。
 # ======================================================================
 # ======================================================================
 
@@ -5264,6 +5262,61 @@ class EDGAR_spatial(object):
         # logger output
         self.ES_logger.debug('working_rasters cleaned!')
 
+    ############################################################################
+    ############################################################################
+    # 用于表达栅格较少中心的插值函数
+    #   利用kriging插值中心数据到0.5度左右栅格大小，从而让图像在大比例尺和小图幅中的表达更加明显
+    ############################################################################
+    ############################################################################
+    # 实际执行kriging插值的函数
+    # 封装了arcpy.sa.Kriging的相关功能
+    def do_kriging_interpolate(self, point, field, output_fmt='{}_{}'):
+        # 检查传入的输出文件名格式是否正确
+        try:
+            outVarRaster = output_fmt.format(point, field)
+        except Exception as e:
+            print('Output raster name formatting failed.')
+
+            # logger output
+            self.ES_logger.error('Output raster name formatting failed. raster name formate was {}.'.format(output_fmt))
+
+            exit(1)
+
+        # 设置kriging插值的必要参数
+        # Set local variables
+        cellSize = 0.1
+        temp_outVarRaster = 'temp_kriging'
+        # Set complex variable
+        lagSize = 0.1
+        majorRange = 0.5
+        partialSill = 0.00005
+        nugget = 0
+        kModelOrdinary = KrigingModelOrdinary("GAUSSIAN", lagSize,
+                                        majorRange, partialSill, nugget)
+        kRadius = RadiusFixed(0.5, 1)
+
+        # 执行arcgis Kriging插值
+        outKriging = Kriging(point, field, kModelOrdinary, cellSize,
+                            kRadius, temp_outVarRaster)
+
+        # Save the output 
+        outKriging.save(outVarRaster)
+
+    # 对一个点数据中的若干字段进行逐字段的插值并生成插值后的结果。
+    def kriging_interpolate(self, point, field_list, output_fmt='{}_{}'):
+        # 检查输入的点数据和需要插值的字段是否存在
+        if not point or not field_list:
+            print('ERROR: input point or field_list does not exsit. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('input point or field_list does not exsit. Input point {}. Input field list {}'.format(point, field_list))
+            exit(1)
+
+        # 逐个对字段列表中的字段进行插值
+        for field in tqdm(field_list):
+            # 调用实际执行kriging的函数
+            self.do_kriging_interpolate(point=point, field=field,output_fmt=output_fmt)
+
 
 # ======================================================================
 # ======================================================================
@@ -5271,11 +5324,4 @@ class EDGAR_spatial(object):
 # ======================================================================
 # ======================================================================
 if __name__ == '__main__':
-    # merge_sectors test
-    # aaa = EDGAR_spatial.merge_sectors('D:\\workplace\\geodatabase\\EDGAR_test.gdb',
-    #    st_year=2018, en_year=2018, sectors=test_es, colormap=test_esc)
-    # cProfile.run('aaa = EDGAR_spatial.merge_sectors(\'D:\\workplace\\geodatabase\\EDGAR_test.gdb\',st_year=2018, en_year=2018, sectors=test_es, colormap=test_esc)', 'merge_sector_init_profile.prof')
-    # aaa.proccess_year(start_year=2018, end_year=2018)
-    # cProfile.run('aaa.proccess_year(start_year=2018, end_year=2018)','merge_sector_init_profile.prof')
-
     print('main process')
