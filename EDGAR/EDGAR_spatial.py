@@ -5229,7 +5229,7 @@ class EDGAR_spatial(object):
             outPoint=temp_point_trigger,
             NewFieldName=('RASTERVALU', temp_ETP_1_raster[len('{}_{}_'.format(center.center_name, category)):]))
 
-        # 逐个处理剩下的部门
+        # 逐个处理剩下的场数据
         for raster in tqdm(temp_working_rasters):
             # 从字典中获得部门和对应的待提取值栅格
             temp_new_filed_name = raster[len('{}_{}_'.format(center.center_name, category)):]
@@ -5247,12 +5247,12 @@ class EDGAR_spatial(object):
             # 添加到删除名单
             delete_temporary.append(temp_point_output)
 
-        # 保存最后的输出结果
-            self.do_ETP(
-                ExtractPoint=temp_point_trigger,
-                ValueRaster=temp_last_job,
-                outPoint=output_eof_points,
-                NewFieldName=('RASTERVALU', temp_point_trigger[len('{}_{}_'.format(center.center_name, category)):]))
+        # 处理最后一个场数据栅格，并将结果保存到输出文件中
+        self.do_ETP(
+            ExtractPoint=temp_point_trigger,
+            ValueRaster=temp_last_job,
+            outPoint=output_eof_points,
+            NewFieldName=('RASTERVALU', temp_last_job[len('{}_{}_'.format(center.center_name, category)):]))
 
         print('{} {} EOF mode merge to point'.format(center.center_name, category) )
 
@@ -5289,12 +5289,11 @@ class EDGAR_spatial(object):
         # Set complex variable
         lagSize = 0.1
         majorRange = 0.5
-        partialSill = 0.00005
-        nugget = 0
-        kModelOrdinary = KrigingModelOrdinary("GAUSSIAN", lagSize,
-                                        majorRange, partialSill, nugget)
-        kRadius = RadiusFixed(0.5, 1)
+        kModelOrdinary = KrigingModelOrdinary("GAUSSIAN", lagSize)
+        kRadius = RadiusFixed(0.5)
 
+        # logger
+        self.ES_logger.info('Start kriging at {} {}'.format(point, field))
         # 执行arcgis Kriging插值
         outKriging = Kriging(point, field, kModelOrdinary, cellSize,
                             kRadius, temp_outVarRaster)
@@ -5316,6 +5315,9 @@ class EDGAR_spatial(object):
         for field in tqdm(field_list):
             # 调用实际执行kriging的函数
             self.do_kriging_interpolate(point=point, field=field,output_fmt=output_fmt)
+
+            # logger
+            self.ES_logger.info('Finished field kriging interpolation at {} {}'.format(point,field))
 
 
 # ======================================================================
