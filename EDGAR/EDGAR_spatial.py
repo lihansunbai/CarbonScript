@@ -5289,7 +5289,13 @@ class EDGAR_spatial(object):
         # Set complex variable
         lagSize = 0.1
         majorRange = 0.5
-        kModelOrdinary = KrigingModelOrdinary("GAUSSIAN", lagSize)
+        partialSill = 0.1
+        nugget = 1
+        kModelOrdinary = KrigingModelOrdinary(semivariogramType="GAUSSIAN",
+                                                lagSize=lagSize,
+                                                majorRange=majorRange,
+                                                partialSill=partialSill,
+                                                nugget=nugget)
         kRadius = RadiusFixed(0.5)
 
         # logger
