@@ -4689,6 +4689,14 @@ class EDGAR_spatial(object):
             center=center,
             output_name_fmt=temp_output_name_fmt)
 
+    # 用于从中心中提取每个部门从起始年份的排放量区域
+    # 执行这个函数之前还是要先提取出每个类型的排放，而不是使用最原始的每个部门的排放。
+    def EOF_extract_center_categories_emission_raster(self, center, category_list,category_emission_fmt='{}_EOF_{}_{}', background_fmt='{}_EOF_geographical_extend_null_mask'):
+        pass
+
+    # 实际执行从一个中心的一个部门类型中，逐年提取中心历史范围中的数据
+    def do_EOF_extract_center_categories_emission_ratser(self):
+        pass
     # 将栅格数据转换为numpy压缩格式并导出
     def EOF_raster_to_numpy(self, raster_list, nodata_to_value=None, export_to_npz=True, export_path=None):
         if not raster_list:
