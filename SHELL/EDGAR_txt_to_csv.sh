@@ -11,8 +11,8 @@
 ##    数据采用的分隔符为';'。
 ##    使用该脚本需要保证awk分类文件与脚本在同一目录下。同时还需要注意，EDGAR在
 ##       5.0版本以后的文件命名方式发生了变化，由直接使用IPCC分类命名变化为自己的
-##       命名分类。选择对应的版本所需的awk分割文件，旧版本用v432进行标注，新版本
-##      未注明版本号信息。
+##       命名分类。选择对应的版本所需的awk分割文件，旧版本用v432进行标注，6.0版本
+##      使用未注明版本号信息，8.0版本用v8进行标注。
 ##
 ##    注意：
 ##        *展开所有数据可能会消耗大量时间！
@@ -45,7 +45,7 @@ find $1 -type f |
 # the process detail be writen in EDGAR_Concentrations_process.awk file.
 while read files
 do
-    awk -f ./EDGAR_Concentrations_process.awk $files
+    awk -f ./EDGAR_v8_Concentrations_process.awk $files
     rm $files
 done < files.temp.DAT
 

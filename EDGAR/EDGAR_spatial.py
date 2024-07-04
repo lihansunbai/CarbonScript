@@ -4476,7 +4476,6 @@ class EDGAR_spatial(object):
     # 这里可以使用return_results参数来控制是否返回一个结果的字典。
     #   这个字典的键为中心名字，值为该中心下所有分类的生成栅格的列表。
     #   注意字典值中的列表不再做进一步划分，将包含所有的栅格。
-    # def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list, add_background=True, background_raster='background', return_result=True):
     def EOF_generate_center_categories_emission_raster(self, inPoint, center_list, category_field_list,  return_result=True):
         if not inPoint or not center_list or not category_field_list:
             print('ERROR: The inputs does not exist. Please check the inputs.'  )
@@ -4689,6 +4688,175 @@ class EDGAR_spatial(object):
             center=center,
             output_name_fmt=temp_output_name_fmt)
 
+    # 从点数据中生成某一年份不同分类的排放分量栅格
+    # 这里的设计思路是只传入一个点数据。因为，如果一次传入一组点数据，很可能导致这个函数一旦进入就
+    # 无法停止下来。
+    # 这里可以使用return_results参数来控制是否返回一个结果的列表。
+    def EOF_generate_categories_emission_raster(self, inPoint,  category_field_list,  return_result=True):
+        if not inPoint or not category_field_list:
+            print('ERROR: The inputs does not exist. Please check the inputs.'  )
+
+            # logger output
+            self.ES_logger.error('input does not exist.')
+            exit(1)
+
+        # 存储待返回结果的字典
+        temp_return = {}
+
+        temp_return = []
+        
+        # 逐个对中心进行分类EOF提取的操作
+        temp_return = self.do_EOF_generate_categories_emission_raster(inPoint=inPoint,
+                                                                category_field_list=category_field_list,
+                                                                return_results=True)
+
+        if return_result:
+            return temp_return
+        
+    # 实际执行从点数据中生成某一个年份中不同分类的排放量栅格
+    # 注意！！！
+    # 这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`centerName_category_year`。
+    # 如果要使用这里的栅格结果请参考以上命名逻辑找到所需栅格
+    # 
+    # 注意第四个参数`return_results`，当此参数为True时函数会返回一个生成栅格的结果的列表；
+    # 当此参数为False时，函数将不返回任何结果而结束。
+    def do_EOF_generate_categories_emission_raster(self, inPoint, category_field_list, return_results=True):
+        '''
+        实际执行从某一年份点数据中生成不同分类的排放量栅格
+        注意！！！
+        这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`category_year`。
+        如果要使用这里的栅格结果请参考以上命名逻辑找到所需栅格
+     
+        注意第四个参数`return_results`，当此参数为True时函数会返回一个生成栅格的结果的列表；
+        当此参数为False时，函数将不返回任何结果而结束。
+        '''
+        if not category_field_list :
+            print('ERROR: please specify the category_list')
+
+            # logger output
+            self.ES_logger.error('input category list does not exist.')
+
+            exit(1)
+
+        if not arcpy.Exists(inPoint):
+            print('ERROR: input point data does not exist')
+
+            # logger output
+            self.ES_logger.error('input point data does not exist.')
+
+            exit(1)
+        
+        # 向点数据中添加临时字段
+        # 这里选择一次性添加所有临时字段。
+        # 考虑到如果在计算的过程中不停的添加和删除字段会极大的消耗计算时间，
+        # 所以采取统一添加统一删除的策略
+        try:
+            # 逐一添加临时字段
+            temp_add_field = ['EOF_{}'.format(category) for category in category_field_list]
+            for field in temp_add_field:
+                arcpy.AddField_management(inPoint, field, 'DOUBLE', '#', '#', '#', '#','NULLABLE', '#', '#')
+
+            # logger output
+            self.ES_logger.debug('EOF: temporary field added.')
+        except:
+            print('EOF: Add field to point failed in: {}'.format(inPoint))
+
+            # logger output
+            self.ES_logger.error( 'EOF Add field to point failed in: {}'.format(inPoint))
+
+            print(arcpy.GetMessages())
+            exit()
+        
+        # 储存可能需要返回的结果列表
+        temp_return_rasters = []
+
+        ################################################################################
+        ################################################################################
+        ## 以下是游标算法的更新思路：
+        #   首先如果每次只进行一个字段（也就是部门）的计算，会极大的减慢计算的速度。
+        #   所以应该考虑在一次游标操作中，实现计算所有字段。
+        ################################################################################
+        ################################################################################
+        # 构建cursor需要的字段
+        # 这里字段的结构设计为：[总量，部门比例_1，EOF_部门结果_1,...,部门比例_n，EOF_部门结果_n].
+        # 所以，每个EOF部门结果，EOF_部门结果_n是field_list[2*n] = field_list[0] + log10(field_list[2n-1])
+
+        # 注意：所以添加的EOF结果字段已经保存在了上面的temp_add_field中。
+        # 啊哈啊哈哈哈啊哈，你一定看不懂这段list解包操作。
+        # 其实，我也看不懂。
+        # 但是，它可以用。并且从这个可运行的解包操作中可以认识到，python的list解包操作是从后到前解析的。
+        # 我的粗浅理解只能到这里了。
+        temp_field_list = ['grid_log_total_emission'] + [cate_eof_pair for zip_cate_eof in zip(category_field_list, temp_add_field) for cate_eof_pair in zip_cate_eof]
+
+        with arcpy.da.UpdateCursor(in_table=inPoint, field_names=temp_field_list) as cursor:
+            for row in tqdm(cursor):
+                # 计算每个每个分类的排放量，通过“总量*分类比例”得到需要值。
+                # 注意:
+                #       这里由于使用的是对数值，所以实际的进行的运算是加法运算。
+                # 注意2:
+                #       由于很多部门的排放是0，在计算log10的时候会出错。
+                #       并且就现实中的情况来说，一个区域的某一部门排放是0那就意味着这个地区没有这个部门，
+                #       也就没有必要对这个部门进行计算了
+                # 注意3：
+                #       这里字段的结构设计为：[总量，部门比例_1，EOF_部门结果_1,...,部门比例_n，EOF_部门结果_n].
+                #       所以，每个EOF部门结果，EOF_部门结果_n是field_list[2*n] = field_list[0] + log10(field_list[2n-1])
+                
+                # 该栅格没有某一部门排放的情况
+                if row[1] == 0:
+                    continue
+                # 该栅格存在某一部门排放
+                else:
+                    # 计算每个部门对应的EOF结果
+                    for i in range(1,len(category_field_list)+1):
+                        # 这里还要进行排放量比例是否为0的检查，因为涉及对数操作。
+                        # 如果比例为0则直接为排放量赋0值
+                        if row[2*i-1] == 0:
+                            row[2*i] = 0
+                        # 如果比例不为0则进行计算
+                        else:
+                            temp_cate_property = numpy.log10(row[2*i-1])
+                            row[2*i] = row[0] + temp_cate_property
+
+                # 更新行信息
+                cursor.updateRow(row)
+
+        # 逐部门保存结果
+        for cate in temp_add_field:
+            # 保存列数据为栅格
+            save_raster = '{}_{}'.format(cate, inPoint[-4:])
+
+            try:
+                print('EOF rasterize start:{}'.format(save_raster))
+                arcpy.PointToRaster_conversion(inPoint,cate, save_raster,'MOST_FREQUENT', '#', '0.1')
+
+                # 添加转换结果到待返回列表
+                temp_return_rasters.append(save_raster)
+
+                # logger output
+                self.ES_logger.debug('EOF rasterize finished:{}'.format(save_raster))
+                print('EOF rasterize finished:{}'.format(save_raster))
+            except:
+                print('Create raster field: {}'.format(save_raster))
+
+                # logger output
+                self.ES_logger.error('EOF rasterize failed:{}'.format(save_raster))
+
+                print(arcpy.GetMessages())
+
+        # 从点数据中删除添加的临时列
+        print('Deleting temporary fields...')
+        arcpy.DeleteField_management(inPoint, temp_add_field)
+        # logger output
+        self.ES_logger.info('Deleted temporary fields.')
+        print('Deleted temporary fields.')
+        
+        # 决定返回模式
+        if return_results:
+            # 返回一个包含生成栅格名称的列表
+            return temp_return_rasters
+        else:
+            return
+            
     # 用于从中心中提取每个部门从起始年份的排放量区域
     # 执行这个函数之前还是要先提取出每个类型的排放，而不是使用最原始的每个部门的排放。
     def EOF_extract_center_categories_emission_raster(self, center, category_list,category_emission_fmt='{}_EOF_{}_{}', background_fmt='{}_EOF_geographical_extend_null_mask'):
