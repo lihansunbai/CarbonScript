@@ -52,7 +52,7 @@ BEGIN {
         categories_abbr = categories_ipcc;
     }
     else{
-        for(i=8; i<=n; i++){
+        for(i=6; i<=n; i++){
             temp_cate = temp_cate "_" filename[i];
         }
         categories_ipcc = substr(temp_cate, 2, length(temp_cate)-5);
@@ -67,13 +67,13 @@ BEGIN {
 
 #THE MAIN METHOD
 # process world total emission
-$0 ~ /^(Compound\:)/{
-    categories_edgar = $4;
-    total = substr($8, 1, index($8, "(")-1);
+# $0 ~ /^(Compound\:)/{
+#     categories_edgar = $4;
+#     total = substr($8, 1, index($8, "(")-1);
 
-#Output format information
-    printf("%s,%s,%s,%s,%s,%s,%s,%s\n", edgar_ver, substance, substance_info, yr, categories_abbr, categories_edgar, categories_ipcc, total) >> output_wte;
-    }
+# #Output format information
+#     printf("%s,%s,%s,%s,%s,%s,%s,%s\n", edgar_ver, substance, substance_info, yr, categories_abbr, categories_edgar, categories_ipcc, total) >> output_wte;
+#     }
 
 # process points emission
 $0 ~ /[0-9\.-]*\;[0-9\.-]*\;/{
