@@ -48,7 +48,7 @@ BEGIN {
 #   这里因该可以处理所有情况吧，否则，好像设置保存文件那里就可能出错…
     temp_cate = "";
     if (n == 6){
-        categories_ipcc = substr(filename[8], 1, length(filename[8])-4);
+        categories_ipcc = substr(filename[6], 1, length(filename[6])-4);
         categories_abbr = categories_ipcc;
     }
     else{
