@@ -65,7 +65,7 @@ class EDGAR_spatial(object):
     def __init__(self,
                  workspace,
                  st_year=1970,
-                 en_year=2018,
+                 en_year=2019,
                  log_path='EDGAR.log'):
         # 初始化logger记录类的全体工作
         # ES_logger为可使用的logging实例
@@ -147,7 +147,7 @@ class EDGAR_spatial(object):
                       sectors={},
                       colormap={},
                       st_year=1970,
-                      en_year=2018,
+                      en_year=2019,
                       log_path='EDGAR.log'):
         '''
         只进行合并分部门栅格为点数据时的构造函数
@@ -242,7 +242,7 @@ class EDGAR_spatial(object):
 
     # 只进行排放量栅格数量峰值中心提取和其他分析操作时的构造函数
     @classmethod
-    def data_analyze(cls, workspace, st_year=1970, en_year=2018, log_path='EDGAR.log'):
+    def data_analyze(cls, workspace, st_year=1970, en_year=2019, log_path='EDGAR.log'):
         '''
         只进行排放量栅格数量峰值中心提取和其他分析操作时的构造函数 
         '''
@@ -350,7 +350,7 @@ class EDGAR_spatial(object):
 
     # 默认时间范围
     __default_start_year = 1970
-    __default_end_year = 2018
+    __default_end_year = 2019
 
     # 默认栅格数据背景零值标识和区分标签
     __background_flag = True
@@ -1133,7 +1133,7 @@ class EDGAR_spatial(object):
             # 列表不为空的情况
             else:
                 # 直接将参数传入list方式的方法列出需要栅格
-                self.do_arcpy_list_raster_list(wildcard_list=raster_filter_wildcard, wildcard_mode=wildcard_mode)
+                self.working_rasters = self.do_arcpy_list_raster_list(wildcard_list=raster_filter_wildcard, wildcard_mode=wildcard_mode)
 
                 # logger output
                 self.ES_logger.debug('rasters listed.')
@@ -1144,7 +1144,7 @@ class EDGAR_spatial(object):
             if raster_filter_wildcard == '':
                 print('WARNING: No filter! All rasters will be list!')
 
-            self.do_prepare_arcpy_list_raster_str(wildcard_str=raster_filter_wildcard)
+            self.working_rasters = self.do_prepare_arcpy_list_raster_str(wildcard_str=raster_filter_wildcard)
 
             # logger output
             self.ES_logger.debug('rasters listed without filter.')
@@ -1401,7 +1401,7 @@ class EDGAR_spatial(object):
         temp_sectors = list(self.EDGAR_sectors.values())
 
         # 执行部门累加
-        self.year_sectors_merge(self.all_prepare_working_rasters, temp_sectors, year)
+        self.year_sectors_merge(self.working_rasters, temp_sectors, year)
 
         print('Total emission of {} saved!\n'.format(year) )
 
@@ -1421,8 +1421,15 @@ class EDGAR_spatial(object):
         # 尝试列出当年总量的栅格
         # 这里要注意，总量栅格的名称在year_sectors_merge()中写死了
         temp_year_total = arcpy.Raster('total_emission_{}'.format(year))
-        temp_sector_wildcard = '{}*{}*{}'.format(self.background[1], sector, year)
-        temp_sector_emission = arcpy.Raster(arcpy.ListRasters(wild_card=temp_sector_wildcard)[0])
+
+        # 注意这里其实写死了文件名，请注意调整和修改。
+        temp_sector_wildcard = '{}_EDGAR_{}_{}'.format(self.background[1], sector, year)
+        # 旧版本：
+        #   使用了arcpy.ListRasters()，可能会造成运行缓慢，但是相对安全不会报错
+        # temp_sector_emission = arcpy.Raster(arcpy.ListRasters(wild_card=temp_sector_wildcard)[0])
+        # 新版本
+        #   直接使用构造的文件名，较为粗暴，不安全。
+        temp_sector_emission = arcpy.Raster(temp_sector_wildcard)
 
         # 检查输入的部门栅格和总量栅格是否存在，如果不存在则报错并返回
         if not (arcpy.Exists(temp_sector_emission)) or not (arcpy.Exists(temp_year_total)):

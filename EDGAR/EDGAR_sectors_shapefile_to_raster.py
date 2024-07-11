@@ -25,8 +25,8 @@ from arcpy.sa import *
 arcpy.CheckOutExtension("Spatial")
 
 # re_shp = re.compile(r'.shp')
-files_path = 'D:\\workplace\\DATA\\geodatabase\\EDGAR_v60_point.gdb'
-raster_path = 'D:\\workplace\\DATA\\geodatabase\\EDGAR_v60_raster.gdb'
+files_path = 'E:\\workplace\\EDGAR_shapefile'
+raster_path = 'D:\\workplace\\geodatabase\\EDGAR_v80_raster.gdb'
 files = os.listdir(files_path)
 shapefiles = []
 
@@ -53,7 +53,7 @@ for shapefile in shapefiles:
     ############################################################################
     # 生成第一类栅格
     try:
-        NBA_raster_file = raster_path + '\\NBA_' + shapefile
+        NBA_raster_file = raster_path + '\\NBA_' + shapefile[:-4]
         arcpy.PointToRaster_conversion(in_features,
                                     value_field,
                                     NBA_raster_file,
@@ -70,8 +70,8 @@ for shapefile in shapefiles:
     # 生成第二类栅格
     # 为了栅格保持数据的完整性，需要把所有数据叠加到一个背景值的栅格图上。这样才能保证
     # 之后的操作不会有数据缺失。
-    BA_raster_file = 'BA_' + shapefile
-    BA_Mosaic_input = NBA_raster_file + ';' + files_path + '\\background'
+    BA_raster_file = 'BA_' + shapefile[:-4]
+    BA_Mosaic_input = NBA_raster_file + ';' + files_path + '\\background.tif'
 
     try:
         arcpy.MosaicToNewRaster_management(
