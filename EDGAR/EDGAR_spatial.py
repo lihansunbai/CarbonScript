@@ -4329,6 +4329,8 @@ class EDGAR_spatial(object):
     # 为EOF分析进行的栅格数据准备
     ############################################################################
     ############################################################################
+    # 按照汇报过程中给出的意见，在计算EOF时，应该保持空间范围一定，而不同时间上的碳排放量应该维持原有数据而不是使用0值或其他值替代。
+    # 所以，以下三个EOF_center_mosaic_extend、EOF_center_category_mosaic_extend和do_EOF_mosaic_extend添加背景的函数将被废弃。
     # 为特定的排放中心栅格叠加历史排放区域
     def EOF_center_mosaic_extend(self, center_list, center_raster_fmt='center_{}_{}', background_fmt='{}_geographical_extend_null_mask'):
         if not center_list:
@@ -4708,8 +4710,6 @@ class EDGAR_spatial(object):
             exit(1)
 
         # 存储待返回结果的字典
-        temp_return = {}
-
         temp_return = []
         
         # 逐个对中心进行分类EOF提取的操作
@@ -4866,8 +4866,74 @@ class EDGAR_spatial(object):
             
     # 用于从中心中提取每个部门从起始年份的排放量区域
     # 执行这个函数之前还是要先提取出每个类型的排放，而不是使用最原始的每个部门的排放。
-    def EOF_extract_center_categories_emission_raster(self, center, category_list,category_emission_fmt='{}_EOF_{}_{}', background_fmt='{}_EOF_geographical_extend_null_mask'):
-        pass
+    def EOF_extract_center_categories_emission_raster(self, center, category_list,year_range=[1970,2019], category_emission_fmt='{}_EOF_{}_{}', background_fmt='{}_EOF_geographical_extend_null_mask',return_raster_list=True):
+        if not center or not category_list:
+            print('ERROR: The emission center not exist. Please check the inputs.'  )
+
+            # logger output
+            self.ES_logger.error('input emission center does not exist.')
+            exit(1)
+
+        # 检查历史范围栅格是否存在
+        # 生成历史范围栅格的文件名
+        try:
+            emission_background = background_fmt.format(center.center_name)
+        except:
+            print('ERROR: can not format geographical raster. background_fmt: {}'.format(background_fmt))
+
+            # logger output
+            self.ES_logger.error('geographic raster name format failed. background_fmt: {}'.format(background_fmt))
+            exit(1)
+
+        # 检查历史范围栅格是否存在
+        # 这里的检查使用了arcgis的listrasters方法，速度可能有点慢
+        emission_background_list =  arcpy.ListRasters(emission_background)
+        if emission_background_list == []:
+            print('ERROR: The geographic extend dose not exist. Please check the inputs. geographic extend raster name: {}'.format(emission_background)  )
+
+            # logger output
+            self.ES_logger.error('input geographic extend does not exist. geographic extend raster name: {}'.format(emission_background))
+            exit(1)
+        
+        # 生产待提取范围数据的类型列表
+        emission_list = ['EOF_{}_{}'.format(cate, year) for cate in category_list for year in range(year_range[0], year_range[1]+1)]
+        emission_list = self.do_arcpy_list_raster_list(emission_list)
+
+        # 检查类型排放栅格是否存在
+        if emission_list == []:
+            print('ERROR: The categories emission dose not exist. Please check the inputs.')
+
+            # logger output
+            self.ES_logger.error('input categories emission does not exist.')
+            exit(1)
+
+        # Check out the ArcGIS Spatial Analyst extension license
+        arcpy.CheckOutExtension("Spatial")
+
+        return_list = []
+        # 使用clip逐栅格提取结果
+        # 提取正确结果需要经过两个步骤
+        #   1、利用background提取一年中的范围。实际使用setnull完成。
+        #   2、为了保证EOF的正确计算需要在mosaic背景补充可能缺失值
+        for raster in tqdm(emission_list):
+            # 设定临时存储提取结果的栅格名称
+            temp_setnull_file = '{}_{}'.format(center.center_name, raster)
+            # 用setnull实现提取背景范围内的数据
+            temp_setnull = SetNull(IsNull(emission_background_list[0]), raster)
+            temp_setnull.save(temp_setnull_file)
+
+            # 为提取结果添加EOF背景
+            self.do_EOF_mosaic_extend(raster_list=[temp_setnull_file], background=emission_background_list[0])
+
+            # 将结果添加到返回值列表中
+            return_list.append(temp_setnull_file)
+        
+        # 处理是否需要返回处理后的栅格结果
+        if return_raster_list:
+            return return_list
+            
+
+
 
     # 实际执行从一个中心的一个部门类型中，逐年提取中心历史范围中的数据
     def do_EOF_extract_center_categories_emission_ratser(self):
