@@ -92,7 +92,7 @@ class EDGAR_spatial(object):
             self.ES_logger.error('Year setting error!')
             exit(1)
         elif st_year < self.__default_start_year or en_year > self.__default_end_year:
-            print('Error! Processing year range out of data support! The year must contain in 1970 to 2018')
+            print('Error! Processing year range out of data support! The year must contain in 1970 to 2019')
             self.ES_logger.info('Year settings are out of range.')
             self.ES_logger.error('Year setting error!')
             exit(1)
@@ -133,10 +133,6 @@ class EDGAR_spatial(object):
         self.ES_logger.info('Root initialization finished.')
 
     # 只进行合并分部门栅格为点数据时的构造函数
-    # TODO
-    # 这里出现了一个逻辑错误，假设使用的是无背景模式background_flag=False，
-    # 实际上构造函数无法从root_init的初始构造函数中获得变量信息。需要修改逻辑。
-    # 但是，似乎这个参数不影响data_analysis构造。但是data_analysis的构造过程也需要进行类似排查。
     @classmethod
     def merge_sectors(cls,
                       workspace,
@@ -414,7 +410,7 @@ class EDGAR_spatial(object):
         return (self.start_year, self.end_year)
 
     @year_range.setter
-    def year_range(self, start_end=(1970, 2018)):
+    def year_range(self, start_end=(1970, 2019)):
         '''
         自定义或者修改数据处理的年份时间范围
         '''
@@ -492,10 +488,6 @@ class EDGAR_spatial(object):
                 format=output_formate)
 
     # 从HDF5中将数据转换为Arcgis raster
-    # 使用这个函数要注意output_path参数，如果在构造函数初始化的过程中定义了工作空间，则可以直接传入不带后缀的保存文件名，
-    # 输出的栅格将直接保存到工作空间中；如果，需要输出到非初始化过程中定义的工作空间位置，则应该传入完整的保存路径，
-    # 这里的完整保存路径是指包括文件后缀的文件绝对路径。
-    # 注意，这个方法相当简陋，只能导出不包含时间维度，即dim=2的数据。
     def hdf_to_raster(self, hdf_file_path, hierarchical_data_path, data_name, output_path):
         '''
         使用这个函数要注意output_path参数，如果在构造函数初始化的过程中定义了工作空间，则可以直接传入不带后缀的保存文件名，
@@ -535,8 +527,6 @@ class EDGAR_spatial(object):
         temp_raster.save(output_path)
 
     # 为栅格添加背景值
-    # 用途：添加一个背景值以保持栅格数据历史范围稳定。
-    # 注意：如果指定了output_Raster参数，则会输出到该参数指定的栅格中。
     def mosaic_background_to_raster(self, inRaster, background, output_Raster=None):
         '''
         为栅附加一个范围以保持参与计算的栅格数据的历史范围稳定，栅格的范围通过背景值确定。
@@ -974,6 +964,21 @@ class EDGAR_spatial(object):
     # 'end_year'：结束年份
     @property
     def filter_label(self):
+        '''
+        filter_label 构造方法：
+        filter_label字典组的结构如下：
+        'default':接受一个符合布尔型数据的值，其中True表示使用默认方式构造筛选条件；
+        'label':该元素是能够筛选出需要栅格的筛选条件，示例：1、符合Arcgis标准的wild_card；
+                  2、所需栅格的文件名；
+                  3、采用默认方式构造的label字典结构。
+        
+        注意！！！：
+        如果使用默认方式构造筛选条件，则label参数应该包含由以下标签构成的字典：
+        'background_label'：可以用来筛选代表包含背景栅格的标签字符串
+        'sectors'：部门标签列表list或者str
+        'start_year'：起始年份
+        'end_year'：结束年份
+        '''
         return self.filter_label_dict
 
     @filter_label.setter
@@ -1072,11 +1077,17 @@ class EDGAR_spatial(object):
     #    字符串为‘部门_年份’。
     # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
     def build_raster_filter_default(self, background_label, sectors, start_year, end_year):
+        '''
+        类中提供了两个过滤标签的构造方法
+        1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
+           字符串为‘部门_年份’。
+        2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
+        '''
         # 检查年份设定是否为整数。（其他参数可以暂时忽略，因为默认格式下基本不会改变）
         if (type(start_year) != int) or (type(end_year) != int):
             print('Error: Year setting error!')
             self.ES_logger.error(
-                'Year setting error. Year settings must be integer and between 1970 to 2018.')
+                'Year setting error. Year settings must be integer and between 1970 to 2019.')
             exit(1)
 
         temp_time_range = range(start_year, end_year + 1)
@@ -1096,6 +1107,12 @@ class EDGAR_spatial(object):
         self.ES_logger.debug('raster_filter set by default.')
 
     def build_raster_filter_costume(self, custom_label):
+        '''
+        类中提供了两个过滤标签的构造方法
+        1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
+           字符串为‘部门_年份’。
+        2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
+        '''
         # 对于自定义筛选条件，只需要检查是否为字符串
         if type(custom_label) != str:
             print("arcpy.ListRasters() need a string for 'wild_card'.")
@@ -1166,30 +1183,6 @@ class EDGAR_spatial(object):
     #       当该参数为True时，将认为wildcard_list中的元素为arcgis默认的wildcard，即查询条件，此时将
     #           会在使用时替换wildcard中的`*`为正则表达式的`.*`模式。
     #       当该参数为False时，将认为wildcard_list中的元素为正则表达式，此时将直接用该元素进行匹配。
-    def deprecated_do_prepare_arcpy_list_raster_list(self, wildcard_list, wildcard_mode=True):
-        # # 列出所有数据库中的栅格进行匹配
-        # temp_all_rasters_in_path = arcpy.ListRasters()
-
-        # # 通过正则表达在列表中搜索的方式筛选要进行操作的栅格
-        # for wildcard in wildcard_list:
-        #     # 检查wildcard_mode并指定合适的正则表达式编译模式
-        #     if wildcard_mode:
-        #         # 替换wildcard中的通配符*为正则表达的通配符‘.’
-        #         # 然后构造正则表达匹配模式
-        #         temp_wildcard_re = re.compile(wildcard.replace('*','.*'))
-        #     else:
-        #         # 直接使用wildcard_list中的元素构造正则表达式匹配模式
-        #         temp_wildcard_re = re.compile(wildcard)
-
-        #     # filter函数会返回一个列表，所以这里要用extend()方法
-        #     self.all_prepare_working_rasters.extend(filter(temp_wildcard_re.match, temp_all_rasters_in_path))
-        #     # 直接的对逐个项使用ListRasters()方法可能会消耗大量的时间，导致程序假死
-        #     # 放弃使用以下方法！
-        #     # self.all_prepare_working_rasters.extend(arcpy.ListRasters(wild_card=i))
-        # # logger output
-        # self.ES_logger.debug('working rasters changed to:{}'.format(self.all_prepare_working_rasters)) 
-        pass
-
     # 实际执行列出栅格的方法，这个为str方式
     def do_arcpy_list_raster_str(self, wildcard_str):
         temp_working_rasters = []
@@ -1256,6 +1249,30 @@ class EDGAR_spatial(object):
             sectors_rasters_dict[s] = temp_value.pop()
 
         return sectors_rasters_dict
+
+    def deprecated_do_prepare_arcpy_list_raster_list(self, wildcard_list, wildcard_mode=True):
+        # # 列出所有数据库中的栅格进行匹配
+        # temp_all_rasters_in_path = arcpy.ListRasters()
+
+        # # 通过正则表达在列表中搜索的方式筛选要进行操作的栅格
+        # for wildcard in wildcard_list:
+        #     # 检查wildcard_mode并指定合适的正则表达式编译模式
+        #     if wildcard_mode:
+        #         # 替换wildcard中的通配符*为正则表达的通配符‘.’
+        #         # 然后构造正则表达匹配模式
+        #         temp_wildcard_re = re.compile(wildcard.replace('*','.*'))
+        #     else:
+        #         # 直接使用wildcard_list中的元素构造正则表达式匹配模式
+        #         temp_wildcard_re = re.compile(wildcard)
+
+        #     # filter函数会返回一个列表，所以这里要用extend()方法
+        #     self.all_prepare_working_rasters.extend(filter(temp_wildcard_re.match, temp_all_rasters_in_path))
+        #     # 直接的对逐个项使用ListRasters()方法可能会消耗大量的时间，导致程序假死
+        #     # 放弃使用以下方法！
+        #     # self.all_prepare_working_rasters.extend(arcpy.ListRasters(wild_card=i))
+        # # logger output
+        # self.ES_logger.debug('working rasters changed to:{}'.format(self.all_prepare_working_rasters)) 
+        pass
 
     ############################################################################
     # 实EDGAR 原始数据合并际数据计算相关函数/方法
@@ -1795,7 +1812,7 @@ class EDGAR_spatial(object):
 
     # 暴力处理所有年份
     def proccess_all_year(self):
-        self.proccess_year(start_year=1970, end_year=2018)
+        self.proccess_year(start_year=1970, end_year=2019)
 
     ############################################################################
     ############################################################################
@@ -2081,7 +2098,7 @@ class EDGAR_spatial(object):
                 {
                     "center_name_1":{
                         "peak_1":{
-                            "year":[1970,2018],
+                            "year":[1970,2019],
                             "peak_range":[5,9]
                         }
                     },
@@ -2091,7 +2108,7 @@ class EDGAR_spatial(object):
                             "peak_range":[3,4.5]
                         },
                         "peak_2":{
-                            "year":[2001,2018],
+                            "year":[2001,2019],
                             "peak_range":[3,4]
                         }
                     }
@@ -2795,7 +2812,7 @@ class EDGAR_spatial(object):
         #     return
         # elif min(year_range) < self.__default_start_year or max(
         #         year_range) > self.__default_end_year:
-        #     print('Error! Processing year range out of data support! The year must contain in 1970 to 2018')
+        #     print('Error! Processing year range out of data support! The year must contain in 1970 to 2019')
         #     self.ES_logger.info('Year settings are out of range.')
         #     self.ES_logger.error('Year setting error!')
         #     return
@@ -3901,7 +3918,7 @@ class EDGAR_spatial(object):
             self.ES_logger.error('Year setting error!')
             exit(1)
         elif min(year_range) < self.__default_start_year or max(year_range) > self.__default_end_year:
-            print('Error! Processing year range out of data support! The year must contain in 1970 to 2018')
+            print('Error! Processing year range out of data support! The year must contain in 1970 to 2019')
             self.ES_logger.info('Year settings are out of range.')
             self.ES_logger.error('Year setting error!')
             exit(1)
@@ -4326,7 +4343,7 @@ class EDGAR_spatial(object):
 
     ############################################################################
     ############################################################################
-    # 为EOF分析进行的栅格数据准备
+    # 为EOF分析进行的栅格数据准备和分析工作的工具
     ############################################################################
     ############################################################################
     # 按照汇报过程中给出的意见，在计算EOF时，应该保持空间范围一定，而不同时间上的碳排放量应该维持原有数据而不是使用0值或其他值替代。
@@ -4932,9 +4949,6 @@ class EDGAR_spatial(object):
         if return_raster_list:
             return return_list
             
-
-
-
     # 实际执行从一个中心的一个部门类型中，逐年提取中心历史范围中的数据
     def do_EOF_extract_center_categories_emission_ratser(self):
         pass
@@ -5528,7 +5542,7 @@ class EDGAR_spatial(object):
         #     self.ES_logger.error('Year setting error!')
         #     return
         # elif min(year_range) < self.__default_start_year or max(year_range) > self.__default_end_year:
-        #     print 'Error! Processing year range out of data support! The year must contain in 1970 to 2018'
+        #     print 'Error! Processing year range out of data support! The year must contain in 1970 to 2019'
         #     self.ES_logger.info('Year settings are out of range.')
         #     self.ES_logger.error('Year setting error!')
         #     return
