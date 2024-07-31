@@ -1269,6 +1269,10 @@ class EDGAR_spatial(object):
     #       （所以，这其实很像二叉树的归并。可惜在这样一个小函数里写一个二叉树有过分了。）
     #       所以，借鉴二叉树归并的思想，采取递归的策略来完成叠加。
     def do_raster_add(self, raster_list, result_raster=None):
+        '''
+            改进2：修改参数的功能，如果提供了result_raster参数则保存到对应位置；
+                  如果不提供则只将生成的栅格返回。
+        '''
         # 用于保存递归中产生的临时栅格的列表
         temp_delete_rasters = []
 
@@ -5041,6 +5045,69 @@ class EDGAR_spatial(object):
         # logger output
         self.ES_logger.debug('working_rasters cleaned!')
 
+    # 将计算的不同部门维度的EOF场合栅格结果并为合成场的函数
+    def EOF_composite_modes(self, center, category_list, modes_list, output_composite_mode_fmt = '{}_composite_mode_{}'):
+        # 检查输入参数是否合法
+        if not center:
+            print('ERROR: emission center does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('emission center does not exist. Please check exist.')
+            exit(1)
+        
+        if type(category_list) != list or not category_list:
+            print('ERROR: category list does not exist or not a list. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('category list does not exist or not a list. Please check the input.')
+            exit(1)
+
+        if type(modes_list) != list or not modes_list:
+            print('ERROR: mode list does not exist or not a list. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('mode list does not exist or not a list. Please check the input.')
+            exit(1)
+
+        for mode in tqdm(modes_list):
+            self.do_EOF_composite_modes(center=center, category_list=category_list, mode=mode)
+
+    # 实际执行将计算的不同部门维度的EOF场合栅格结果并为合成场的函数
+    def do_EOF_composite_modes(self, center, category_list, mode, output_composite_mode_fmt = '{}_composite_mode_{}'):
+        '''
+            注意：输入参数中的mode应该为一个整数。
+        '''
+        if not center or not category_list or not mode:
+            print('ERROR: emission center or category list or mode does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('emission center or category list or mode does not exist. Please check exist.')
+            exit(1)
+        
+        # 列出待合并的场结果的栅格文件
+        mode_rasters_filter = ['{}_{}_mode_{}'.format(center.center_name, category, mode) for category in category_list]
+        mode_rasters = self.do_arcpy_list_raster_list(wildcard_list=mode_rasters_filter)
+
+        # 生成结果文件名
+        # 检查输出文件名是否能够成功构建
+        try:
+            output_raster = output_composite_mode_fmt.format(center.center_name, mode)
+        except:
+            print('ERROR: can not format raster output name.')
+
+            # logger output
+            self.ES_logger.error('raster output name format failed.')
+            exit(1)
+
+        # 叠加列出栅格生成合成场结果
+        self.do_raster_add(raster_list=mode_rasters, result_raster=output_raster)
+
+    # 将不同维度的EOF场合成场点数据的函数
+    def EOF_composite_modes(self, center, category_list, modes_list):
+        pass
+    # 实际执行将不同维度的EOF场合成场点数据的函数
+    def do_EOF_composite_modes(self, center, category_list, mode):
+        pass
     ############################################################################
     ############################################################################
     # 用于表达栅格较少中心的插值函数
