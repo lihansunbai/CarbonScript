@@ -5070,14 +5070,14 @@ class EDGAR_spatial(object):
             exit(1)
 
         for mode in tqdm(modes_list):
-            self.do_EOF_composite_modes(center=center, category_list=category_list, mode=mode)
+            self.do_EOF_composite_modes(center=center, category_list=category_list, mode=mode, output_composite_mode_fmt=output_composite_mode_fmt)
 
     # 实际执行将计算的不同部门维度的EOF场合栅格结果并为合成场的函数
     def do_EOF_composite_modes(self, center, category_list, mode, output_composite_mode_fmt = '{}_composite_mode_{}'):
         '''
             注意：输入参数中的mode应该为一个整数。
         '''
-        if not center or not category_list or not mode:
+        if not center or not category_list or type(mode) != int:
             print('ERROR: emission center or category list or mode does not exist. Please check exist.')
 
             # logger output
@@ -5103,10 +5103,125 @@ class EDGAR_spatial(object):
         self.do_raster_add(raster_list=mode_rasters, result_raster=output_raster)
 
     # 将不同维度的EOF场合成场点数据的函数
-    def EOF_composite_modes(self, center, category_list, modes_list):
-        pass
+    def EOF_joint_composite_modes_to_point(self, center, modes_list):
+        if not center:
+            print('ERROR: emission center does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('emission center does not exist. Please check exist.')
+            exit(1)
+        
+        if type(modes_list) != list or not modes_list:
+            print('ERROR: mode list does not exist or not a list. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('mode list does not exist or not a list. Please check the input.')
+            exit(1)
+
+        # 初始化部分参数
+        # 设定的保存的文件名的格式
+        output_eof_points = 'eof_{}_composite_mode_points'.format(center.center_name)
+        
+        # 设定需要删除的临时生成文件列表
+        delete_temporary = []
+
+        # 筛选需要计算的部门
+        # 是不是又看不懂这个复杂的解包操作了？其实，这里只是准备了对应的部门名称和eof结果的配对。
+        temp_wildcard = ['{}_composite_mode_{}'.format(center.center_name, mode) for mode in modes_list]
+        temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard)
+
+        # 从这里开始，通过ETP方法整合所有栅格数据到同一个点数据中
+        # 1、利用待提取列表中的任意一个栅格，转为输出结果的点数据，同时作为提取的起点
+        # 2、基于输出结果的点数据，开始提取剩余栅格中的数据。
+        # logger output
+        self.ES_logger.debug('Create eof ouput point file')
+        # 栅格数据转点对象。
+        # 生成输出的点文件
+        # 这里用到了arcpy.AlterField_management()这个函数可能在10.2版本中没有
+        temp_convert_raster_name = temp_working_rasters.pop()
+        try:
+            # transform to point features
+            arcpy.RasterToPoint_conversion(temp_convert_raster_name, output_eof_points,
+                                           'VALUE')
+
+            # logger output
+            self.ES_logger.debug('EOF composite mode raster convert to point:{}'.format(output_eof_points) )
+
+            # rename value field
+            # 将字段的名字修改为mode的名称
+            arcpy.AlterField_management(output_eof_points, 'grid_code', new_field_name=temp_convert_raster_name[len('{}_'.format(center.center_name)):])
+            # 删除表链接结果结果中生成的统计字段'pointid'和'grid_code'
+            arcpy.DeleteField_management(output_eof_points, 'pointid')
+
+            # logger output
+            self.ES_logger.debug('EOF composite mode raster conver to point:{}'.format(temp_convert_raster_name) )
+
+            print('EOF composite mode raster conver to point:{}'.format(temp_convert_raster_name))
+        except:
+            print('Failed convert EOF composite mode raster to point : {}'.format(temp_convert_raster_name) )
+
+            # logger output
+            self.ES_logger.error('Failed convert EOF composite mode raster to point : {}'.format(temp_convert_raster_name) )
+
+            print(arcpy.GetMessages())
+
+        # 构造三个特殊变量来完成操作和循环的大和谐~、
+        # 因为sa.ExtractValuesToPoint函数需要一个输出表，同时又不能覆盖替换另一个表
+        # 所以需要用前两个表生成第一个循环用的表
+        # 在程序的结尾用最后（其实可以是任意一个表）来完成年份的输出
+        temp_point_trigger = 'ETP_trigger'
+        temp_point_iter_root = 'ETP_iter'
+        temp_point_output = 'ETP_output'
+
+        delete_temporary.append(temp_point_trigger)
+        delete_temporary.append(temp_point_output)
+
+        # 保存最后一个栅格为最后一次提取的结果以完成输出
+        temp_last_job = temp_working_rasters.pop()
+        # 需要先进行一次提取操作，输入到EPT_iter中
+        # 这里需要开启覆盖操作，或者执行一个del工作
+        temp_ETP_1_raster = temp_working_rasters.pop()
+        self.do_ETP(
+            ExtractPoint=output_eof_points,
+            ValueRaster=temp_ETP_1_raster,
+            outPoint=temp_point_trigger,
+            NewFieldName=('RASTERVALU', temp_ETP_1_raster[len('{}_'.format(center.center_name)):]))
+
+        # 逐个处理剩下的场数据
+        for raster in tqdm(temp_working_rasters):
+            # 从字典中获得部门和对应的待提取值栅格
+            temp_new_filed_name = raster[len('{}_'.format(center.center_name)):]
+            temp_point_output = temp_point_iter_root + temp_new_filed_name
+
+            self.do_ETP(
+                ExtractPoint=temp_point_trigger,
+                ValueRaster=raster,
+                outPoint=temp_point_output,
+                NewFieldName=('RASTERVALU', temp_new_filed_name))
+
+            # 交换temp_point_iter和temp_point_output指针
+            temp_point_trigger = temp_point_output
+
+            # 添加到删除名单
+            delete_temporary.append(temp_point_output)
+
+        # 处理最后一个场数据栅格，并将结果保存到输出文件中
+        self.do_ETP(
+            ExtractPoint=temp_point_trigger,
+            ValueRaster=temp_last_job,
+            outPoint=output_eof_points,
+            NewFieldName=('RASTERVALU', temp_last_job[len('{}_'.format(center.center_name)):]))
+
+        print('{} EOF composite modes merge to point'.format(center.center_name) )
+
+        # 删除临时生成的迭代变量
+        self.delete_temporary_feature_classes(delete_temporary)
+
+        # logger output
+        self.ES_logger.debug('working_rasters cleaned!')
+
     # 实际执行将不同维度的EOF场合成场点数据的函数
-    def do_EOF_composite_modes(self, center, category_list, mode):
+    def do_EOF_joint_composite_modes_to_point(self, center, category_list, mode):
         pass
     ############################################################################
     ############################################################################
