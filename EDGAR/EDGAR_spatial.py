@@ -395,6 +395,31 @@ class EDGAR_spatial(object):
     # 默认部门编码
     __default_gen_encode_list = ['G_ENE', 'G_IND', 'G_TRA', 'G_RCO', 'G_AGS', 'G_WST']
 
+    # 默认kriging插值参数
+    default_kriging_settings_center_4 = {
+        'lagSize': 0.1,
+        'majorRange': 0.2,
+        'partialSill': 0.001,
+        'nugget' : 0.0001,
+        'semivariogramType' :"GAUSSIAN",
+        'kRadius' : 0.2
+        }
+    default_kriging_settings_center_5 = {
+        'lagSize' : 0.1,
+        'majorRange' : 0.2,
+        'partialSill' : 0.0001,
+        'nugget' : 0.0001,
+        'semivariogramType' :"GAUSSIAN",
+        'kRadius' : 0.2
+        }
+    default_kriging_settings_center_678 = {
+        'lagSize' : 0.1,
+        'majorRange' : 0.3,
+        'partialSill' : 0.001,
+        'nugget' : 0.001,
+        'semivariogramType' :"GAUSSIAN",
+        'kRadius' : 0.3
+        }
     ############################################################################
     ############################################################################
     # 通用参数、属性和方法
@@ -4889,28 +4914,34 @@ class EDGAR_spatial(object):
                                 output_formate='TIFF')
 
     # 批量将同中心不同部门的eof统计到各个部门的名称中
-    def EOF_joint_modes_to_point(self, center, category_list, mode_type_list, num_eofs):
+    def EOF_joint_modes_to_point(self, center, category_list, mode_type_list, num_eofs, with_original_mean_std=True):
         '''
         这个函数用于将不同排放量级中心的EOF的各场结果合并到一个点类型文件中。
-        这个函数需要提供三个参数:
+        如果这个函数提供了with_original_mean_std参数，那么还会生成新的若干列，他们是每一个场结果再乘以对应栅格的标准差。
+        这个函数需要提供如下参数:
             center：中心名称。
             category_list：一个包含部分类型的列表。
             mode_typelist：一个包含不同类型EOF场的列表。例如原始的EOF场，correlative map，covariance map。
+            num_eofs：需要返回的EOF场的数量。
+            with_original_mean_std：是否要加入原始数据的平均值栅格和标准差栅格。如果需要，则需要提供对应文件，并命名名为：[center_name]_mean_[category]的格式。默认值：True。
         '''
         for i in category_list:
             self.do_EOF_joint_modes_to_point(center=center,
                                                 category=i,
                                                 mode_type_list=mode_type_list,
-                                                num_eofs=num_eofs)
+                                                num_eofs=num_eofs,
+                                                with_original_mean_std=with_original_mean_std)
 
     # 将同一中心的EOF结果统计到同一个部门名称的点数据中
-    def do_EOF_joint_modes_to_point(self, center, category, mode_type_list, num_eofs):
+    def do_EOF_joint_modes_to_point(self, center, category, mode_type_list, num_eofs, with_original_mean_std=True):
         '''
         这个函数用于将不同排放量级中心的EOF的各场结果合并到一个点类型文件中。
         这个函数需要提供三个参数:
             center：中心名称。
             category：确定的部门名称
             mode_typelist：一个包含不同类型EOF场的列表。例如原始的EOF场，correlative map，covariance map。
+            num_eofs：需要返回的EOF场的数量。
+            with_original_mean_std：是否要加入原始数据的平均值栅格和标准差栅格。如果需要，则需要提供对应文件，并命名名为：[center_name]_mean_[category]的格式。默认值：True。
         '''
         #######################################################################
         #######################################################################
@@ -5045,6 +5076,13 @@ class EDGAR_spatial(object):
         # logger output
         self.ES_logger.debug('working_rasters cleaned!')
 
+    # 将每个场的结果乘以对应栅格的标准差并生成新的一列
+    def EOF_generate_mode_with_std(mode_colum, std_colum):
+        pass
+
+    # 实际执行将每个场的结果乘以对应栅格的标准差并生成新的一列
+    def do_EOF_generate_mode_with_std(mode_colum, std_colum):
+        pass
     # 将计算的不同部门维度的EOF场合栅格结果并为合成场的函数
     def EOF_composite_modes(self, center, category_list, modes_list, output_composite_mode_fmt = '{}_composite_mode_{}'):
         # 检查输入参数是否合法
@@ -5231,7 +5269,7 @@ class EDGAR_spatial(object):
     ############################################################################
     # 实际执行kriging插值的函数
     # 封装了arcpy.sa.Kriging的相关功能
-    def do_kriging_interpolate(self, point, field, output_fmt='{}_{}'):
+    def do_kriging_interpolate(self, point, field, kriging_setting, output_fmt='{}_{}'):
         # 检查传入的输出文件名格式是否正确
         try:
             outVarRaster = output_fmt.format(point, field)
@@ -5243,21 +5281,29 @@ class EDGAR_spatial(object):
 
             exit(1)
 
+        if not kriging_setting:
+            print('Kringing setting does not exits.')
+
+            # logger output
+            self.ES_logger.error('Kringing setting does not exits.')
+
+            exit(1)
+
         # 设置kriging插值的必要参数
         # Set local variables
         cellSize = 0.1
         temp_outVarRaster = 'temp_kriging'
         # Set complex variable
-        lagSize = 0.1
-        majorRange = 0.5
-        partialSill = 0.1
-        nugget = 1
-        kModelOrdinary = KrigingModelOrdinary(semivariogramType="GAUSSIAN",
+        lagSize = kriging_setting['lagSize']
+        majorRange = kriging_setting['majorRange']
+        partialSill = kriging_setting['partialSill']
+        nugget = kriging_setting['nugget']
+        kModelOrdinary = KrigingModelOrdinary(semivariogramType=kriging_setting['semivariogramType'],
                                                 lagSize=lagSize,
                                                 majorRange=majorRange,
                                                 partialSill=partialSill,
                                                 nugget=nugget)
-        kRadius = RadiusFixed(0.5)
+        kRadius = RadiusFixed(kriging_setting['kRadius'])
 
         # logger
         self.ES_logger.info('Start kriging at {} {}'.format(point, field))
@@ -5269,7 +5315,7 @@ class EDGAR_spatial(object):
         outKriging.save(outVarRaster)
 
     # 对一个点数据中的若干字段进行逐字段的插值并生成插值后的结果。
-    def kriging_interpolate(self, point, field_list, output_fmt='{}_{}'):
+    def kriging_interpolate(self, point, field_list, kriging_setting, output_fmt='{}_{}'):
         # 检查输入的点数据和需要插值的字段是否存在
         if not point or not field_list:
             print('ERROR: input point or field_list does not exsit. Please check exist.')
@@ -5281,7 +5327,7 @@ class EDGAR_spatial(object):
         # 逐个对字段列表中的字段进行插值
         for field in tqdm(field_list):
             # 调用实际执行kriging的函数
-            self.do_kriging_interpolate(point=point, field=field,output_fmt=output_fmt)
+            self.do_kriging_interpolate(point=point, field=field,kriging_setting=kriging_setting, output_fmt=output_fmt)
 
             # logger
             self.ES_logger.info('Finished field kriging interpolation at {} {}'.format(point,field))
