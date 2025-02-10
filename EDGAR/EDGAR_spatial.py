@@ -5061,12 +5061,59 @@ class EDGAR_spatial(object):
             # 添加到删除名单
             delete_temporary.append(temp_point_output)
 
-        # 处理最后一个场数据栅格，并将结果保存到输出文件中
-        self.do_ETP(
-            ExtractPoint=temp_point_trigger,
-            ValueRaster=temp_last_job,
-            outPoint=output_eof_points,
-            NewFieldName=('RASTERVALU', temp_last_job[len('{}_{}_'.format(center.center_name, category)):]))
+        # 处理with_original_mean_std参数的特殊情况
+        # 继续列出需要合并的栅格
+        if with_original_mean_std:
+            # 处理EOF场的最后一个场数据栅格，并将结果保存到临时输出文件中
+            temp_mean_point_output = output_eof_points + 'without_mean'
+            self.do_ETP(
+                ExtractPoint=temp_point_trigger,
+                ValueRaster=temp_last_job,
+                outPoint=temp_mean_point_output,
+                NewFieldName=('RASTERVALU', temp_last_job[len('{}_{}_'.format(center.center_name, category)):]))
+
+            # 添加到删除名单
+            delete_temporary.append(temp_mean_point_output)
+
+            # 生成平均值栅格和标准差栅格名字
+            temp_mean_std_wildcard = ['{}_{}_{}'.format(center.center_name, mean_std, category) for mean_std in ['mean', 'std']]
+            # 列出对应栅格
+            temp_mean_std_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_mean_std_wildcard)
+            
+            # 检查栅格是否存在，如果不存在则报错退出
+            if len(temp_mean_std_rasters) == 0:
+                print('EOF: mean and std rasters does not exist.')
+
+                # logger output
+                self.ES_logger.error( 'EOF field to list mean and std rasters')
+
+                print(arcpy.GetMessages())
+                exit()
+        
+            # 提取平均值临时文件名
+            temp_mean_point_output = output_eof_points + 'add_mean'
+            # 提取平均值栅格
+            self.do_ETP(ExtractPoint=temp_mean_point_output,
+                        ValueRaster=temp_mean_std_rasters.pop(),
+                        outPoint=temp_mean_point_output,
+                        NewFieldName=('RASTERVALU', 'mean'))
+            # 添加到删除名单
+            delete_temporary.append(temp_mean_point_output)
+
+            # 处理标准差栅格提取
+            # 提取标准差栅格
+            self.do_ETP(ExtractPoint=temp_mean_point_output,
+                ValueRaster=temp_mean_std_rasters.pop(),
+                outPoint=output_eof_points,
+                NewFieldName=('RASTERVALU', 'std'))
+        else:
+            # 处理最后一个场数据栅格，并将结果保存到输出文件中
+            self.do_ETP(
+                ExtractPoint=temp_point_trigger,
+                ValueRaster=temp_last_job,
+                outPoint=output_eof_points,
+                NewFieldName=('RASTERVALU', temp_last_job[len('{}_{}_'.format(center.center_name, category)):]))
+
 
         print('{} {} EOF mode merge to point'.format(center.center_name, category) )
 
@@ -5077,11 +5124,14 @@ class EDGAR_spatial(object):
         self.ES_logger.debug('working_rasters cleaned!')
 
     # 将每个场的结果乘以对应栅格的标准差并生成新的一列
-    def EOF_generate_mode_with_std(mode_colum, std_colum):
-        pass
+    def EOF_generate_mode_with_std(self, mode_colum, std_colum):
+        # 设定的保存的文件名的格式
+        output_eof_points = 'eof_{}_{}_points'.format(center.center_name, category)
+
+        self.do_EOF_generate_mode_with_std(output_eof_points)
 
     # 实际执行将每个场的结果乘以对应栅格的标准差并生成新的一列
-    def do_EOF_generate_mode_with_std(mode_colum, std_colum):
+    def do_EOF_generate_mode_with_std(self, eof_points, mode_colum, std_colum):
         pass
     # 将计算的不同部门维度的EOF场合栅格结果并为合成场的函数
     def EOF_composite_modes(self, center, category_list, modes_list, output_composite_mode_fmt = '{}_composite_mode_{}'):
