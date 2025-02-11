@@ -4926,14 +4926,14 @@ class EDGAR_spatial(object):
             with_original_mean_std：是否要加入原始数据的平均值栅格和标准差栅格。如果需要，则需要提供对应文件，并命名名为：[center_name]_mean_[category]的格式。默认值：True。
         '''
         for i in category_list:
-            self.do_EOF_joint_modes_to_point(center=center,
+            temp_point_name = self.do_EOF_joint_modes_to_point(center=center,
                                                 category=i,
                                                 mode_type_list=mode_type_list,
                                                 num_eofs=num_eofs,
                                                 with_original_mean_std=with_original_mean_std)
 
     # 将同一中心的EOF结果统计到同一个部门名称的点数据中
-    def do_EOF_joint_modes_to_point(self, center, category, mode_type_list, num_eofs, with_original_mean_std=True):
+    def do_EOF_joint_modes_to_point(self, center, category, mode_type_list, num_eofs, with_original_mean_std=True, return_point_name=False):
         '''
         这个函数用于将不同排放量级中心的EOF的各场结果合并到一个点类型文件中。
         这个函数需要提供三个参数:
@@ -4941,7 +4941,8 @@ class EDGAR_spatial(object):
             category：确定的部门名称
             mode_typelist：一个包含不同类型EOF场的列表。例如原始的EOF场，correlative map，covariance map。
             num_eofs：需要返回的EOF场的数量。
-            with_original_mean_std：是否要加入原始数据的平均值栅格和标准差栅格。如果需要，则需要提供对应文件，并命名名为：[center_name]_mean_[category]的格式。默认值：True。
+            with_original_mean_std：是否要加入原始数据的平均值栅格和标准差栅格。默认值：True。
+                                    如果需要，则需要提供对应文件，并命名名为：[center_name]_mean_[category]的格式。
         '''
         #######################################################################
         #######################################################################
@@ -5076,10 +5077,22 @@ class EDGAR_spatial(object):
             delete_temporary.append(temp_mean_point_output)
 
             # 生成平均值栅格和标准差栅格名字
-            temp_mean_std_wildcard = ['{}_{}_{}'.format(center.center_name, mean_std, category) for mean_std in ['mean', 'std']]
+            temp_mean_wildcard = '{}_mean_{}'.format(center.center_name, category)
+            temp_std_wildcard = '{}_std_{}'.format(center.center_name, category)
+            temp_mean_std_wildcard = [temp_mean_wildcard, temp_std_wildcard]
+
             # 列出对应栅格
             temp_mean_std_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_mean_std_wildcard)
             
+            # 生成场栅格名字
+            temp_mode_name = self.do_arcpy_list_raster_list(wildcard_list=
+                                ['{}_{}_mode_{}'.format(center.center_name, category, modes) for modes in range(0, num_eofs)])
+
+            # 这里的思路应该是：
+            #   1、通过栅格乘法，计算标准差*场的结果
+            #   2、再通过ETP函数提取点值。
+            temp_mode_multiply_std_raster = self.do_EOF_generate_mode_multiply_std_raster(mode_list=temp_mode_name,std_name=temp_std_wildcard, return_raster_list=True)
+
             # 检查栅格是否存在，如果不存在则报错退出
             if len(temp_mean_std_rasters) == 0:
                 print('EOF: mean and std rasters does not exist.')
@@ -5114,7 +5127,6 @@ class EDGAR_spatial(object):
                 outPoint=output_eof_points,
                 NewFieldName=('RASTERVALU', temp_last_job[len('{}_{}_'.format(center.center_name, category)):]))
 
-
         print('{} {} EOF mode merge to point'.format(center.center_name, category) )
 
         # 删除临时生成的迭代变量
@@ -5123,16 +5135,37 @@ class EDGAR_spatial(object):
         # logger output
         self.ES_logger.debug('working_rasters cleaned!')
 
-    # 将每个场的结果乘以对应栅格的标准差并生成新的一列
-    def EOF_generate_mode_with_std(self, mode_colum, std_colum):
-        # 设定的保存的文件名的格式
-        output_eof_points = 'eof_{}_{}_points'.format(center.center_name, category)
+        if return_point_name:
+            return output_eof_points
 
-        self.do_EOF_generate_mode_with_std(output_eof_points)
+    # 实际执行将每个场的结果乘以对应栅格的标准差并生成一个组新的栅格
+    def do_EOF_generate_mode_multiply_std_raster(self, mode_list, std_name, return_raster_list=True):
+        if not mode_list:
+            print('ERROR: mode type list does not specified or not list. Please check the input.')
 
-    # 实际执行将每个场的结果乘以对应栅格的标准差并生成新的一列
-    def do_EOF_generate_mode_with_std(self, eof_points, mode_colum, std_colum):
-        pass
+            # logger output
+            self.ES_logger.error('category or mode type list does not specified or not list.')
+            exit(1)
+
+        # 初始化返回结果栅格列表
+        return_list = []
+
+        for mode in mode_list:
+            # 生成结果列名称
+            temp_result_raster = '{}_multiple_std'.format(mode)
+
+            # 计算乘法结果
+            temp_out_raster = Raster(mode) * Raster(std_name)
+            temp_out_raster.save(temp_result_raster)
+            # 将结果保存到返回列表
+            return_list.append(temp_result_raster)
+        
+        if return_raster_list:
+            return return_list
+
+
+        
+    
     # 将计算的不同部门维度的EOF场合栅格结果并为合成场的函数
     def EOF_composite_modes(self, center, category_list, modes_list, output_composite_mode_fmt = '{}_composite_mode_{}'):
         # 检查输入参数是否合法
