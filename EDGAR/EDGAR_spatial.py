@@ -4926,7 +4926,7 @@ class EDGAR_spatial(object):
             with_original_mean_std：是否要加入原始数据的平均值栅格和标准差栅格。如果需要，则需要提供对应文件，并命名名为：[center_name]_mean_[category]的格式。默认值：True。
         '''
         for i in category_list:
-            temp_point_name = self.do_EOF_joint_modes_to_point(center=center,
+            self.do_EOF_joint_modes_to_point(center=center,
                                                 category=i,
                                                 mode_type_list=mode_type_list,
                                                 num_eofs=num_eofs,
