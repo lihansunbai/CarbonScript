@@ -4999,8 +4999,10 @@ class EDGAR_spatial(object):
 
             # 列出对应栅格
             temp_mean_std_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_mean_std_wildcard)
+            
+            # 这里先不处理均值栅格。由于文件命名存在差异。
             #将平均值、标准差加入待提取栅格
-            temp_working_rasters.extend(temp_mean_std_rasters)
+            # temp_working_rasters.extend(temp_mean_std_rasters)
             
             # 生成场栅格名字
             temp_mode_name = self.do_arcpy_list_raster_list(wildcard_list=
@@ -5089,71 +5091,37 @@ class EDGAR_spatial(object):
             # 添加到删除名单
             delete_temporary.append(temp_point_output)
 
-        # 处理with_original_mean_std参数的特殊情况
-        # 继续列出需要合并的栅格
+        # 处理均值和标准差栅格
         if with_original_mean_std:
-            # 处理EOF场的最后一个场数据栅格，并将结果保存到临时输出文件中
-            temp_mean_point_output = output_eof_points + 'without_mean'
-            self.do_ETP(
-                ExtractPoint=temp_point_trigger,
-                ValueRaster=temp_last_job,
-                outPoint=temp_mean_point_output,
-                NewFieldName=('RASTERVALU', temp_last_job[len('{}_{}_'.format(center.center_name, category)):]))
-
-            # 添加到删除名单
-            delete_temporary.append(temp_mean_point_output)
-
-            # 生成平均值栅格和标准差栅格名字
-            temp_mean_wildcard = '{}_mean_{}'.format(center.center_name, category)
-            temp_std_wildcard = '{}_std_{}'.format(center.center_name, category)
-            temp_mean_std_wildcard = [temp_mean_wildcard, temp_std_wildcard]
-
-            # 列出对应栅格
-            temp_mean_std_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_mean_std_wildcard)
-            
-            # 生成场栅格名字
-            temp_mode_name = self.do_arcpy_list_raster_list(wildcard_list=
-                                ['{}_{}_mode_{}'.format(center.center_name, category, modes) for modes in range(0, num_eofs)])
-
-            # 这里的思路应该是：
-            #   1、通过栅格乘法，计算标准差*场的结果
-            #   2、再通过ETP函数提取点值。
-            temp_mode_multiply_std_raster = self.do_EOF_generate_mode_multiply_std_raster(mode_list=temp_mode_name,std_name=temp_std_wildcard, return_raster_list=True)
-
-            # 检查栅格是否存在，如果不存在则报错退出
-            if len(temp_mean_std_rasters) == 0:
-                print('EOF: mean and std rasters does not exist.')
-
-                # logger output
-                self.ES_logger.error( 'EOF field to list mean and std rasters')
-
-                print(arcpy.GetMessages())
-                exit()
-        
-            # 提取平均值临时文件名
-            temp_mean_point_output = output_eof_points + 'add_mean'
-            # 提取平均值栅格
-            self.do_ETP(ExtractPoint=temp_mean_point_output,
-                        ValueRaster=temp_mean_std_rasters.pop(),
-                        outPoint=temp_mean_point_output,
+            # 提取均值栅格
+            output_eof_mean_points = 'ETP_mean'
+            self.do_ETP(ExtractPoint=temp_point_trigger,
+                        ValueRaster=temp_mean_wildcard,
+                        outPoint=output_eof_mean_points,
                         NewFieldName=('RASTERVALU', 'mean'))
-            # 添加到删除名单
-            delete_temporary.append(temp_mean_point_output)
 
-            # 处理标准差栅格提取
+            delete_temporary.append(output_eof_mean_points)
+
             # 提取标准差栅格
-            self.do_ETP(ExtractPoint=temp_mean_point_output,
-                ValueRaster=temp_mean_std_rasters.pop(),
-                outPoint=output_eof_points,
-                NewFieldName=('RASTERVALU', 'std'))
-        else:
-            # 处理最后一个场数据栅格，并将结果保存到输出文件中
-            self.do_ETP(
-                ExtractPoint=temp_point_trigger,
-                ValueRaster=temp_last_job,
-                outPoint=output_eof_points,
-                NewFieldName=('RASTERVALU', temp_last_job[len('{}_{}_'.format(center.center_name, category)):]))
+            output_eof_std_points = 'ETP_std'
+            self.do_ETP(ExtractPoint=output_eof_mean_points,
+                        ValueRaster=temp_std_wildcard,
+                        outPoint=output_eof_std_points,
+                        NewFieldName=('RASTERVALU', 'std'))
 
+            delete_temporary.append(output_eof_std_points)
+
+            # 交换trigger指针
+            temp_point_trigger = output_eof_std_points
+
+        # 处理最后一个场数据栅格，并将结果保存到输出文件中
+        self.do_ETP(
+            ExtractPoint=temp_point_trigger,
+            ValueRaster=temp_last_job,
+            outPoint=output_eof_points,
+            NewFieldName=('RASTERVALU', temp_last_job[len('{}_{}_'.format(center.center_name, category)):]))
+
+        delete_temporary.append(temp_last_job)
         print('{} {} EOF mode merge to point'.format(center.center_name, category) )
 
         # 删除临时生成的迭代变量
@@ -5284,8 +5252,9 @@ class EDGAR_spatial(object):
 
             # 列出对应栅格
             temp_mean_std_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_mean_std_wildcard)
+            # 暂时不处理平均值和标准差栅格
             #将平均值、标准差加入待提取栅格
-            temp_working_rasters.extend(temp_mean_std_rasters)
+            # temp_working_rasters.extend(temp_mean_std_rasters)
             
             # 生成场栅格名字
             temp_mode_name = self.do_arcpy_list_raster_list(wildcard_list=
@@ -5374,12 +5343,37 @@ class EDGAR_spatial(object):
             # 添加到删除名单
             delete_temporary.append(temp_point_output)
 
+        # 处理均值和标准差栅格
+        if with_original_mean_std:
+            # 提取均值栅格
+            output_eof_mean_points = 'ETP_mean'
+            self.do_ETP(ExtractPoint=temp_point_trigger,
+                        ValueRaster=temp_mean_wildcard,
+                        outPoint=output_eof_mean_points,
+                        NewFieldName=('RASTERVALU', 'mean'))
+
+            delete_temporary.append(output_eof_mean_points)
+
+            # 提取标准差栅格
+            output_eof_std_points = 'ETP_std'
+            self.do_ETP(ExtractPoint=output_eof_mean_points,
+                        ValueRaster=temp_std_wildcard,
+                        outPoint=output_eof_std_points,
+                        NewFieldName=('RASTERVALU', 'std'))
+
+            delete_temporary.append(output_eof_std_points)
+
+            # 交换trigger指针
+            temp_point_trigger = output_eof_std_points
+
         # 处理最后一个场数据栅格，并将结果保存到输出文件中
         self.do_ETP(
             ExtractPoint=temp_point_trigger,
             ValueRaster=temp_last_job,
             outPoint=output_eof_points,
             NewFieldName=('RASTERVALU', temp_last_job[len('{}_'.format(center.center_name)):]))
+
+        delete_temporary.append(temp_last_job)
 
         print('{} EOF composite modes merge to point'.format(center.center_name) )
 
