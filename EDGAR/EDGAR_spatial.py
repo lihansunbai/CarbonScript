@@ -4933,7 +4933,7 @@ class EDGAR_spatial(object):
                                                 with_original_mean_std=with_original_mean_std)
 
     # 将同一中心的EOF结果统计到同一个部门名称的点数据中
-    def do_EOF_joint_modes_to_point(self, center, category, mode_type_list, num_eofs, with_original_mean_std=True, return_point_name=False):
+    def do_EOF_joint_modes_to_point(self, center, category, mode_type_list, num_eofs, with_original_mean_std=True):
         '''
         这个函数用于将不同排放量级中心的EOF的各场结果合并到一个点类型文件中。
         这个函数需要提供三个参数:
@@ -4986,6 +4986,33 @@ class EDGAR_spatial(object):
         temp_wildcard_pair = zip(mode_type_list*len(temp_eof_num_list), temp_eof_num_list*len(temp_eof_num_list))
         temp_wildcard = ['{}_{}_{}_{}'.format(center.center_name, category, i[0], i[1]) for i in temp_wildcard_pair]
         temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard)
+
+        # 处理with_original_mean_std参数的特殊情况
+        # 继续列出需要合并的栅格
+        # 包括平均值栅格、标准差栅格和标准差乘以各个场的栅格。
+        # 注意：生成标准差乘以各个场的栅格是在这个分支中通过调用函数实现。
+        if with_original_mean_std:
+            # 生成平均值栅格和标准差栅格名字
+            temp_mean_wildcard = '{}_mean_{}'.format(center.center_name, category)
+            temp_std_wildcard = '{}_std_{}'.format(center.center_name, category)
+            temp_mean_std_wildcard = [temp_mean_wildcard, temp_std_wildcard]
+
+            # 列出对应栅格
+            temp_mean_std_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_mean_std_wildcard)
+            #将平均值、标准差加入待提取栅格
+            temp_working_rasters.extend(temp_mean_std_rasters)
+            
+            # 生成场栅格名字
+            temp_mode_name = self.do_arcpy_list_raster_list(wildcard_list=
+                                ['{}_{}_mode_{}'.format(center.center_name, category, modes) for modes in range(0, num_eofs)])
+
+            # 这里的思路应该是：
+            #   1、通过栅格乘法，计算标准差*场的结果
+            #   2、再通过ETP函数提取点值。
+            temp_mode_multiply_std_raster = self.do_EOF_generate_mode_multiply_std_raster(mode_list=temp_mode_name,std_name=temp_std_wildcard, return_raster_list=True)
+
+            #将相乘结果加入待提取栅格
+            temp_working_rasters.extend(temp_mode_multiply_std_raster)
 
         # 从这里开始，通过ETP方法整合所有栅格数据到同一个点数据中
         # 1、利用待提取列表中的任意一个栅格，转为输出结果的点数据，同时作为提取的起点
@@ -5135,9 +5162,6 @@ class EDGAR_spatial(object):
         # logger output
         self.ES_logger.debug('working_rasters cleaned!')
 
-        if return_point_name:
-            return output_eof_points
-
     # 实际执行将每个场的结果乘以对应栅格的标准差并生成一个组新的栅格
     def do_EOF_generate_mode_multiply_std_raster(self, mode_list, std_name, return_raster_list=True):
         if not mode_list:
@@ -5163,9 +5187,6 @@ class EDGAR_spatial(object):
         if return_raster_list:
             return return_list
 
-
-        
-    
     # 将计算的不同部门维度的EOF场合栅格结果并为合成场的函数
     def EOF_composite_modes(self, center, category_list, modes_list, output_composite_mode_fmt = '{}_composite_mode_{}'):
         # 检查输入参数是否合法
