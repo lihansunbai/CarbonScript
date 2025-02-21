@@ -1819,6 +1819,121 @@ class EDGAR_spatial(object):
     def proccess_all_year(self):
         self.proccess_year(start_year=1970, end_year=2019)
 
+    # 处理给定年份范围内的工作
+    # 批量处理可以使用这个函数
+    def proccess_decade(self, decade):
+        # 首先需要列出所有需要使用到的栅格
+        # 1、列出年代际均值栅格
+        temp_decade_mean_total_emission = self.do_arcpy_list_raster_list(wildcard_list=['decade_grid_mean_emission_{}s'.format(decade)])
+        # 2、列出部门的年代际均值栅格
+        # 注意这里用到了lower函数，因为存文件名的时候使用的是小写，所以需要转换
+        temp_decade_categories_emission = self.do_arcpy_list_raster_list(wildcard_list=['decade_{}_mean_emission_{}s'.format(cate.lower(), decade) for cate in self.EDGAR_sectors.values()])
+        self.prepare_raster(filter_label=temp_filter_label)
+
+        self.print_start_year('{}'.format(decade))
+        self.decade_category_emission_percentage(decade=decade)
+        self.year_weight_joint(yr, self.EDGAR_sectors)
+        self.max_weight_rasterize(yr)
+        self.print_finish_year('{}'.format(decade))
+
+    def category_emission_percentage(self, category, decade, output_category_point):
+        # 尝试列出当年总量的栅格
+        # 这里要注意，总量栅格的名称在year_sectors_merge()中写死了
+        # 再mosaic一个背景栅格上去防止
+        temp_year_total = arcpy.Raster('decade_grid_mean_emission_{}s'.format(decade))
+
+        # 注意这里其实写死了文件名，请注意调整和修改。
+        temp_category_emission = self.do_arcpy_list_raster_list(wildcard_list=['decade_{}_mean_emission_{}s'.format(category.lower(), decade)])
+
+        # 检查输入的部门栅格和总量栅格是否存在，如果不存在则报错并返回
+        if not (arcpy.Exists(temp_category_emission)) or not (arcpy.Exists(temp_year_total)):
+            print('category_emission_percentage: Error! category emission or year total emission raster does not exist.')
+
+            # logger output
+            self.ES_logger.error('category emission or year total emission raster does not exist.')
+            exit(1)
+
+        # 计算部门排放相对于全体部门总排放的比例
+        # 注意！！！
+        # 这里涉及除法！0值的背景会被抹去为nodata。所以要再mosaic一个背景上去才能转化为点。
+        temp_output_weight_raster = temp_category_emission / temp_year_total
+
+        # logger output
+        self.ES_logger.debug('Sectoral raster weight calculated:{}'.format(category) )
+
+        # Mosaic 比例计算结果和0值背景
+        # Mosaic 的结果仍然保存在temp_output_weight_raster中
+        arcpy.Mosaic_management(
+            inputs=[temp_output_weight_raster, self.background[2]],
+            target=temp_output_weight_raster,
+            mosaic_type="FIRST",
+            colormap="FIRST",
+            mosaicking_tolerance=0.5)
+
+        # logger output
+        self.ES_logger.debug('Sectoral raster weight mosaic to 1800*3600.')
+
+        # 保存栅格格式权重计算结果
+        temp_output_weight_raster_path = '{}_weight_raster_{}'.format(category, decade)
+        temp_output_weight_raster.save(temp_output_weight_raster_path)
+
+        #######################################################################
+        #######################################################################
+        # 注意！
+        # 以下的del操作不能删除！
+        # 删除del操作会导致arcpy.RasterToPoint_conversion()出错！
+        # 具体表现形式为RasterToPoint会错误的引用一个已经被删除的匿名中间变量。
+        # Warning!
+        # CAN NOT remove the following `del` operation!
+        # Removing the `del` operation will
+        # product a error in arcpy.RasterToPoint_conversion().
+        # The error will thrall an exception of NOT found table in raster,
+        # because of the RasterToPoint_conversion miss include a deleted
+        # anonymous temporary variable.
+        #######################################################################
+        #######################################################################
+        del temp_output_weight_raster
+        #######################################################################
+        #######################################################################
+
+        print('Sector emission weight raster saved: {}\n'.format(decade))
+
+        # logger output
+        self.ES_logger.info('Sector emission weight raster saved')
+
+        # 栅格数据转点对象。转为点对象后可以实现计算比例并同时记录对应排放比例的部门名称
+        # 这里用到了arcpy.AlterField_management()这个函数可能在10.2版本中没有
+        try:
+            # transform to point features
+            arcpy.RasterToPoint_conversion(temp_output_weight_raster_path, output_category_point,
+                                           'VALUE')
+
+            # logger output
+            self.ES_logger.debug('Sector emission weight raster convert to point:{}'.format(category) )
+
+            # rename value field
+            arcpy.AlterField_management(output_category_point, 'grid_code', new_field_name=category)
+            # 删除表链接结果结果中生成的统计字段'pointid'和'grid_code'
+            arcpy.DeleteField_management(output_category_point, 'pointid')
+
+            # logger output
+            self.ES_logger.debug('Sector emission weight point fields cleaned:{}'.format(category) )
+
+            print('Sector raster convert to point finished: {} of {}'.format(category, decade))
+        except:
+            print('Failed sector to point : {}'.format(category) )
+
+            # logger output
+            self.ES_logger.error('Raster weight converting to point failed:{}'.format(category) )
+
+            print(arcpy.GetMessages())
+
+    # 计算一年中所有部门的比例
+    def decade_category_emission_percentage(self, decade):
+        for s in tqdm(self.EDGAR_sectors):
+            # 设定输出点数据的格式
+            output = '{}_weight_{}s'.format(s, decade)
+            self.category_emission_percentage(s, decade, output)
     ############################################################################
     ############################################################################
     # 排放峰值和排放中心分析
