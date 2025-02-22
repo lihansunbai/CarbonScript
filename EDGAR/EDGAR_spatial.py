@@ -1828,12 +1828,12 @@ class EDGAR_spatial(object):
         # 2、列出部门的年代际均值栅格
         # 注意这里用到了lower函数，因为存文件名的时候使用的是小写，所以需要转换
         temp_decade_categories_emission = self.do_arcpy_list_raster_list(wildcard_list=['decade_{}_mean_emission_{}s'.format(cate.lower(), decade) for cate in self.EDGAR_sectors.values()])
-        self.prepare_raster(filter_label=temp_filter_label)
+        # self.prepare_raster(filter_label=temp_filter_label)
 
         self.print_start_year('{}'.format(decade))
         self.decade_category_emission_percentage(decade=decade)
-        self.year_weight_joint(yr, self.EDGAR_sectors)
-        self.max_weight_rasterize(yr)
+        self.year_weight_joint(decade, self.EDGAR_sectors)
+        # self.max_weight_rasterize(yr)
         self.print_finish_year('{}'.format(decade))
 
     def category_emission_percentage(self, category, decade, output_category_point):
@@ -1844,6 +1844,7 @@ class EDGAR_spatial(object):
 
         # 注意这里其实写死了文件名，请注意调整和修改。
         temp_category_emission = self.do_arcpy_list_raster_list(wildcard_list=['decade_{}_mean_emission_{}s'.format(category.lower(), decade)])
+        temp_category_emission = arcpy.Raster(temp_category_emission[0])
 
         # 检查输入的部门栅格和总量栅格是否存在，如果不存在则报错并返回
         if not (arcpy.Exists(temp_category_emission)) or not (arcpy.Exists(temp_year_total)):
@@ -1934,6 +1935,112 @@ class EDGAR_spatial(object):
             # 设定输出点数据的格式
             output = '{}_weight_{}s'.format(s, decade)
             self.category_emission_percentage(s, decade, output)
+
+    # 将同一年份的部门整合到同一个点数据图层中
+    def decade_weight_joint(self, decade, category_dict):
+        #######################################################################
+        #######################################################################
+        # 这个函数的设计思想来源于指针和指针的操作。
+        # 有若干个变量被当作指针进行使用，要注意这些变量在不同的位置被指向了
+        # 不同的实际数据.通过不停的改变他们指向的对象，来完成空间链接的操作。
+        # C/C++万岁！！！指针天下第一！！！
+        #######################################################################
+        #######################################################################
+
+        # 初始化部分参数
+        # 设定的保存的文件名的格式
+        output_sectoral_weights = 'decade_category_weights_{}'.format(decade) 
+        # 设定需要删除的临时生成文件列表
+        delete_temporary = []
+
+        # 筛选需要计算的部门
+        # 列出提取值的栅格
+        temp_extract_raster = self.do_arcpy_list_raster_list(wildcard_list=
+                            ['{}_weight_raster_{}'.format(cate, decade) for cate in category_dict.values()])
+
+        # logger output
+        self.ES_logger.debug('Calculate weight in: {}'.format(str(temp_extract_raster)))
+
+        # 首先弹出一个部门作为合并的起始指针
+        temp_point_start_wildcard = '{}*{}s'.format(category_dict.values()[0], decade)
+        # 这里的逻辑看似有点奇怪，其实并不奇怪。
+        # 因为在sector_emission_percentage()中已经保存了完整的‘部门-年份’点数据
+        # 所以可以用其中一个点数据作为提取的起点。
+        temp_point_start = arcpy.ListFeatureClasses(
+            wild_card=temp_point_start_wildcard, feature_type=Point).pop()
+
+        # logger output
+        self.ES_logger.debug('First weight extract point:{}'.format(temp_point_start) )
+
+        # 构造三个特殊变量来完成操作和循环的大和谐~、
+        # 因为sa.ExtractValuesToPoint函数需要一个输出表，同时又不能覆盖替换另一个表
+        # 所以需要用前两个表生成第一个循环用的表
+        # 在程序的结尾用最后（其实可以是任意一个表）来完成年份的输出
+        temp_point_trigger = 'ETP_trigger'
+        temp_point_iter_root = 'ETP_iter'
+        temp_point_output = 'ETP_output'
+
+        delete_temporary.append(temp_point_trigger)
+        delete_temporary.append(temp_point_output)
+
+        # 需要先进行一次提取操作，输入到EPT_iter中
+        # 这里需要开启覆盖操作，或者执行一个del工作
+        temp_ETP_1_sector, temp_ETP_1_raster = temp_extract_raster.popitem()
+        self.do_ETP(
+            ExtractPoint=temp_point_start,
+            ValueRaster=temp_ETP_1_raster,
+            outPoint=temp_point_trigger,
+            NewFieldName=('RASTERVALU', temp_ETP_1_sector))
+
+        # 逐个处理剩下的部门
+        for sect in tqdm(temp_extract_raster):
+            # 从字典中获得部门和对应的待提取值栅格
+            temp_ETP_raster = temp_extract_raster[sect]
+            temp_point_output = temp_point_iter_root + sect
+
+            self.do_ETP(
+                ExtractPoint=temp_point_trigger,
+                ValueRaster=temp_ETP_raster,
+                outPoint=temp_point_output,
+                NewFieldName=('RASTERVALU', sect))
+
+            # 交换temp_point_iter和temp_point_output指针
+            temp_point_trigger = temp_point_output
+
+            # 添加到删除名单
+            delete_temporary.append(temp_point_output)
+
+        # 这里应该加入合并单元格排放量的ETP过程。
+        # 保存最后的输出结果
+        # 应该用temp_point_output去提取total_emission_xxxx，生成结果。
+        temp_total_emission = 'decade_grid_mean_emission_{}s'.format(decade) 
+        if arcpy.Exists(temp_total_emission):
+            print('Saving sectoral weights and total emission...')
+            self.do_ETP(
+                ExtractPoint=temp_point_output,
+                ValueRaster=temp_total_emission,
+                outPoint=output_sectoral_weights,
+                NewFieldName=('RASTERVALU', 'grid_total_emission'))
+
+            # logger output
+            self.ES_logger.debug('Sectoral weights saved:{}'.format(output_sectoral_weights))
+        else:
+            print('Saving sectoral weights and total emission failed!')
+
+            # logger output
+            self.ES_logger.error(
+                'Saving sectoral weights and total emission failed! Please check year total emission input.'
+            )
+            exit(1)
+
+        print('Sectoral weights finished:{}'.format(decade) )
+
+        # 删除临时生成的迭代变量
+        self.delete_temporary_feature_classes(delete_temporary)
+
+        # logger output
+        self.ES_logger.debug('working_rasters cleaned!')
+
     ############################################################################
     ############################################################################
     # 排放峰值和排放中心分析
