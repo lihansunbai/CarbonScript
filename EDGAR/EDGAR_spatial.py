@@ -1822,18 +1822,9 @@ class EDGAR_spatial(object):
     # 处理给定年份范围内的工作
     # 批量处理可以使用这个函数
     def proccess_decade(self, decade):
-        # 首先需要列出所有需要使用到的栅格
-        # 1、列出年代际均值栅格
-        temp_decade_mean_total_emission = self.do_arcpy_list_raster_list(wildcard_list=['decade_grid_mean_emission_{}s'.format(decade)])
-        # 2、列出部门的年代际均值栅格
-        # 注意这里用到了lower函数，因为存文件名的时候使用的是小写，所以需要转换
-        temp_decade_categories_emission = self.do_arcpy_list_raster_list(wildcard_list=['decade_{}_mean_emission_{}s'.format(cate.lower(), decade) for cate in self.EDGAR_sectors.values()])
-        # self.prepare_raster(filter_label=temp_filter_label)
-
         self.print_start_year('{}'.format(decade))
-        self.decade_category_emission_percentage(decade=decade)
-        self.year_weight_joint(decade, self.EDGAR_sectors)
-        # self.max_weight_rasterize(yr)
+        # self.decade_category_emission_percentage(decade=decade)
+        self.decade_weight_joint(decade, self.EDGAR_sectors)
         self.print_finish_year('{}'.format(decade))
 
     def category_emission_percentage(self, category, decade, output_category_point):
@@ -1957,12 +1948,13 @@ class EDGAR_spatial(object):
         # 列出提取值的栅格
         temp_extract_raster = self.do_arcpy_list_raster_list(wildcard_list=
                             ['{}_weight_raster_{}'.format(cate, decade) for cate in category_dict.values()])
+        temp_extract_raster_dict = self.zip_sectors_rasters_to_dict(category_dict, temp_extract_raster)
 
         # logger output
         self.ES_logger.debug('Calculate weight in: {}'.format(str(temp_extract_raster)))
 
         # 首先弹出一个部门作为合并的起始指针
-        temp_point_start_wildcard = '{}*{}s'.format(category_dict.values()[0], decade)
+        temp_point_start_wildcard = '{}*{}s'.format(temp_extract_raster_dict.popitem()[0], decade)
         # 这里的逻辑看似有点奇怪，其实并不奇怪。
         # 因为在sector_emission_percentage()中已经保存了完整的‘部门-年份’点数据
         # 所以可以用其中一个点数据作为提取的起点。
@@ -1985,7 +1977,7 @@ class EDGAR_spatial(object):
 
         # 需要先进行一次提取操作，输入到EPT_iter中
         # 这里需要开启覆盖操作，或者执行一个del工作
-        temp_ETP_1_sector, temp_ETP_1_raster = temp_extract_raster.popitem()
+        temp_ETP_1_sector, temp_ETP_1_raster = temp_extract_raster_dict.popitem()
         self.do_ETP(
             ExtractPoint=temp_point_start,
             ValueRaster=temp_ETP_1_raster,
@@ -1993,9 +1985,9 @@ class EDGAR_spatial(object):
             NewFieldName=('RASTERVALU', temp_ETP_1_sector))
 
         # 逐个处理剩下的部门
-        for sect in tqdm(temp_extract_raster):
+        for sect in tqdm(temp_extract_raster_dict):
             # 从字典中获得部门和对应的待提取值栅格
-            temp_ETP_raster = temp_extract_raster[sect]
+            temp_ETP_raster = temp_extract_raster_dict[sect]
             temp_point_output = temp_point_iter_root + sect
 
             self.do_ETP(
@@ -2020,7 +2012,7 @@ class EDGAR_spatial(object):
                 ExtractPoint=temp_point_output,
                 ValueRaster=temp_total_emission,
                 outPoint=output_sectoral_weights,
-                NewFieldName=('RASTERVALU', 'grid_total_emission'))
+                NewFieldName=('RASTERVALU', 'grid_decade_mean_emission'))
 
             # logger output
             self.ES_logger.debug('Sectoral weights saved:{}'.format(output_sectoral_weights))
