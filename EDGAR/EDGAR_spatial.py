@@ -1823,7 +1823,7 @@ class EDGAR_spatial(object):
     # 批量处理可以使用这个函数
     def proccess_decade(self, decade):
         self.print_start_year('{}'.format(decade))
-        # self.decade_category_emission_percentage(decade=decade)
+        self.decade_category_emission_percentage(decade=decade)
         self.decade_weight_joint(decade, self.EDGAR_sectors)
         self.print_finish_year('{}'.format(decade))
 
