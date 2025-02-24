@@ -5682,7 +5682,7 @@ class EDGAR_spatial(object):
         # 保存结果
         temp_log_raster.save(log_raster_save_name)
         self.ES_logger.info('log raster saved: {}'.format(log_raster_save_name))
-        print('convert to log: {}\n'.format(log_raster_save_name))
+        # print('convert to log: {}\n'.format(log_raster_save_name))
 
     ############################################################################
     ############################################################################
