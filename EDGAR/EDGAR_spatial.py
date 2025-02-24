@@ -420,6 +420,7 @@ class EDGAR_spatial(object):
         'semivariogramType' :"GAUSSIAN",
         'kRadius' : 0.3
         }
+
     ############################################################################
     ############################################################################
     # 通用参数、属性和方法
@@ -1430,7 +1431,6 @@ class EDGAR_spatial(object):
         # logger output
         self.ES_logger.info('All sectors merged!')
 
-
     ######################################
     ######################################
     # 计算单个部门占年排放总量中的比例
@@ -2138,7 +2138,6 @@ class EDGAR_spatial(object):
     # 操作类的函数
     ############################################################################
     # 返回完整的排放中心数据
-
     def return_emission_center(self, emission_center):
         # 检查输入的emission_center是否存在，不存在则直接返回
         if not emission_center:
@@ -2380,7 +2379,7 @@ class EDGAR_spatial(object):
                 temp_peak_list.extend(self.emission_peak(emission_peak_range=temp_list_to_tuple(ep[1]['peak_range']), year=temp_year_list(ep[1]['year'])))
             
             self.add_emission_peaks(emission_center=temp_center, peaks_list=temp_peak_list)
-                
+
     ############################################################################
     # 排放峰值和排放中心分析计算相关函数/方法
     ############################################################################
@@ -4060,7 +4059,7 @@ class EDGAR_spatial(object):
             return temp_return_rasters
         else:
             return
-            
+
     ############################################################################
     ############################################################################
     # 合并同一年不同排放中心至一个栅格
@@ -4348,7 +4347,7 @@ class EDGAR_spatial(object):
             # 执行叠加背景
             self.do_EOF_mosaic_extend(raster_list=temp_working_rasters,
                                     background=temp_background)
-            
+
     # 执行为任意栅格叠加背景值的
     # 注意！
     # 执行这个操作将改变输入栅格。请不要在原始数据上执行！
@@ -4435,7 +4434,7 @@ class EDGAR_spatial(object):
         # 如果需要函数返回则在这里返回字典，如果不需要返回则函数直接跳过后结束。
         if return_result:
             return temp_return
-        
+
     # 实际执行从点数据中生成某一个中心里的不同分类的排放量栅格
     # 注意！！！
     # 这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`centerName_category_year`。
@@ -4582,7 +4581,7 @@ class EDGAR_spatial(object):
             return temp_return_rasters
         else:
             return
-            
+
     # 通过给定中心和分类的列表，生成一个中心里所有分类的空间分布范围
     def EOF_generate_center_categories_geographical_extend(self, center, total_emission_list):
         if not center or not total_emission_list :
@@ -4627,7 +4626,7 @@ class EDGAR_spatial(object):
 
         if return_result:
             return temp_return
-        
+
     # 实际执行从点数据中生成某一个年份中不同分类的排放量栅格
     # 注意！！！
     # 这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`centerName_category_year`。
@@ -4771,7 +4770,7 @@ class EDGAR_spatial(object):
             return temp_return_rasters
         else:
             return
-            
+
     # 用于从中心中提取每个部门从起始年份的排放量区域
     # 执行这个函数之前还是要先提取出每个类型的排放，而不是使用最原始的每个部门的排放。
     def EOF_extract_center_categories_emission_raster(self, center, category_list,year_range=[1970,2019], category_emission_fmt='{}_EOF_{}_{}', background_fmt='{}_EOF_geographical_extend_null_mask',return_raster_list=True):
@@ -4839,7 +4838,7 @@ class EDGAR_spatial(object):
         # 处理是否需要返回处理后的栅格结果
         if return_raster_list:
             return return_list
-            
+
     # 实际执行从一个中心的一个部门类型中，逐年提取中心历史范围中的数据
     def do_EOF_extract_center_categories_emission_ratser(self):
         pass
@@ -5600,6 +5599,91 @@ class EDGAR_spatial(object):
     # 实际执行将不同维度的EOF场合成场点数据的函数
     def do_EOF_joint_composite_modes_to_point(self, center, category_list, mode):
         pass
+
+    # 将标准差的图转变为对数形式表达
+    def EOF_std_map_log(self, center_list, category_list, mode_list, composite_mode=False):
+        '''
+        将标准差的图转变为对数形式表达
+        '''
+        if not center_list or not category_list or not mode_list:
+            print('ERROR: emission center list or categories list or mode list does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('emission center list or categories list or mode list does not exist. Please check exist.')
+            exit(1)
+
+        ########################################
+        ########################################
+        # 以下内容都是在构造需要进行转换的栅格名称
+        ########################################
+        ########################################
+        # EOF 栅格名模板
+        eof_raster_template = r'.*{}_{}_.*mode_{}_(multiple_std)$'
+
+        # 构造所有栅格名
+        eof_raster_wildcard = [eof_raster_template.format(center.center_name, category, mode) 
+                                for center in center_list
+                                    for category in category_list
+                                        for mode in mode_list]
+        
+        # 列出需要处理的栅格
+        eof_raster_list = self.do_arcpy_list_raster_list(wildcard_list=eof_raster_wildcard, wildcard_mode=False)
+
+        # 是否需要加入合成场栅格
+        if composite_mode:
+            eof_raster_template = r'.*{}_composite.*mode_{}_(multiple_std)$'
+            
+            eof_raster_wildcard = [eof_raster_template.format(center.center_name, mode)
+                                    for center in center_list
+                                        for mode in mode_list]
+            
+            eof_composite_rater_list = self.do_arcpy_list_raster_list(wildcard_list=eof_raster_wildcard, wildcard_mode=False)
+
+            if eof_composite_rater_list:
+                eof_raster_list.extend(eof_composite_rater_list)
+        
+        # 执行实际转换
+        for eof_raster in tqdm(eof_raster_list):
+            self.do_EOF_std_map_log(eof_raster)
+
+
+    # 实际执行将标准差转变为对数形式表达
+    def do_EOF_std_map_log(self, eof_raster_name):
+        '''
+        实际执行将标准差转变为对数形式表达
+        '''
+        # 将栅格文件名转换为arcgis Raster类型
+        eof_raster = Raster(eof_raster_name)
+
+        # 生成文件名
+        log_raster_save_name = '{}_log'.format(eof_raster_name)
+
+        ########################################################################
+        ########################################################################
+        # 以下的算法只使用了raster calculator（数学万岁！）
+        # 这个算法的思路如下
+        # 1、处理原始数据中(0,1)的部分，因为在log计算中这部分数值会进入负数区间，
+        #   引入不必要的困难。
+        #   这里直接把(0,1)的数据规定为1。这样做其实并不会引起实质上的影响。在
+        #   全球碳排放量的数量级变化中，这样的操作并不影响明显变化的碳排放变化。
+        #       Con((raster >= -1) & (raster < 0), -1, Con((raster >= 0) & (raster < 1), 1, raster))
+        #       评论：这个Con的用法从Arcgis的文档中真的很难找到明确的指引，
+        #               但是嵌套的Con确实是这个写法。
+        # 2、生成数据的正负区域差异图，记为PN，用来标记栅格中的正负值区域。如果不处理
+        #    那么结算结果中会丢失变化为负值的区域。
+        #       Con(Con((raster >= -1) & (raster < 0), -1, Con((raster >= 0) & (raster < 1), 1, raster)) < 0, -1, 1)
+        # 3、最终的结果就是，log(raster * PN ) * PN。因为第一次乘以PN可以把
+        #    所有负值转变为正数，从而可以计算对数值；而对数计算结果再次乘以PN
+        #    则可以恢复原来是负数变化区域的负号
+        ########################################################################
+        ########################################################################
+        temp_log_raster = Log10(Con((eof_raster >= -1) & (eof_raster < 0), -1, Con((eof_raster >= 0) & (eof_raster < 1), 1, eof_raster)) * Con(Con((eof_raster >= -1) & (eof_raster < 0), -1, Con((eof_raster >= 0) & (eof_raster < 1), 1, eof_raster)) < 0, -1, 1)) * Con(Con((eof_raster >= -1) & (eof_raster < 0), -1, Con((eof_raster >= 0) & (eof_raster < 1), 1, eof_raster)) < 0, -1, 1)
+        self.ES_logger.info('convert to log: {}'.format(eof_raster_name))
+        # 保存结果
+        temp_log_raster.save(log_raster_save_name)
+        self.ES_logger.info('log raster saved: {}'.format(log_raster_save_name))
+        print('convert to log: {}\n'.format(log_raster_save_name))
+
     ############################################################################
     ############################################################################
     # 用于表达栅格较少中心的插值函数
@@ -5685,58 +5769,59 @@ class EDGAR_spatial(object):
                                         raster_list,
                                         background_raster,
                                         output_name_fmt='extend_{}'):
-        # 测试生成的文件名是否可用
-        # 列出待计算栅格的列表
-        temp_working_rasters = self.do_arcpy_list_raster_list(raster_list)
+        # # 测试生成的文件名是否可用
+        # # 列出待计算栅格的列表
+        # temp_working_rasters = self.do_arcpy_list_raster_list(raster_list)
 
-        # 用于保存临时数据的列表
-        temp_mosaic_background = []
+        # # 用于保存临时数据的列表
+        # temp_mosaic_background = []
 
-        # 第一步：为栅格mosaic零值背景
-        for raster in tqdm(temp_working_rasters):
-            temp_new_mosaic = 'temp_new_mosaic_{}'.format(raster)
+        # # 第一步：为栅格mosaic零值背景
+        # for raster in tqdm(temp_working_rasters):
+        #     temp_new_mosaic = 'temp_new_mosaic_{}'.format(raster)
             
-            self.mosaic_background_to_raster(inRaster=raster, background=background_raster,output_Raster=temp_new_mosaic)
+        #     self.mosaic_background_to_raster(inRaster=raster, background=background_raster,output_Raster=temp_new_mosaic)
 
-            temp_mosaic_background.append(temp_new_mosaic)
+        #     temp_mosaic_background.append(temp_new_mosaic)
 
-        # 第二步：叠加所有栅格
-        temp_extend = self.do_raster_add(temp_mosaic_background)
+        # # 第二步：叠加所有栅格
+        # temp_extend = self.do_raster_add(temp_mosaic_background)
 
-        # 第三步：栅格非零值赋值为1
-        # 这里需要注意栅格计算中输入的栅格参数是str还是arcpy栅格对象。
-        # 如果遇到ERROR:999998错误，可以尝试检查输入的对象是否栅格化为arcpy栅格对象。
-        temp_extend = Con(arcpy.Raster(temp_extend), 1, 0, "VALUE <> 0")
+        # # 第三步：栅格非零值赋值为1
+        # # 这里需要注意栅格计算中输入的栅格参数是str还是arcpy栅格对象。
+        # # 如果遇到ERROR:999998错误，可以尝试检查输入的对象是否栅格化为arcpy栅格对象。
+        # temp_extend = Con(arcpy.Raster(temp_extend), 1, 0, "VALUE <> 0")
 
-        # logger output
-        self.ES_logger.info('extend set to 1 mask')
+        # # logger output
+        # self.ES_logger.info('extend set to 1 mask')
 
-        # 第四步：零值设为空值
-        temp_null_extend = SetNull(temp_extend, 0, "VALUE = 0")
-        temp_null_extend = Con(temp_null_extend == 1, 0, temp_null_extend)
-        self.ES_logger.info('extend set to background mask')
+        # # 第四步：零值设为空值
+        # temp_null_extend = SetNull(temp_extend, 0, "VALUE = 0")
+        # temp_null_extend = Con(temp_null_extend == 1, 0, temp_null_extend)
+        # self.ES_logger.info('extend set to background mask')
 
-        # 保存生成的两个结果
-        # 生成待统计的栅格名称
-        try:
-            temp_save_extend = output_name_fmt.format('mask')
-            temp_save_null_extend = output_name_fmt.format('null_mask')
-        except Exception as e:
-            print('background formatting failed.')
+        # # 保存生成的两个结果
+        # # 生成待统计的栅格名称
+        # try:
+        #     temp_save_extend = output_name_fmt.format('mask')
+        #     temp_save_null_extend = output_name_fmt.format('null_mask')
+        # except Exception as e:
+        #     print('background formatting failed.')
 
-            # logger output
-            self.ES_logger.error('save raster name formatting failed. raster name formate was {}.'.format(output_name_fmt))
+        #     # logger output
+        #     self.ES_logger.error('save raster name formatting failed. raster name formate was {}.'.format(output_name_fmt))
 
-            exit(1)
+        #     exit(1)
 
-        # 执行保存
-        temp_extend.save(temp_save_extend)
-        temp_null_extend.save(temp_save_null_extend)
-        # logger output
-        self.ES_logger.info('geographical extend generated')
+        # # 执行保存
+        # temp_extend.save(temp_save_extend)
+        # temp_null_extend.save(temp_save_null_extend)
+        # # logger output
+        # self.ES_logger.info('geographical extend generated')
 
-        # 删除临时栅格
-        self.delete_temporary_raster(temp_mosaic_background)
+        # # 删除临时栅格
+        # self.delete_temporary_raster(temp_mosaic_background)
+        pass
 
     # 旧函数不建议使用！！！
     # 提取总排放量、最大排放部门和最大排放部门比例的函数
@@ -5893,7 +5978,6 @@ class EDGAR_spatial(object):
 
         #     self.do_extract_center_area(
         #         center_range=center_range, total_emission_raster=temp_total_emission, year=yr)
-
         pass
 
     # 这个函数已经被废弃
@@ -6091,7 +6175,7 @@ class EDGAR_spatial(object):
         #         # logger output 
         #         self.ES_logger.debug('Numpy array saved to NPZ: %s' % temp_save_name)
         pass
-    
+
     # 生成一个可供EOF_raster_to_numpy_multivariates()使用的字典
     # 使用`分类`和`名称`归类同一年份栅格
     # 通过`category_list`参数给出的顺序，确定最终生成的字典的。
