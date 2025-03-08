@@ -67,6 +67,70 @@ class EDGAR_spatial(object):
                  st_year=1970,
                  en_year=2019,
                  log_path='EDGAR.log'):
+        """
+        初始化EDGAR_spatial类，设置工作空间和时间范围。
+
+        这个构造函数配置日志记录，验证年份范围参数，
+        并为EDGAR排放数据的空间操作设置环境。
+
+        参数：
+        -----------
+        workspace : str
+            执行操作和存储结果的工作空间目录路径。
+
+        st_year : int, optional
+            要处理的数据时间范围的起始年份。
+            默认为1970年。必须在支持的数据范围内。
+
+        en_year : int, optional
+            要处理的数据时间范围的结束年份。
+            默认为2019年。必须在支持的数据范围内。
+
+        log_path : str, optional
+            存储操作日志的日志文件路径。
+            默认为当前目录中的'EDGAR.log'。
+
+        异常：
+        -------
+        SystemExit
+            如果年份参数不是整数或超出支持的范围。
+        
+        English version:
+        Initialize the EDGAR_spatial class with workspace and time range settings.
+
+        This constructor configures logging, validates the year range parameters,
+        and sets up the environment for spatial operations on EDGAR emissions data.
+
+        Parameters:
+        -----------
+        workspace : str
+            Path to the workspace directory where operations will be performed
+            and results will be stored.
+
+        st_year : int, optional
+            Starting year for the time range of data to be processed.
+            Default is 1970. Must be within the supported data range.
+
+        en_year : int, optional
+            Ending year for the time range of data to be processed.
+            Default is 2019. Must be within the supported data range.
+
+        log_path : str, optional
+            Path to the log file where operation logs will be stored.
+            Default is 'EDGAR.log' in the current directory.
+
+        Raises:
+        -------
+        SystemExit
+            If year parameters are not integers or are outside the supported range.
+        """
+        # 初始化logger记录类的全体工作
+        # ES_logger为可使用的logging实例
+        # 类使用的logger
+                 workspace,
+                 st_year=1970,
+                 en_year=2019,
+                 log_path='EDGAR.log'):
         # 初始化logger记录类的全体工作
         # ES_logger为可使用的logging实例
         # 类使用的logger
@@ -1220,6 +1284,58 @@ class EDGAR_spatial(object):
 
     # 实际执行列出栅格的方法，这个为list方式
     def do_arcpy_list_raster_list(self, wildcard_list, wildcard_mode=True):
+        """
+        中文帮助
+        列出工作空间中与wildcard_list中模式匹配的栅格数据集。
+
+        该方法使用正则表达式匹配来过滤工作空间中的栅格数据集，
+        而不是直接为每个模式使用arcpy.ListRasters()，这可能非常耗时。
+
+        参数：
+        -----------
+        wildcard_list : list
+            用于匹配栅格名称的通配符模式或正则表达式列表。
+
+        wildcard_mode : bool, default=True
+            确定如何解释wildcard_list元素：
+            - 如果为True：元素被视为arcpy通配符（例如"*.tif"），"*"会被转换为".*"以用于正则表达式。
+            - 如果为False：元素已经是正则表达式，直接使用。
+
+        返回：
+        --------
+        list
+            与wildcard_list中任何模式匹配的栅格数据集名称列表。
+
+        注释：
+        ------
+        这个方法比重复调用arcpy.ListRasters()更高效，特别是在处理工作空间中大量栅格数据集时。
+        
+        English version:
+        Lists raster datasets in the workspace that match patterns in wildcard_list.
+
+        This method uses regular expression matching to filter raster datasets in the workspace
+        rather than directly using arcpy.ListRasters() for each pattern, which can be time-consuming.
+
+        Parameters:
+        -----------
+        wildcard_list : list
+            A list of wildcard patterns or regular expressions to match against raster names.
+
+        wildcard_mode : bool, default=True
+            Determines how the wildcard_list elements are interpreted:
+            - If True: Elements are treated as arcpy wildcards (e.g., "*.tif"), and "*" is converted to ".*" for regex.
+            - If False: Elements are already regular expressions and used directly.
+
+        Returns:
+        --------
+        list
+            A list of raster dataset names that match any of the patterns in wildcard_list.
+
+        Notes:
+        ------
+        This method is more efficient than calling arcpy.ListRasters() repeatedly, especially when
+        dealing with large numbers of raster datasets in the workspace.
+        """
         # 临时存储列出的栅格
         temp_result_rasters = []
 
@@ -1586,7 +1702,7 @@ class EDGAR_spatial(object):
 
         # 初始化部分参数
         # 设定的保存的文件名的格式
-        output_sectoral_weights = 'sectoral_weights_{}'.format(year) 
+        output_sectoral_weights = 'sectoral_weights_{}'.format(year)
         # 设定需要删除的临时生成文件列表
         delete_temporary = []
 
@@ -1652,7 +1768,7 @@ class EDGAR_spatial(object):
         # 这里应该加入合并单元格排放量的ETP过程。
         # 保存最后的输出结果
         # 应该用temp_point_output去提取total_emission_xxxx，生成结果。
-        temp_total_emission = 'total_emission_{}'.format(year) 
+        temp_total_emission = 'total_emission_{}'.format(year)
         if arcpy.Exists(temp_total_emission):
             print('Saving sectoral weights and total emission...')
             self.do_ETP(
@@ -5677,6 +5793,17 @@ class EDGAR_spatial(object):
         #    则可以恢复原来是负数变化区域的负号
         ########################################################################
         ########################################################################
+        # 1. Process data for log calculation:
+        #    - Values in range [-1,0) are converted to -1
+        #    - Values in range [0,1) are converted to 1
+        #    - All other values remain unchanged
+        # 2. Create a sign mask (PN) that preserves the original sign information:
+        #    - If processed value < 0, then PN = -1
+        #    - Otherwise, PN = 1
+        # 3. Calculate log10 of the absolute values by:
+        #    - Multiplying by the sign mask to make all values positive
+        #    - Taking log10 of the result
+        #    - Multiplying by the sign mask again to restore original signs
         temp_log_raster = Log10(Con((eof_raster >= -1) & (eof_raster < 0), -1, Con((eof_raster >= 0) & (eof_raster < 1), 1, eof_raster)) * Con(Con((eof_raster >= -1) & (eof_raster < 0), -1, Con((eof_raster >= 0) & (eof_raster < 1), 1, eof_raster)) < 0, -1, 1)) * Con(Con((eof_raster >= -1) & (eof_raster < 0), -1, Con((eof_raster >= 0) & (eof_raster < 1), 1, eof_raster)) < 0, -1, 1)
         self.ES_logger.info('convert to log: {}'.format(eof_raster_name))
         # 保存结果
