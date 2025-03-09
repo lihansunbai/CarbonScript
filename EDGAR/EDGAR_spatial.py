@@ -124,13 +124,7 @@ class EDGAR_spatial(object):
         SystemExit
             If year parameters are not integers or are outside the supported range.
         """
-        # 初始化logger记录类的全体工作
-        # ES_logger为可使用的logging实例
-        # 类使用的logger
-                 workspace,
-                 st_year=1970,
-                 en_year=2019,
-                 log_path='EDGAR.log'):
+
         # 初始化logger记录类的全体工作
         # ES_logger为可使用的logging实例
         # 类使用的logger
@@ -1966,14 +1960,18 @@ class EDGAR_spatial(object):
         # 这里涉及除法！0值的背景会被抹去为nodata。所以要再mosaic一个背景上去才能转化为点。
         temp_output_weight_raster = temp_category_emission / temp_year_total
 
+        # 注意，计算中可能存在未知错误导致某些区域的排放总量小于部门排放量导致比值大于1
+        # 所以要将大于1的区域设置为空值
+        temp_output_weight_raster_revise = SetNull(temp_output_weight_raster > 1, temp_output_weight_raster)
+
         # logger output
         self.ES_logger.debug('Sectoral raster weight calculated:{}'.format(category) )
 
         # Mosaic 比例计算结果和0值背景
-        # Mosaic 的结果仍然保存在temp_output_weight_raster中
+        # Mosaic 的结果仍然保存在temp_output_weight_raster_revise中
         arcpy.Mosaic_management(
-            inputs=[temp_output_weight_raster, self.background[2]],
-            target=temp_output_weight_raster,
+            inputs=[temp_output_weight_raster_revise, self.background[2]],
+            target=temp_output_weight_raster_revise,
             mosaic_type="FIRST",
             colormap="FIRST",
             mosaicking_tolerance=0.5)
@@ -1983,7 +1981,7 @@ class EDGAR_spatial(object):
 
         # 保存栅格格式权重计算结果
         temp_output_weight_raster_path = '{}_weight_raster_{}'.format(category, decade)
-        temp_output_weight_raster.save(temp_output_weight_raster_path)
+        temp_output_weight_raster_revise.save(temp_output_weight_raster_path)
 
         #######################################################################
         #######################################################################
@@ -2001,6 +1999,7 @@ class EDGAR_spatial(object):
         #######################################################################
         #######################################################################
         del temp_output_weight_raster
+        del temp_output_weight_raster_revise
         #######################################################################
         #######################################################################
 
@@ -3737,6 +3736,243 @@ class EDGAR_spatial(object):
         # 将自定义的编码合并。同时将其转化为元组，保持元素的顺序。
         self.gen_encode = tuple((['uncatalogued'] + encode_list))
 
+    # 生成需要统计的部门分类字段和排序后字段的名称
+    @property
+    def decade_categories_generalization_method(self):
+        # return self.gen_method
+        pass
+
+    # 需要为setter函数传入一个字典，字典中需要包含两个键值对：
+    # 第一个键值对：key：‘gen_handle’；value: 一个字典其需要符合__default_gen_handle。
+    # 第二个键值对：key：‘FieldsinTable’；value：一个列表其是获得的数据表中的所有已有的字段。
+    # setter函数实质上实现了如下功能：
+    # 1、生成一个gen_method字典；
+    # 2、为该字典中添加需要若干组键值对（key-value），
+    #   每一个键值对中的键（key）为分类的名称，
+    #   值（value）为构成这个分类的每个部门（sector）在一个arcpy.cursor游标中的位置，这些位置通过列表的方式保存。
+    @decade_categories_generalization_method.setter
+    def decade_categories_generalization_method(self, args):
+        # # 创建一个新的gen_method字典
+        # self.gen_method = {}
+
+        # # 在gen_handle字典中逐个处理
+        # # gen_handle字典的内容：键是部门（sector）、值是分类（category），
+        # # 因此这里可以直接由items()方法获得所需信息
+        # for sector, category in args['gen_handle'].items():
+        #     # 如果分类还未创建则添加一个新项到字典中
+        #     if not category in self.gen_method:
+        #         self.gen_method[category] = [args['FieldsinTable'].index(sector)]
+        #     # 分类已存在则在值中追加一个新的部门（sector）位置
+        #     else:
+        #         self.gen_method[category].append(args['FieldsinTable'].index(sector))
+        pass
+
+    ############################################################################
+    # 年代际部门排放合并至分类排放相关函数/方法
+    ############################################################################
+    # # 打印分类和对应编码的表格
+    # def print_categories(self, generalization_encode):
+    #     print('Following table shows the categories and assigned codes for sectoral emission generalization.')
+
+    #     # 设置打印格式
+    #     temp_table_header_fmt = ['Categories', 'Code']
+
+    #     # 打印表格
+    #     print(tabulate(
+    #         list(zip(self.gen_encode, range(len(self.gen_encode)))),
+    #         headers=temp_table_header_fmt,
+    #         tablefmt="grid"))
+
+    # # 这里需要传入两个参数：第一个参数，已经统计得到的分类和对应的排放量比例字典；第二个参数，自定义的编码方式
+    # # 函数将返回一个整数，这个整数的不同位置上的数字代表了对应部门的代码，同时整数的位数也表明了栅格部门的排放有多少个分类。
+    # def generalization_category_encoding(self, category_percentages, encode):
+    #     # 检查两个输入变量是否为空，若为空则直接返回空字典
+    #     if not category_percentages or not encode:
+    #         print('ERROR: input category percentages or encode method is empty. Please check the input.')
+
+    #         # logger output
+    #         self.ES_logger.error('input category percentages or encode method is empty.')
+    #         exit(1)
+
+    #     # 排序字典结果，生成排序结果
+    #     # 这里需要引入排序字典以保证字典的顺序不会发生变化
+    #     temp_sorted = collections.OrderedDict(
+    #         sorted(category_percentages.items(), key=lambda item: item[1], reverse=True))
+
+    #     # 初始化编码
+    #     temp_encode = ''
+
+    #     # 从encode中找到位置然后顺序赋值
+    #     for category, percentages in temp_sorted.items():
+    #         # 如果分类为0，则不用赋值代码直接返回现有代码
+    #         # 注意这里可能会由于栅格的排放比例为极小的小数，从而产生误判，需要特殊处理
+    #         if percentages == 0:
+    #             # 特殊情况：如果最大排放（第一个元素）就是0，则直接返回0。
+    #             # 这里主要处理可能存在的0排放格网的漏网之鱼。
+    #             if temp_encode == '':
+    #                 return 0
+    #             # 从现有位开始剩余位置均返回0
+    #             else:
+    #                 temp_sorted_position = list(temp_sorted.keys()).index(category)
+    #                 # 之后位数赋值为0的本质就是乘上10，100，1000...这样的10的幂次的数
+    #                 fill_suffix = math.pow(10, len(temp_sorted) - temp_sorted_position)
+    #                 temp_encode = int(temp_encode) * fill_suffix
+    #                 return int(temp_encode)
+    #         else:
+    #             # 从encode中找到元素的对应位置，位置即为代码
+    #             temp_index = encode.index(category)
+    #             temp_encode += str(temp_index)
+
+    #     # 返回结果
+    #     return int(temp_encode)
+
+    # # 统计分类排放量比例总和的函数。
+    # # 需要传入一个arcpy.cursor游标。
+    # # 函数返回一个字典，键为分类的名称，值为排放比例。
+    def decade_categories_generalization_summarize(self, arcpyCursor, categories):
+        # 检查两个输入变量是否为空，若为空则直接返回空字典
+        if not categories:
+            print('ERROR: input categories is empty. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('input categories is empty.')
+            exit(1)
+
+        # 临时存储分类比例加和结果的字典，其中的键为分类名称，值为比例加和结果
+        results = {}
+
+        # 计算每个分类排放的比例
+        for category in categories:
+            results[category] = arcpyCursor[categories.index(category)]
+
+        return results
+
+    # 执行对数据表中的行数据内容进行分类整合的函数
+    # 注意：
+    # 这个函数要返回结果？
+    # 这个函数要返回一个字典，其键为对应arcpy的字段名，值为统计后的结果
+    def categories_generalize_processe(self, arcpyCursor, encode_list, sorted_field):
+        # 初始化临时变量
+        # 获得需要进行的分类名称
+        # 先从表格中获得结果字段然后删除排序结果字段就是需要的分类名称
+        # temp_category = copy.deepcopy(encode_list)
+        # 获得分类排序的编码规则
+        self.generalization_encode = encode_list
+        temp_encode = self.generalization_encode
+
+        # 将各个部门的排放比例按字典返回
+        cate_percents = self.decade_categories_generalization_summarize(arcpyCursor=arcpyCursor,categories=encode_list)
+
+        # 排序字典，生成排序结果
+        sorted_sectors = self.generalization_category_encoding(
+            category_percentages=cate_percents, encode=temp_encode)
+
+        # 返回结果字典
+        return sorted_sectors
+
+    # 实际执行单个栅格的部门类型归类
+    # 这里传入的genFieldList参数是指需要在数据表中添加的用于结果生成的字段组成的列表。所以，列表中应该由若干字典组成。
+    # 这些字典中的键值这里需要满足field_attributes_checker的条件，也就是要满足arcpy为数据表添加字段的要求。
+    # 如果数据表中已经存在了对应的统计结果生成的字段，则可以传入一个空列表参数以跳过添加字段过程。
+    def do_categories_generalize(self, inPoint, genFieldList, gen_sorted_field):
+        # 尝试为数据表添加统计结果字段
+        # 这里会检查genField参数，如果传入空字典则跳过添加字段步骤，如果为有内容的字典则进行字段添加，如果为其他类型的则报错
+        self.addField_to_inPoint(inPoint=inPoint, genFieldList=gen_sorted_field)
+        sorted_field = gen_sorted_field[0]['field_name']
+        sorted_field_categories_name = gen_sorted_field[1]['field_name']
+
+        # 首先列出点数据中的所有字段并提取出也在gen_handle存在的字段
+        # --first lets make a list of all of the fields in the table
+        # fields = arcpy.ListFields(inPoint)
+        # field_names = [field.name for field in fields]
+        # # 从已有的数据表中找到对应部门的位置，并存入统计方法中
+        # self.generalization_method = {'gen_handle': gen_handle, 'FieldsinTable': field_names}
+        # # 获得统计结果字段的名称
+        # self.generalization_results = gen_handle
+        field_names = copy.deepcopy(genFieldList)
+        field_names.extend([sorted_field, sorted_field_categories_name, 'grid_log_decade_mean_emission'])
+
+        # 注意：
+        # 根据arcpy文档给出的说明：
+        # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
+        # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
+        # 构造游标，开始逐行操作
+        with arcpy.da.UpdateCursor(inPoint, field_names) as cursor:
+            for row in tqdm(cursor):
+                # 这里的排序操作需要得到两个结果，一个是整数的完整结果，第二个是前三排放分类的名字
+                # 其中sorted_field储存整数的完整结果
+                # 其中sorted_field_categories_name存储前三个分类的名字
+                # 检查栅格排放值是否为0，为0则直接将所有值赋值为0
+                if row[field_names.index('grid_log_decade_mean_emission')] == 0 or row[field_names.index('grid_log_decade_mean_emission')] is None:
+                    row[field_names.index(sorted_field)] = 0
+                    row[field_names.index(sorted_field_categories_name)] = None
+                else:
+                    # 这里需要判断一个很特殊的情况，区域中各部门的排放都非常小，则同样不进行排序
+                    if max(row[:-3]) == 0:
+                        row[field_names.index(sorted_field)] = 0
+                        row[field_names.index(sorted_field_categories_name)] = None
+                    else: #如果存在有效排放则进行部门排序
+                        temp_generalization = self.categories_generalize_processe(row, encode_list = genFieldList, sorted_field=sorted_field)
+                        # 更新分类排放排序后的整数结果
+                        row[field_names.index(sorted_field)] = temp_generalization
+
+                        # 将前三部门名存入
+                        # 将前三位数分别存为列表中的单独一项
+                        temp_top_three_list = [int(s) for s in str(temp_generalization/100)]
+                        # 设置连接表的连接字符
+                        temp_top_three_separator = '-'
+                        # 储存临时的前三位部门名称
+                        temp_top_three_part = []
+                        # 按照编码找到对应部门
+                        for t3 in temp_top_three_list:
+                            if t3 == 0: # 如果为0，即代表没有部门排放，不填入数值
+                                pass
+                            else: # 如果存在排放则添加对应名字
+                                temp_top_three_part.append(genFieldList[t3 - 1]) # 注意这里需要-1，因为原始编码中0被赋予了数组0号位的空值
+                        
+                        # 连接字符串
+                        temp_top_three_string = temp_top_three_separator.join(temp_top_three_part)
+                        # 更新分类排放排序后的字符串结果
+                        row[field_names.index(sorted_field_categories_name)] = temp_top_three_string
+
+                # 更新行信息
+                cursor.updateRow(row)
+
+    # 对点数据中的栅格执行部门类型归类
+    def categories_generalize(self, inPoint, gen_fieldList, gen_sorted_field):
+        # 检查输入是否为空。为空则直接返回。
+        if gen_sorted_field == []:
+            print('WARNING: gen_sorted_field is empty. Process will not add new field to data table.')
+
+            # logger output
+            self.ES_logger.info('No new fields were added.')
+
+        if gen_fieldList == []:
+            print('WARNING: gen_fieldList is empty. Process will not add new field to data table.')
+
+            # logger output
+            self.ES_logger.info('No new fields were added.')
+
+        # 调用实际执行函数进行归类
+        self.do_categories_generalize(
+            inPoint=inPoint, genFieldList=gen_fieldList, gen_sorted_field=gen_sorted_field)
+
+    # 处理一定时间范围内的部门排放进行类型归类
+    def decade_categories_generalize(self, year_range, gen_fieldList, gen_sorted_field):
+        # 检查输入年份变量参数是否合规
+        if min(year_range) < self.__default_start_year or max(year_range) > self.__default_end_year:
+            print('Error! Processing year range out of data support! The year must contain in 1970 to 2019')
+            self.ES_logger.info('Year settings are out of range.')
+            self.ES_logger.error('Year setting error!')
+            exit(1)
+
+        for year in year_range:
+            temp_inPoint = 'decade_category_weights_with_urbanization_{}'.format(year)
+            self.print_start_year(year=year)
+            self.categories_generalize(
+                inPoint=temp_inPoint, gen_fieldList=gen_fieldList, gen_sorted_field=gen_sorted_field)
+            self.print_finish_year(year=year)
+
     ############################################################################
     # 部门排放合并至分类排放相关函数/方法
     ############################################################################
@@ -3858,6 +4094,30 @@ class EDGAR_spatial(object):
     # 这些字典中的键值这里需要满足field_attributes_checker的条件，也就是要满足arcpy为数据表添加字段的要求。
     # 如果数据表中已经存在了对应的统计结果生成的字段，则可以传入一个空列表参数以跳过添加字段过程。
     def do_sectors_generalize(self, inPoint, genFieldList, gen_handle):
+        """
+        在点要素类上执行行业部门概括处理。
+
+        该方法执行行业部门概括的实际实现，根据概括规则处理提供的点要素类中的每一行。
+        它向要素类添加必要的字段，处理每个网格单元的排放数据，
+        并用概括后的行业部门结果更新要素类。
+
+        参数：
+            inPoint (str): 包含待处理排放数据的点要素类的路径。
+            genFieldList (list): 定义要添加到要素类的字段的字典列表。
+                                每个字典应包含满足arcpy字段创建要求的字段属性规范。
+                                如果为空，则不会添加任何字段。
+            gen_handle (list): 用于存储概括结果的字段名称列表。
+                             必须包含'sorted_sectors'，它将存储编码的分类结果。
+
+        返回：
+            None
+
+        注意：
+            - 对于总排放量为零的网格单元，所有概括结果字段都设置为零
+            - 使用arcpy.da.UpdateCursor处理并更新要素类中的每一行
+            - generalization_method字典是根据表中的字段构建的
+            - 使用tqdm跟踪进度以提供用户反馈
+        """
         # 尝试为数据表添加统计结果字段
         # 这里会检查genField参数，如果传入空字典则跳过添加字段步骤，如果为有内容的字典则进行字段添加，如果为其他类型的则报错
         self.addField_to_inPoint(inPoint=inPoint, genFieldList=genFieldList)
@@ -3897,6 +4157,29 @@ class EDGAR_spatial(object):
 
     # 对点数据中的栅格执行部门类型归类
     def sectors_generalize(self, inPoint, gen_handle, gen_fieldList):
+        """
+        对点数据集中的网格数据执行行业部门类型分类。
+
+        该方法根据指定的分类规则对提供的点数据集中的排放部门进行分类，
+        并将结果添加到数据集的字段中。
+
+        参数：
+            inPoint (str): 包含网格排放数据的点要素类的名称。
+            gen_handle (list): 用于存储概括结果的字段名称列表。
+                              必须包含'sorted_sectors'用于存储编码的分类结果。
+            gen_fieldList (list): 描述要添加到数据表的字段的字典列表。
+                                 每个字典包含字段属性规范。
+                                 可以为空以跳过添加新字段。
+
+        返回：
+            None
+
+        注释：
+            - 在处理前检查输入的有效性
+            - 如果网格总排放量为零，所有分类值都设置为零
+            - 使用do_sectors_generalize方法执行实际分类
+            - 将错误和警告记录到ES_logger
+        """
         # 检查输入是否为空。为空则直接返回。
         if not inPoint or not gen_handle:
             print('ERROR: input inPoint or gen_handle is empty. Please check the inputs.')
@@ -3917,6 +4200,32 @@ class EDGAR_spatial(object):
 
     # 处理一定时间范围内的部门排放进行类型归类
     def year_sectors_generalize(self, year_range, gen_handle, gen_fieldList):
+        """
+        在指定范围内对多个年份的行业部门进行概括。
+
+        该方法对所提供范围内的每一年执行行业部门概括处理。
+        它验证输入的年份范围，确保其在支持的数据期间（1970-2019）内，
+        然后对每年的数据迭代应用行业部门概括处理。
+
+        参数：
+            year_range (tuple or list): 包含处理起始和结束年份的两元素集合（包含边界值）。
+                                       两个值都必须是整数。
+            gen_handle (list): 输出中将存储概括结果的字段名称列表。
+            gen_fieldList (list): 描述要添加到数据表的字段的字典列表。
+                                 每个字典包含字段属性规范。
+                                 可以为空以跳过添加新字段。
+
+        返回：
+            None
+
+        异常：
+            SystemExit: 如果年份范围无效（不是整数或超出支持的范围）。
+
+        注释：
+            - 对于每一年，处理名为'sectoral_weights_{year}'的要素类
+            - 将处理信息记录到ES_logger
+            - 在控制台显示进度信息
+        """
         # 检查输入年份变量参数是否合规
         if (type(year_range[0]) != int) or (type(year_range[1]) != int):
             print('Error! Processing starting year and ending year must be int value')
@@ -3940,6 +4249,22 @@ class EDGAR_spatial(object):
             self.print_finish_year(year=year)
 
     def sorted_categories_rasterize(self, year, fieldName):
+        """
+        将具有分类数据的点数据集基于指定字段转换为栅格文件。
+
+        该方法使用ArcGIS的PointToRaster转换工具中的'MOST_FREQUENT'（最频繁）方法，
+        为特定年份从点数据创建栅格。生成的栅格将表示每个位置最常出现的值，单元格大小为0.1。
+
+        参数：
+            year (int): 要创建分类栅格的年份
+            fieldName (str): 用于栅格单元格值的点数据字段名称
+
+        返回：
+            None
+
+        注意：
+            该方法从名为'sectoral_weights_{year}'的输入点数据生成名为'sorted_categories_{year}'的栅格。
+        """
         temp_point = 'sectoral_weights_{}'.format(year)
         save_raster_categories = 'sorted_categories_{}'.format(year)
 
@@ -5881,6 +6206,138 @@ class EDGAR_spatial(object):
 
             # logger
             self.ES_logger.info('Finished field kriging interpolation at {} {}'.format(point,field))
+
+    ############################################################################
+    ############################################################################
+    #  用于聚类的算法，基础功能合并几个列的内容
+    ############################################################################
+    ############################################################################
+    def joint_center_urbanization_categories(self, in_point, joint_field_list, cluster_field):
+        # 检查出入参数，如果为空则直接退出
+        if in_point == [] or joint_field_list == [] or cluster_field == []:
+            print('ERROR: input point or field list does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('input point or field list does not exist. Please check exist.')
+            exit(1)
+        
+        # 尝试为数据表添加最后连接字段的结果
+        # 这里会检查genField参数，如果传入空字典则跳过添加字段步骤，如果为有内容的字典则进行字段添加，如果为其他类型的则报错
+        self.addField_to_inPoint(inPoint=in_point, genFieldList=cluster_field)
+
+        # 列出需要在arcpy Cursor中操作的列名称
+        # 列包括，连接的数据列和最后的结果列
+        temp_arcpycursor_field_list = copy.deepcopy(joint_field_list)
+        temp_arcpycursor_field_list.append(cluster_field[0]['field_name'])
+
+        # 设置需要使用的连接字符
+        temp_joint_separator = '-'
+        # 注意：
+        # 根据arcpy文档给出的说明：
+        # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
+        # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
+        # 构造游标，开始逐行操作
+        with arcpy.da.UpdateCursor(in_point, temp_arcpycursor_field_list) as cursor:
+            for row in tqdm(cursor):
+                if row[3] == 0 or row[3] is None:
+                    row[4] = None
+                else:
+                    # 连接结果直接命名为center-urbanization-categories
+                    temp_joint_part = []
+
+                    # 检查是否是4、5、678中心，如果非中心直接跳出
+                    if row[0] is None:
+                        # 保存连接结果
+                        row[4] = 'under_4'
+                        # 更新行信息
+                        cursor.updateRow(row)
+                        continue
+                    else:
+                        temp_joint_part.append(row[0])
+                    
+                    # 检查城市化值是否存在
+                    if row[1] is None:
+                        temp_joint_part.append('None')
+                    else:
+                        temp_joint_part.append(str(row[1]))
+                    
+                    # 检查部门排放是否存在
+                    if row[2] is None:
+                        temp_joint_part.append('None')
+                    else:
+                        temp_joint_part.append(row[2])
+
+                    temp_joint_string = temp_joint_separator.join(temp_joint_part)
+
+                    # 保存连接结果
+                    row[4] = temp_joint_string
+
+                # 更新行信息
+                cursor.updateRow(row)
+
+    def joint_center_urbanization_categories_top_one(self, in_point, joint_field_list, cluster_field):
+        # 检查出入参数，如果为空则直接退出
+        if in_point == [] or joint_field_list == [] or cluster_field == []:
+            print('ERROR: input point or field list does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('input point or field list does not exist. Please check exist.')
+            exit(1)
+        
+        # 尝试为数据表添加最后连接字段的结果
+        # 这里会检查genField参数，如果传入空字典则跳过添加字段步骤，如果为有内容的字典则进行字段添加，如果为其他类型的则报错
+        self.addField_to_inPoint(inPoint=in_point, genFieldList=cluster_field)
+
+        # 列出需要在arcpy Cursor中操作的列名称
+        # 列包括，连接的数据列和最后的结果列
+        temp_arcpycursor_field_list = copy.deepcopy(joint_field_list)
+        temp_arcpycursor_field_list.append(cluster_field[0]['field_name'])
+
+        # 设置需要使用的连接字符
+        temp_joint_separator = '-'
+        # 注意：
+        # 根据arcpy文档给出的说明：
+        # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
+        # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
+        # 构造游标，开始逐行操作
+        with arcpy.da.UpdateCursor(in_point, temp_arcpycursor_field_list) as cursor:
+            for row in tqdm(cursor):
+                if row[3] == 0 or row[3] is None:
+                    row[4] = None
+                else:
+                    # 连接结果直接命名为center-urbanization-categories
+                    temp_joint_part = []
+
+                    # 检查是否是4、5、678中心，如果非中心直接跳出
+                    if row[0] is None:
+                        # 保存连接结果
+                        row[4] = 'under_4'
+                        # 更新行信息
+                        cursor.updateRow(row)
+                        continue
+                    
+                    # 检查城市化值是否存在
+                    if row[1] is None:
+                        temp_joint_part.append('None')
+                    else:
+                        temp_joint_part.append(str(row[1]))
+                    
+                    # 检查部门排放是否存在
+                    if row[2] is None:
+                        temp_joint_part.append('None')
+                    else:
+                        # 取得第一个部门
+                        temp_split = row[2].split('-',1)
+                        temp_joint_part.append(temp_split[0])
+
+                    temp_joint_string = temp_joint_separator.join(temp_joint_part)
+
+                    # 保存连接结果
+                    row[4] = temp_joint_string
+
+                # 更新行信息
+                cursor.updateRow(row)
+
 
     ############################################################################
     ############################################################################
