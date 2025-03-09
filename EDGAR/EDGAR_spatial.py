@@ -3022,6 +3022,30 @@ class EDGAR_spatial(object):
         # logger output
         self.ES_logger.debug('Convert {}\'s statistics table to csv file:{}'.format(year, temp_outPath))
 
+    def do_table_to_csv(self, table, outPath):
+        temp_table = table
+
+        # --first lets make a list of all of the fields in the table
+        fields = arcpy.ListFields(table)
+        field_names = [field.name for field in fields]
+
+        # 获得输出文件的绝对路径
+        temp_outPath = os.path.abspath(outPath)
+
+        with open(temp_outPath, 'wt') as f:
+            w = csv.writer(f)
+            # --write all field names to the output file
+            w.writerow(field_names)
+
+            # --now we make the search cursor that will iterate through the rows of the table
+            for row in arcpy.SearchCursor(temp_table):
+                field_vals = [row.getValue(field.name) for field in fields]
+                w.writerow(field_vals)
+            # del row
+
+        # logger output
+        self.ES_logger.debug('Convert statistics table to csv file:{}'.format(temp_outPath))
+
     def zonal_center_info_statistics(self,
                                      emission_center,
                                      inZone,
