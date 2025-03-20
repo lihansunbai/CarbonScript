@@ -28,6 +28,7 @@ import numbers
 import shortuuid
 import h5py
 import json
+# import itertools
 
 # # 性能测试相关模块
 # import cProfile
@@ -5094,7 +5095,7 @@ class EDGAR_spatial(object):
 
     # 实际执行从点数据中生成某一个年份中不同分类的排放量栅格
     # 注意！！！
-    # 这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`centerName_category_year`。
+    # 这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`EOF_category_year`和`EOF_category_year_log`
     # 如果要使用这里的栅格结果请参考以上命名逻辑找到所需栅格
     # 
     # 注意第四个参数`return_results`，当此参数为True时函数会返回一个生成栅格的结果的列表；
@@ -5131,8 +5132,12 @@ class EDGAR_spatial(object):
         # 所以采取统一添加统一删除的策略
         try:
             # 逐一添加临时字段
-            temp_add_field = ['EOF_{}'.format(category) for category in category_field_list]
-            for field in temp_add_field:
+            # 这里需要添加两个字段，第一个字段是对数结果，第二个字段是正常结果
+            temp_category_field_list_with_log = ['EOF_{}_log'.format(category) for category in category_field_list]
+            temp_category_field_list = ['EOF_{}'.format(category) for category in category_field_list]
+            for field in temp_category_field_list:
+                arcpy.AddField_management(inPoint, field, 'DOUBLE', '#', '#', '#', '#','NULLABLE', '#', '#')
+            for field in temp_category_field_list_with_log:
                 arcpy.AddField_management(inPoint, field, 'DOUBLE', '#', '#', '#', '#','NULLABLE', '#', '#')
 
             # logger output
@@ -5157,15 +5162,16 @@ class EDGAR_spatial(object):
         ################################################################################
         ################################################################################
         # 构建cursor需要的字段
-        # 这里字段的结构设计为：[总量，部门比例_1，EOF_部门结果_1,...,部门比例_n，EOF_部门结果_n].
-        # 所以，每个EOF部门结果，EOF_部门结果_n是field_list[2*n] = field_list[0] + log10(field_list[2n-1])
+        #       这里字段的结构设计为：[总量，部门比例_1，EOF_部门结果_1_log, EOF_部门结果_1,...,部门比例_n，EOF_部门结果_n_log, EOF_部门结果_n].
+        #       所以，每个EOF部门结果，EOF_部门结果_n_log是field_list[3*n-1] = field_list[0] + log10(field_list[3n-2]);
+        #                              EOF_部门结果_n是field_list[3*n] = numpy.power(10, field_list[3n])
 
         # 注意：所以添加的EOF结果字段已经保存在了上面的temp_add_field中。
         # 啊哈啊哈哈哈啊哈，你一定看不懂这段list解包操作。
         # 其实，我也看不懂。
         # 但是，它可以用。并且从这个可运行的解包操作中可以认识到，python的list解包操作是从后到前解析的。
         # 我的粗浅理解只能到这里了。
-        temp_field_list = ['grid_log_total_emission'] + [cate_eof_pair for zip_cate_eof in zip(category_field_list, temp_add_field) for cate_eof_pair in zip_cate_eof]
+        temp_field_list = ['grid_log_total_emission'] + [item for items in zip(category_field_list, temp_category_field_list_with_log, temp_category_field_list) for item in items if item is not None]
 
         with arcpy.da.UpdateCursor(in_table=inPoint, field_names=temp_field_list) as cursor:
             for row in tqdm(cursor):
@@ -5177,57 +5183,59 @@ class EDGAR_spatial(object):
                 #       并且就现实中的情况来说，一个区域的某一部门排放是0那就意味着这个地区没有这个部门，
                 #       也就没有必要对这个部门进行计算了
                 # 注意3：
-                #       这里字段的结构设计为：[总量，部门比例_1，EOF_部门结果_1,...,部门比例_n，EOF_部门结果_n].
-                #       所以，每个EOF部门结果，EOF_部门结果_n是field_list[2*n] = field_list[0] + log10(field_list[2n-1])
+                #       这里字段的结构设计为：[总量，部门比例_1，EOF_部门结果_1_log, EOF_部门结果_1,...,部门比例_n，EOF_部门结果_n_log, EOF_部门结果_n].
+                #       所以，每个EOF部门结果，EOF_部门结果_n_log是field_list[3*n-1] = field_list[0] + log10(field_list[3n-2]);
+                #                              EOF_部门结果_n是field_list[3*n] = numpy.power(10, field_list[3n])
                 
                 # 该栅格没有某一部门排放的情况
-                if row[1] == 0:
-                    continue
+                if row[1] == 0 or row[1] is None:
+                    # 这里需要做二次检查，似乎arcgis存在bug会莫名其妙的掠过一些栅格，导致数据不完整
+                    if max(row) == 0:
+                        continue
+                    else:
+                        # 计算每个部门对应的EOF结果
+                        for i in range(1,len(category_field_list)+1):
+                            # 这里还要进行排放量比例是否为0的检查，因为涉及对数操作。
+                            # 如果比例为0则直接为排放量赋0值
+                            if row[3*i-2] == 0:
+                                row[3*i] = 0
+                                row[3*i-1] = 0
+                            # 如果比例不为0则进行计算
+                            else:
+                                temp_cate_property = numpy.log10(row[3*i-2])
+                                row[3*i-1] = row[0] + temp_cate_property
+                                row[3*i] = numpy.power(10, row[3*i-1])
                 # 该栅格存在某一部门排放
                 else:
                     # 计算每个部门对应的EOF结果
                     for i in range(1,len(category_field_list)+1):
                         # 这里还要进行排放量比例是否为0的检查，因为涉及对数操作。
                         # 如果比例为0则直接为排放量赋0值
-                        if row[2*i-1] == 0:
-                            row[2*i] = 0
+                        if row[3*i-2] == 0:
+                            row[3*i] = 0
+                            row[3*i-1] = 0
                         # 如果比例不为0则进行计算
                         else:
-                            temp_cate_property = numpy.log10(row[2*i-1])
-                            row[2*i] = row[0] + temp_cate_property
+                            temp_cate_property = numpy.log10(row[3*i-2])
+                            row[3*i-1] = row[0] + temp_cate_property
+                            row[3*i] = numpy.power(10, row[3*i-1])
 
                 # 更新行信息
                 cursor.updateRow(row)
 
-        # 逐部门保存结果
-        for cate in temp_add_field:
-            # 保存列数据为栅格
-            save_raster = '{}_{}'.format(cate, inPoint[-4:])
-
-            try:
-                print('EOF rasterize start:{}'.format(save_raster))
-                arcpy.PointToRaster_conversion(inPoint,cate, save_raster,'MOST_FREQUENT', '#', '0.1')
-
-                # 添加转换结果到待返回列表
-                temp_return_rasters.append(save_raster)
-
-                # logger output
-                self.ES_logger.debug('EOF rasterize finished:{}'.format(save_raster))
-                print('EOF rasterize finished:{}'.format(save_raster))
-            except:
-                print('Create raster field: {}'.format(save_raster))
-
-                # logger output
-                self.ES_logger.error('EOF rasterize failed:{}'.format(save_raster))
-
-                print(arcpy.GetMessages())
+        # 将部门排放结果转换为栅格数据
+        # 注意输出数据为对数值
+        temp_return_rasters = self.point_field_to_raster(inPoint, temp_category_field_list)
+        temp_return_rasters_log = self.point_field_to_raster(inPoint=inPoint, field_list=temp_category_field_list_with_log )
+        temp_return_rasters.extend(temp_return_rasters_log)
 
         # 从点数据中删除添加的临时列
-        print('Deleting temporary fields...')
-        arcpy.DeleteField_management(inPoint, temp_add_field)
-        # logger output
-        self.ES_logger.info('Deleted temporary fields.')
-        print('Deleted temporary fields.')
+        # print('Deleting temporary fields...')
+        # arcpy.DeleteField_management(inPoint, temp_category_field_list)
+        # arcpy.DeleteField_management(inPoint, temp_category_field_list_with_log)
+        # # logger output
+        # self.ES_logger.info('Deleted temporary fields.')
+        # print('Deleted temporary fields.')
         
         # 决定返回模式
         if return_results:
@@ -5235,6 +5243,29 @@ class EDGAR_spatial(object):
             return temp_return_rasters
         else:
             return
+
+    def point_field_to_raster(self, inPoint, field_list):
+        # 储存可能需要返回的结果列表
+        temp_return_rasters = []
+        # 每个字段依次进行转换
+        for field in field_list:
+            # 保存列数据为栅格
+            save_raster = '{}_{}'.format(field, inPoint[-4:])
+            try:
+                print('Rasterize start:{}'.format(save_raster))
+                arcpy.PointToRaster_conversion(inPoint,field, save_raster,'MOST_FREQUENT', '#', '0.1')
+                # 添加转换结果到待返回列表
+                temp_return_rasters.append(save_raster)
+                #logger output
+                self.ES_logger.debug('Rasterize finished:{}'.format(save_raster))
+                print('Rasterize finished:{}'.format(save_raster))
+            except:
+                print('Create raster field: {}'.format(save_raster))
+                # logger output
+                self.ES_logger.error('Rasterize failed:{}'.format(save_raster))
+                print(arcpy.GetMessages())
+        
+        return temp_return_rasters
 
     # 用于从中心中提取每个部门从起始年份的排放量区域
     # 执行这个函数之前还是要先提取出每个类型的排放，而不是使用最原始的每个部门的排放。
