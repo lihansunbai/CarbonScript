@@ -4819,7 +4819,7 @@ class EDGAR_spatial(object):
     # 注意！！
     # 这个函数得出的排放量栅格是非对数值的栅格
     #   由于对数计算在使用0值为背景存在现实意义的错误，所以EOF计算的过程应该采用一般数量进行
-    def do_EOF_mosaic_extend(self, raster_list, background):
+    def do_EOF_mosaic_extend(self, raster_list, background, log_mode=True):
         if not raster_list or not background:
             print('ERROR: input arguments does not exist, please check the inputs.')
 
@@ -4832,19 +4832,20 @@ class EDGAR_spatial(object):
 
         # 逐个对栅格执行mosaic背景栅格
         for raster in tqdm(temp_working_rasters):
-            # 1、将输入的对数栅格转换为一般数量的栅格
-            #   准备arcgis地图代数幂运算需要的10值栅格
-            temp_power_background = Con(raster, 10.0, '')
-            #   转换对数值为一般数量
-            temp_linear_raster = Power(temp_power_background, raster)
-            #   临时存储一般排放量的位置
-            temp_linear_raster_path = raster + '_linear'
-            temp_linear_raster.save(temp_linear_raster_path)
-            # 这里要进行一个栅格的交换：
-            # 首先删除原来的raster，再将内存中的temp_linear_raster固定到raster的位置
-            temp_delete_raster_regex = '^' + raster + '$'
-            self.delete_temporary_raster([temp_delete_raster_regex])
-            arcpy.Raster(temp_linear_raster_path).save(raster)
+            if log_mode:
+                # 1、将输入的对数栅格转换为一般数量的栅格
+                #   准备arcgis地图代数幂运算需要的10值栅格
+                temp_power_background = Con(raster, 10.0, '')
+                #   转换对数值为一般数量
+                temp_linear_raster = Power(temp_power_background, raster)
+                #   临时存储一般排放量的位置
+                temp_linear_raster_path = raster + '_linear'
+                temp_linear_raster.save(temp_linear_raster_path)
+                # 这里要进行一个栅格的交换：
+                # 首先删除原来的raster，再将内存中的temp_linear_raster固定到raster的位置
+                temp_delete_raster_regex = '^' + raster + '$'
+                self.delete_temporary_raster([temp_delete_raster_regex])
+                arcpy.Raster(temp_linear_raster_path).save(raster)
 
             # 2、为栅格添加0值背景
             self.mosaic_background_to_raster(inRaster=raster, background=background)
@@ -5325,7 +5326,7 @@ class EDGAR_spatial(object):
             temp_setnull.save(temp_setnull_file)
 
             # 为提取结果添加EOF背景
-            self.do_EOF_mosaic_extend(raster_list=[temp_setnull_file], background=emission_background_list[0])
+            self.do_EOF_mosaic_extend(raster_list=[temp_setnull_file], background=emission_background_list[0], log_mode=False)
 
             # 将结果添加到返回值列表中
             return_list.append(temp_setnull_file)
