@@ -63,3 +63,9 @@ merge_eof_mode_to_point
 clip_raster
 eof_mode_point
 merge_sectoral_2019.log
+raster_export
+Extract_urbanization.log
+merge_decade_sectoral.log
+raster_export
+raster_export
+EDGAR/EDGAR_spatial(1).py
