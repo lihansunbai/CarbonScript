@@ -8,9 +8,9 @@ import sys
 # 以下为测试用DEBUG用库文件
 # 正式使用时请勿import
 # For office
-sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
+# sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
 # For laptop
-# sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
+sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
 from lib.eofs.multivariate.standard import MultivariateEof
 
 # 以下为正常使用eofs库的引用
@@ -39,7 +39,7 @@ class EDGAR_eof():
 
     def __init__(self,
                  st_year=1970,
-                 en_year=2018,
+                 en_year=2019,
                  log_path='eof.log'):
 
         # 初始化logger记录类的全体工作
@@ -64,7 +64,7 @@ class EDGAR_eof():
             exit()
         elif st_year < self.__default_start_year or en_year > self.__default_end_year:
             print(
-                'Error! Processing year range out of data support! The year must contain in 1970 to 2018')
+                'Error! Processing year range out of data support! The year must contain in 1970 to 2019')
             self.EE_logger.info('Year settings are out of range.')
             self.EE_logger.error('Year setting error!')
             exit()
@@ -83,7 +83,7 @@ class EDGAR_eof():
 
     # 默认时间范围
     __default_start_year = 1970
-    __default_end_year = 2018
+    __default_end_year = 2019
 
     # 默认部门编码
     __default_categories_list = ['G_ENE', 'G_IND',
@@ -101,7 +101,7 @@ class EDGAR_eof():
         return (self.start_year, self.end_year)
 
     @year_range.setter
-    def year_range(self, start_end=(1970, 2018)):
+    def year_range(self, start_end=(1970, 2019)):
         self.start_year, self.end_year = start_end
 
         # logger output
@@ -548,7 +548,7 @@ class EDGAR_eof():
         示例：
         传入的data字典结构示例：
         {'file_name': 'a string of npz file name',
-         'metadata':{'year':['1970',...,'2018'],
+         'metadata':{'year':['1970',...,'2019'],
                      'emission_categories':['G_IND',...,'G_WST'],
                      ... : ...}
         }
@@ -638,7 +638,7 @@ class EDGAR_eof():
         示例：
         传入的data字典结构示例：
         {'file_name': 'a string of npz file name',
-         'metadata':{'year':['1970',...,'2018'],
+         'metadata':{'year':['1970',...,'2019'],
                      'emission_categories':['G_IND',...,'G_WST'],
                      ... : ...}
         }
@@ -1550,7 +1550,7 @@ class EDGAR_eof():
                 {
                     "center_name_1":{
                         "peak_1":{
-                            "year":[1970,2018],
+                            "year":[1970,2019],
                             "peak_range":[5,9]
                         }
                     },
@@ -1560,7 +1560,7 @@ class EDGAR_eof():
                             "peak_range":[3,4.5]
                         },
                         "peak_2":{
-                            "year":[2001,2018],
+                            "year":[2001,2019],
                             "peak_range":[3,4]
                         }
                     }

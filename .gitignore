@@ -69,3 +69,11 @@ merge_decade_sectoral.log
 raster_export
 raster_export
 EDGAR/EDGAR_spatial(1).py
+raster_export
+eof_composite_modes
+raster_export
+merge_decade_sectoral.log
+eof_with_std_convert_to_log
+Extract_urbanization.log
+combined_data.csv
+export_category_emission_raster

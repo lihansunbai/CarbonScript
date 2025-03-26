@@ -67,6 +67,64 @@ class EDGAR_spatial(object):
                  st_year=1970,
                  en_year=2019,
                  log_path='EDGAR.log'):
+        """
+        初始化EDGAR_spatial类，设置工作空间和时间范围。
+
+        这个构造函数配置日志记录，验证年份范围参数，
+        并为EDGAR排放数据的空间操作设置环境。
+
+        参数：
+        -----------
+        workspace : str
+            执行操作和存储结果的工作空间目录路径。
+
+        st_year : int, optional
+            要处理的数据时间范围的起始年份。
+            默认为1970年。必须在支持的数据范围内。
+
+        en_year : int, optional
+            要处理的数据时间范围的结束年份。
+            默认为2019年。必须在支持的数据范围内。
+
+        log_path : str, optional
+            存储操作日志的日志文件路径。
+            默认为当前目录中的'EDGAR.log'。
+
+        异常：
+        -------
+        SystemExit
+            如果年份参数不是整数或超出支持的范围。
+        
+        English version:
+        Initialize the EDGAR_spatial class with workspace and time range settings.
+
+        This constructor configures logging, validates the year range parameters,
+        and sets up the environment for spatial operations on EDGAR emissions data.
+
+        Parameters:
+        -----------
+        workspace : str
+            Path to the workspace directory where operations will be performed
+            and results will be stored.
+
+        st_year : int, optional
+            Starting year for the time range of data to be processed.
+            Default is 1970. Must be within the supported data range.
+
+        en_year : int, optional
+            Ending year for the time range of data to be processed.
+            Default is 2019. Must be within the supported data range.
+
+        log_path : str, optional
+            Path to the log file where operation logs will be stored.
+            Default is 'EDGAR.log' in the current directory.
+
+        Raises:
+        -------
+        SystemExit
+            If year parameters are not integers or are outside the supported range.
+        """
+
         # 初始化logger记录类的全体工作
         # ES_logger为可使用的logging实例
         # 类使用的logger
@@ -92,7 +150,7 @@ class EDGAR_spatial(object):
             self.ES_logger.error('Year setting error!')
             exit(1)
         elif st_year < self.__default_start_year or en_year > self.__default_end_year:
-            print('Error! Processing year range out of data support! The year must contain in 1970 to 2018')
+            print('Error! Processing year range out of data support! The year must contain in 1970 to 2019')
             self.ES_logger.info('Year settings are out of range.')
             self.ES_logger.error('Year setting error!')
             exit(1)
@@ -133,10 +191,6 @@ class EDGAR_spatial(object):
         self.ES_logger.info('Root initialization finished.')
 
     # 只进行合并分部门栅格为点数据时的构造函数
-    # TODO
-    # 这里出现了一个逻辑错误，假设使用的是无背景模式background_flag=False，
-    # 实际上构造函数无法从root_init的初始构造函数中获得变量信息。需要修改逻辑。
-    # 但是，似乎这个参数不影响data_analysis构造。但是data_analysis的构造过程也需要进行类似排查。
     @classmethod
     def merge_sectors(cls,
                       workspace,
@@ -399,6 +453,32 @@ class EDGAR_spatial(object):
     # 默认部门编码
     __default_gen_encode_list = ['G_ENE', 'G_IND', 'G_TRA', 'G_RCO', 'G_AGS', 'G_WST']
 
+    # 默认kriging插值参数
+    default_kriging_settings_center_4 = {
+        'lagSize': 0.1,
+        'majorRange': 0.2,
+        'partialSill': 0.001,
+        'nugget' : 0.0001,
+        'semivariogramType' :"GAUSSIAN",
+        'kRadius' : 0.2
+        }
+    default_kriging_settings_center_5 = {
+        'lagSize' : 0.1,
+        'majorRange' : 0.2,
+        'partialSill' : 0.0001,
+        'nugget' : 0.0001,
+        'semivariogramType' :"GAUSSIAN",
+        'kRadius' : 0.2
+        }
+    default_kriging_settings_center_678 = {
+        'lagSize' : 0.1,
+        'majorRange' : 0.3,
+        'partialSill' : 0.001,
+        'nugget' : 0.001,
+        'semivariogramType' :"GAUSSIAN",
+        'kRadius' : 0.3
+        }
+
     ############################################################################
     ############################################################################
     # 通用参数、属性和方法
@@ -414,7 +494,7 @@ class EDGAR_spatial(object):
         return (self.start_year, self.end_year)
 
     @year_range.setter
-    def year_range(self, start_end=(1970, 2018)):
+    def year_range(self, start_end=(1970, 2019)):
         '''
         自定义或者修改数据处理的年份时间范围
         '''
@@ -492,10 +572,6 @@ class EDGAR_spatial(object):
                 format=output_formate)
 
     # 从HDF5中将数据转换为Arcgis raster
-    # 使用这个函数要注意output_path参数，如果在构造函数初始化的过程中定义了工作空间，则可以直接传入不带后缀的保存文件名，
-    # 输出的栅格将直接保存到工作空间中；如果，需要输出到非初始化过程中定义的工作空间位置，则应该传入完整的保存路径，
-    # 这里的完整保存路径是指包括文件后缀的文件绝对路径。
-    # 注意，这个方法相当简陋，只能导出不包含时间维度，即dim=2的数据。
     def hdf_to_raster(self, hdf_file_path, hierarchical_data_path, data_name, output_path):
         '''
         使用这个函数要注意output_path参数，如果在构造函数初始化的过程中定义了工作空间，则可以直接传入不带后缀的保存文件名，
@@ -535,8 +611,6 @@ class EDGAR_spatial(object):
         temp_raster.save(output_path)
 
     # 为栅格添加背景值
-    # 用途：添加一个背景值以保持栅格数据历史范围稳定。
-    # 注意：如果指定了output_Raster参数，则会输出到该参数指定的栅格中。
     def mosaic_background_to_raster(self, inRaster, background, output_Raster=None):
         '''
         为栅附加一个范围以保持参与计算的栅格数据的历史范围稳定，栅格的范围通过背景值确定。
@@ -974,6 +1048,21 @@ class EDGAR_spatial(object):
     # 'end_year'：结束年份
     @property
     def filter_label(self):
+        '''
+        filter_label 构造方法：
+        filter_label字典组的结构如下：
+        'default':接受一个符合布尔型数据的值，其中True表示使用默认方式构造筛选条件；
+        'label':该元素是能够筛选出需要栅格的筛选条件，示例：1、符合Arcgis标准的wild_card；
+                  2、所需栅格的文件名；
+                  3、采用默认方式构造的label字典结构。
+        
+        注意！！！：
+        如果使用默认方式构造筛选条件，则label参数应该包含由以下标签构成的字典：
+        'background_label'：可以用来筛选代表包含背景栅格的标签字符串
+        'sectors'：部门标签列表list或者str
+        'start_year'：起始年份
+        'end_year'：结束年份
+        '''
         return self.filter_label_dict
 
     @filter_label.setter
@@ -1072,11 +1161,17 @@ class EDGAR_spatial(object):
     #    字符串为‘部门_年份’。
     # 2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
     def build_raster_filter_default(self, background_label, sectors, start_year, end_year):
+        '''
+        类中提供了两个过滤标签的构造方法
+        1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
+           字符串为‘部门_年份’。
+        2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
+        '''
         # 检查年份设定是否为整数。（其他参数可以暂时忽略，因为默认格式下基本不会改变）
         if (type(start_year) != int) or (type(end_year) != int):
             print('Error: Year setting error!')
             self.ES_logger.error(
-                'Year setting error. Year settings must be integer and between 1970 to 2018.')
+                'Year setting error. Year settings must be integer and between 1970 to 2019.')
             exit(1)
 
         temp_time_range = range(start_year, end_year + 1)
@@ -1096,6 +1191,12 @@ class EDGAR_spatial(object):
         self.ES_logger.debug('raster_filter set by default.')
 
     def build_raster_filter_costume(self, custom_label):
+        '''
+        类中提供了两个过滤标签的构造方法
+        1. 本人生成的数据保存的格式，例如：‘BA_EDGAR_TNR_Aviation_CDS_2010’，其中‘BA’代表包含背景值，数据名结尾
+           字符串为‘部门_年份’。
+        2. 自定义标签格式。可以根据用户已有的数据的名称进行筛选。请注意：筛选字符串需要符合 Arcpy 中 wild_card定义的标准进行设定。
+        '''
         # 对于自定义筛选条件，只需要检查是否为字符串
         if type(custom_label) != str:
             print("arcpy.ListRasters() need a string for 'wild_card'.")
@@ -1166,30 +1267,6 @@ class EDGAR_spatial(object):
     #       当该参数为True时，将认为wildcard_list中的元素为arcgis默认的wildcard，即查询条件，此时将
     #           会在使用时替换wildcard中的`*`为正则表达式的`.*`模式。
     #       当该参数为False时，将认为wildcard_list中的元素为正则表达式，此时将直接用该元素进行匹配。
-    def deprecated_do_prepare_arcpy_list_raster_list(self, wildcard_list, wildcard_mode=True):
-        # # 列出所有数据库中的栅格进行匹配
-        # temp_all_rasters_in_path = arcpy.ListRasters()
-
-        # # 通过正则表达在列表中搜索的方式筛选要进行操作的栅格
-        # for wildcard in wildcard_list:
-        #     # 检查wildcard_mode并指定合适的正则表达式编译模式
-        #     if wildcard_mode:
-        #         # 替换wildcard中的通配符*为正则表达的通配符‘.’
-        #         # 然后构造正则表达匹配模式
-        #         temp_wildcard_re = re.compile(wildcard.replace('*','.*'))
-        #     else:
-        #         # 直接使用wildcard_list中的元素构造正则表达式匹配模式
-        #         temp_wildcard_re = re.compile(wildcard)
-
-        #     # filter函数会返回一个列表，所以这里要用extend()方法
-        #     self.all_prepare_working_rasters.extend(filter(temp_wildcard_re.match, temp_all_rasters_in_path))
-        #     # 直接的对逐个项使用ListRasters()方法可能会消耗大量的时间，导致程序假死
-        #     # 放弃使用以下方法！
-        #     # self.all_prepare_working_rasters.extend(arcpy.ListRasters(wild_card=i))
-        # # logger output
-        # self.ES_logger.debug('working rasters changed to:{}'.format(self.all_prepare_working_rasters)) 
-        pass
-
     # 实际执行列出栅格的方法，这个为str方式
     def do_arcpy_list_raster_str(self, wildcard_str):
         temp_working_rasters = []
@@ -1201,6 +1278,58 @@ class EDGAR_spatial(object):
 
     # 实际执行列出栅格的方法，这个为list方式
     def do_arcpy_list_raster_list(self, wildcard_list, wildcard_mode=True):
+        """
+        中文帮助
+        列出工作空间中与wildcard_list中模式匹配的栅格数据集。
+
+        该方法使用正则表达式匹配来过滤工作空间中的栅格数据集，
+        而不是直接为每个模式使用arcpy.ListRasters()，这可能非常耗时。
+
+        参数：
+        -----------
+        wildcard_list : list
+            用于匹配栅格名称的通配符模式或正则表达式列表。
+
+        wildcard_mode : bool, default=True
+            确定如何解释wildcard_list元素：
+            - 如果为True：元素被视为arcpy通配符（例如"*.tif"），"*"会被转换为".*"以用于正则表达式。
+            - 如果为False：元素已经是正则表达式，直接使用。
+
+        返回：
+        --------
+        list
+            与wildcard_list中任何模式匹配的栅格数据集名称列表。
+
+        注释：
+        ------
+        这个方法比重复调用arcpy.ListRasters()更高效，特别是在处理工作空间中大量栅格数据集时。
+        
+        English version:
+        Lists raster datasets in the workspace that match patterns in wildcard_list.
+
+        This method uses regular expression matching to filter raster datasets in the workspace
+        rather than directly using arcpy.ListRasters() for each pattern, which can be time-consuming.
+
+        Parameters:
+        -----------
+        wildcard_list : list
+            A list of wildcard patterns or regular expressions to match against raster names.
+
+        wildcard_mode : bool, default=True
+            Determines how the wildcard_list elements are interpreted:
+            - If True: Elements are treated as arcpy wildcards (e.g., "*.tif"), and "*" is converted to ".*" for regex.
+            - If False: Elements are already regular expressions and used directly.
+
+        Returns:
+        --------
+        list
+            A list of raster dataset names that match any of the patterns in wildcard_list.
+
+        Notes:
+        ------
+        This method is more efficient than calling arcpy.ListRasters() repeatedly, especially when
+        dealing with large numbers of raster datasets in the workspace.
+        """
         # 临时存储列出的栅格
         temp_result_rasters = []
 
@@ -1276,6 +1405,10 @@ class EDGAR_spatial(object):
     #       （所以，这其实很像二叉树的归并。可惜在这样一个小函数里写一个二叉树有过分了。）
     #       所以，借鉴二叉树归并的思想，采取递归的策略来完成叠加。
     def do_raster_add(self, raster_list, result_raster=None):
+        '''
+            改进2：修改参数的功能，如果提供了result_raster参数则保存到对应位置；
+                  如果不提供则只将生成的栅格返回。
+        '''
         # 用于保存递归中产生的临时栅格的列表
         temp_delete_rasters = []
 
@@ -1407,7 +1540,6 @@ class EDGAR_spatial(object):
 
         # logger output
         self.ES_logger.info('All sectors merged!')
-
 
     ######################################
     ######################################
@@ -1564,7 +1696,7 @@ class EDGAR_spatial(object):
 
         # 初始化部分参数
         # 设定的保存的文件名的格式
-        output_sectoral_weights = 'sectoral_weights_{}'.format(year) 
+        output_sectoral_weights = 'sectoral_weights_{}'.format(year)
         # 设定需要删除的临时生成文件列表
         delete_temporary = []
 
@@ -1630,7 +1762,7 @@ class EDGAR_spatial(object):
         # 这里应该加入合并单元格排放量的ETP过程。
         # 保存最后的输出结果
         # 应该用temp_point_output去提取total_emission_xxxx，生成结果。
-        temp_total_emission = 'total_emission_{}'.format(year) 
+        temp_total_emission = 'total_emission_{}'.format(year)
         if arcpy.Exists(temp_total_emission):
             print('Saving sectoral weights and total emission...')
             self.do_ETP(
@@ -1795,7 +1927,226 @@ class EDGAR_spatial(object):
 
     # 暴力处理所有年份
     def proccess_all_year(self):
-        self.proccess_year(start_year=1970, end_year=2018)
+        self.proccess_year(start_year=1970, end_year=2019)
+
+    # 处理给定年份范围内的工作
+    # 批量处理可以使用这个函数
+    def proccess_decade(self, decade):
+        self.print_start_year('{}'.format(decade))
+        self.decade_category_emission_percentage(decade=decade)
+        self.decade_weight_joint(decade, self.EDGAR_sectors)
+        self.print_finish_year('{}'.format(decade))
+
+    def category_emission_percentage(self, category, decade, output_category_point):
+        # 尝试列出当年总量的栅格
+        # 这里要注意，总量栅格的名称在year_sectors_merge()中写死了
+        # 再mosaic一个背景栅格上去防止
+        temp_year_total = arcpy.Raster('decade_grid_mean_emission_{}s'.format(decade))
+
+        # 注意这里其实写死了文件名，请注意调整和修改。
+        temp_category_emission = self.do_arcpy_list_raster_list(wildcard_list=['decade_{}_mean_emission_{}s'.format(category.lower(), decade)])
+        temp_category_emission = arcpy.Raster(temp_category_emission[0])
+
+        # 检查输入的部门栅格和总量栅格是否存在，如果不存在则报错并返回
+        if not (arcpy.Exists(temp_category_emission)) or not (arcpy.Exists(temp_year_total)):
+            print('category_emission_percentage: Error! category emission or year total emission raster does not exist.')
+
+            # logger output
+            self.ES_logger.error('category emission or year total emission raster does not exist.')
+            exit(1)
+
+        # 计算部门排放相对于全体部门总排放的比例
+        # 注意！！！
+        # 这里涉及除法！0值的背景会被抹去为nodata。所以要再mosaic一个背景上去才能转化为点。
+        temp_output_weight_raster = temp_category_emission / temp_year_total
+
+        # 注意，计算中可能存在未知错误导致某些区域的排放总量小于部门排放量导致比值大于1
+        # 所以要将大于1的区域设置为空值
+        temp_output_weight_raster_revise = SetNull(temp_output_weight_raster > 1, temp_output_weight_raster)
+
+        # logger output
+        self.ES_logger.debug('Sectoral raster weight calculated:{}'.format(category) )
+
+        # Mosaic 比例计算结果和0值背景
+        # Mosaic 的结果仍然保存在temp_output_weight_raster_revise中
+        arcpy.Mosaic_management(
+            inputs=[temp_output_weight_raster_revise, self.background[2]],
+            target=temp_output_weight_raster_revise,
+            mosaic_type="FIRST",
+            colormap="FIRST",
+            mosaicking_tolerance=0.5)
+
+        # logger output
+        self.ES_logger.debug('Sectoral raster weight mosaic to 1800*3600.')
+
+        # 保存栅格格式权重计算结果
+        temp_output_weight_raster_path = '{}_weight_raster_{}'.format(category, decade)
+        temp_output_weight_raster_revise.save(temp_output_weight_raster_path)
+
+        #######################################################################
+        #######################################################################
+        # 注意！
+        # 以下的del操作不能删除！
+        # 删除del操作会导致arcpy.RasterToPoint_conversion()出错！
+        # 具体表现形式为RasterToPoint会错误的引用一个已经被删除的匿名中间变量。
+        # Warning!
+        # CAN NOT remove the following `del` operation!
+        # Removing the `del` operation will
+        # product a error in arcpy.RasterToPoint_conversion().
+        # The error will thrall an exception of NOT found table in raster,
+        # because of the RasterToPoint_conversion miss include a deleted
+        # anonymous temporary variable.
+        #######################################################################
+        #######################################################################
+        del temp_output_weight_raster
+        del temp_output_weight_raster_revise
+        #######################################################################
+        #######################################################################
+
+        print('Sector emission weight raster saved: {}\n'.format(decade))
+
+        # logger output
+        self.ES_logger.info('Sector emission weight raster saved')
+
+        # 栅格数据转点对象。转为点对象后可以实现计算比例并同时记录对应排放比例的部门名称
+        # 这里用到了arcpy.AlterField_management()这个函数可能在10.2版本中没有
+        try:
+            # transform to point features
+            arcpy.RasterToPoint_conversion(temp_output_weight_raster_path, output_category_point,
+                                           'VALUE')
+
+            # logger output
+            self.ES_logger.debug('Sector emission weight raster convert to point:{}'.format(category) )
+
+            # rename value field
+            arcpy.AlterField_management(output_category_point, 'grid_code', new_field_name=category)
+            # 删除表链接结果结果中生成的统计字段'pointid'和'grid_code'
+            arcpy.DeleteField_management(output_category_point, 'pointid')
+
+            # logger output
+            self.ES_logger.debug('Sector emission weight point fields cleaned:{}'.format(category) )
+
+            print('Sector raster convert to point finished: {} of {}'.format(category, decade))
+        except:
+            print('Failed sector to point : {}'.format(category) )
+
+            # logger output
+            self.ES_logger.error('Raster weight converting to point failed:{}'.format(category) )
+
+            print(arcpy.GetMessages())
+
+    # 计算一年中所有部门的比例
+    def decade_category_emission_percentage(self, decade):
+        for s in tqdm(self.EDGAR_sectors):
+            # 设定输出点数据的格式
+            output = '{}_weight_{}s'.format(s, decade)
+            self.category_emission_percentage(s, decade, output)
+
+    # 将同一年份的部门整合到同一个点数据图层中
+    def decade_weight_joint(self, decade, category_dict):
+        #######################################################################
+        #######################################################################
+        # 这个函数的设计思想来源于指针和指针的操作。
+        # 有若干个变量被当作指针进行使用，要注意这些变量在不同的位置被指向了
+        # 不同的实际数据.通过不停的改变他们指向的对象，来完成空间链接的操作。
+        # C/C++万岁！！！指针天下第一！！！
+        #######################################################################
+        #######################################################################
+
+        # 初始化部分参数
+        # 设定的保存的文件名的格式
+        output_sectoral_weights = 'decade_category_weights_{}'.format(decade) 
+        # 设定需要删除的临时生成文件列表
+        delete_temporary = []
+
+        # 筛选需要计算的部门
+        # 列出提取值的栅格
+        temp_extract_raster = self.do_arcpy_list_raster_list(wildcard_list=
+                            ['{}_weight_raster_{}'.format(cate, decade) for cate in category_dict.values()])
+        temp_extract_raster_dict = self.zip_sectors_rasters_to_dict(category_dict, temp_extract_raster)
+
+        # logger output
+        self.ES_logger.debug('Calculate weight in: {}'.format(str(temp_extract_raster)))
+
+        # 首先弹出一个部门作为合并的起始指针
+        temp_point_start_wildcard = '{}*{}s'.format(temp_extract_raster_dict.popitem()[0], decade)
+        # 这里的逻辑看似有点奇怪，其实并不奇怪。
+        # 因为在sector_emission_percentage()中已经保存了完整的‘部门-年份’点数据
+        # 所以可以用其中一个点数据作为提取的起点。
+        temp_point_start = arcpy.ListFeatureClasses(
+            wild_card=temp_point_start_wildcard, feature_type=Point).pop()
+
+        # logger output
+        self.ES_logger.debug('First weight extract point:{}'.format(temp_point_start) )
+
+        # 构造三个特殊变量来完成操作和循环的大和谐~、
+        # 因为sa.ExtractValuesToPoint函数需要一个输出表，同时又不能覆盖替换另一个表
+        # 所以需要用前两个表生成第一个循环用的表
+        # 在程序的结尾用最后（其实可以是任意一个表）来完成年份的输出
+        temp_point_trigger = 'ETP_trigger'
+        temp_point_iter_root = 'ETP_iter'
+        temp_point_output = 'ETP_output'
+
+        delete_temporary.append(temp_point_trigger)
+        delete_temporary.append(temp_point_output)
+
+        # 需要先进行一次提取操作，输入到EPT_iter中
+        # 这里需要开启覆盖操作，或者执行一个del工作
+        temp_ETP_1_sector, temp_ETP_1_raster = temp_extract_raster_dict.popitem()
+        self.do_ETP(
+            ExtractPoint=temp_point_start,
+            ValueRaster=temp_ETP_1_raster,
+            outPoint=temp_point_trigger,
+            NewFieldName=('RASTERVALU', temp_ETP_1_sector))
+
+        # 逐个处理剩下的部门
+        for sect in tqdm(temp_extract_raster_dict):
+            # 从字典中获得部门和对应的待提取值栅格
+            temp_ETP_raster = temp_extract_raster_dict[sect]
+            temp_point_output = temp_point_iter_root + sect
+
+            self.do_ETP(
+                ExtractPoint=temp_point_trigger,
+                ValueRaster=temp_ETP_raster,
+                outPoint=temp_point_output,
+                NewFieldName=('RASTERVALU', sect))
+
+            # 交换temp_point_iter和temp_point_output指针
+            temp_point_trigger = temp_point_output
+
+            # 添加到删除名单
+            delete_temporary.append(temp_point_output)
+
+        # 这里应该加入合并单元格排放量的ETP过程。
+        # 保存最后的输出结果
+        # 应该用temp_point_output去提取total_emission_xxxx，生成结果。
+        temp_total_emission = 'decade_grid_mean_emission_{}s'.format(decade) 
+        if arcpy.Exists(temp_total_emission):
+            print('Saving sectoral weights and total emission...')
+            self.do_ETP(
+                ExtractPoint=temp_point_output,
+                ValueRaster=temp_total_emission,
+                outPoint=output_sectoral_weights,
+                NewFieldName=('RASTERVALU', 'grid_decade_mean_emission'))
+
+            # logger output
+            self.ES_logger.debug('Sectoral weights saved:{}'.format(output_sectoral_weights))
+        else:
+            print('Saving sectoral weights and total emission failed!')
+
+            # logger output
+            self.ES_logger.error(
+                'Saving sectoral weights and total emission failed! Please check year total emission input.'
+            )
+            exit(1)
+
+        print('Sectoral weights finished:{}'.format(decade) )
+
+        # 删除临时生成的迭代变量
+        self.delete_temporary_feature_classes(delete_temporary)
+
+        # logger output
+        self.ES_logger.debug('working_rasters cleaned!')
 
     ############################################################################
     ############################################################################
@@ -1902,7 +2253,6 @@ class EDGAR_spatial(object):
     # 操作类的函数
     ############################################################################
     # 返回完整的排放中心数据
-
     def return_emission_center(self, emission_center):
         # 检查输入的emission_center是否存在，不存在则直接返回
         if not emission_center:
@@ -2081,7 +2431,7 @@ class EDGAR_spatial(object):
                 {
                     "center_name_1":{
                         "peak_1":{
-                            "year":[1970,2018],
+                            "year":[1970,2019],
                             "peak_range":[5,9]
                         }
                     },
@@ -2091,7 +2441,7 @@ class EDGAR_spatial(object):
                             "peak_range":[3,4.5]
                         },
                         "peak_2":{
-                            "year":[2001,2018],
+                            "year":[2001,2019],
                             "peak_range":[3,4]
                         }
                     }
@@ -2144,7 +2494,7 @@ class EDGAR_spatial(object):
                 temp_peak_list.extend(self.emission_peak(emission_peak_range=temp_list_to_tuple(ep[1]['peak_range']), year=temp_year_list(ep[1]['year'])))
             
             self.add_emission_peaks(emission_center=temp_center, peaks_list=temp_peak_list)
-                
+
     ############################################################################
     # 排放峰值和排放中心分析计算相关函数/方法
     ############################################################################
@@ -2612,278 +2962,6 @@ class EDGAR_spatial(object):
         self.delete_temporary_raster(temp_year_emission_center_list)
         self.delete_temporary_raster([temp_mosaic])
 
-    # !!! 注意：这个函数已经被废弃，请勿使用！
-    # 叠加时间序列上所有发生排放的区域得到全部排放的分布
-    # 这个方法会生成两个类型的栅格：
-    #   1、输出文件名加后缀`mask`，该栅格中`1`值表示排放范围，`0`值表示其他；
-    #   2、输出文件名加后缀`null_mask`，该栅格中`1`值表示排放范围，nodata值表示其他；
-    def deprecated_do_generate_center_geographical_extend(self,
-                                        raster_list,
-                                        background_raster,
-                                        output_name_fmt='extend_{}'):
-        # 测试生成的文件名是否可用
-        # 列出待计算栅格的列表
-        temp_working_rasters = self.do_arcpy_list_raster_list(raster_list)
-
-        # 用于保存临时数据的列表
-        temp_mosaic_background = []
-
-        # 第一步：为栅格mosaic零值背景
-        for raster in tqdm(temp_working_rasters):
-            temp_new_mosaic = 'temp_new_mosaic_{}'.format(raster)
-            
-            self.mosaic_background_to_raster(inRaster=raster, background=background_raster,output_Raster=temp_new_mosaic)
-
-            temp_mosaic_background.append(temp_new_mosaic)
-
-        # 第二步：叠加所有栅格
-        temp_extend = self.do_raster_add(temp_mosaic_background)
-
-        # 第三步：栅格非零值赋值为1
-        # 这里需要注意栅格计算中输入的栅格参数是str还是arcpy栅格对象。
-        # 如果遇到ERROR:999998错误，可以尝试检查输入的对象是否栅格化为arcpy栅格对象。
-        temp_extend = Con(arcpy.Raster(temp_extend), 1, 0, "VALUE <> 0")
-
-        # logger output
-        self.ES_logger.info('extend set to 1 mask')
-
-        # 第四步：零值设为空值
-        temp_null_extend = SetNull(temp_extend, 0, "VALUE = 0")
-        temp_null_extend = Con(temp_null_extend == 1, 0, temp_null_extend)
-        self.ES_logger.info('extend set to background mask')
-
-        # 保存生成的两个结果
-        # 生成待统计的栅格名称
-        try:
-            temp_save_extend = output_name_fmt.format('mask')
-            temp_save_null_extend = output_name_fmt.format('null_mask')
-        except Exception as e:
-            print('background formatting failed.')
-
-            # logger output
-            self.ES_logger.error('save raster name formatting failed. raster name formate was {}.'.format(output_name_fmt))
-
-            exit(1)
-
-        # 执行保存
-        temp_extend.save(temp_save_extend)
-        temp_null_extend.save(temp_save_null_extend)
-        # logger output
-        self.ES_logger.info('geographical extend generated')
-
-        # 删除临时栅格
-        self.delete_temporary_raster(temp_mosaic_background)
-
-    # 旧函数不建议使用！！！
-    # 提取总排放量、最大排放部门和最大排放部门比例的函数
-    def deprecated_do_extract_center_area(self, center_range, total_emission_raster, year):
-        # 临时变量
-        # temp_center_upper_bound = 0
-        # temp_center_lower_bound = 0
-        # temp_center = 0
-
-        # # 变量检查
-        # if type(center_range) == tuple:
-        #     if len(center_range) == 2:
-
-        #         temp_center_upper_bound = max(center_range)
-        #         temp_center_lower_bound = min(center_range)
-        #         temp_center = str(
-        #             (temp_center_lower_bound + temp_center_upper_bound) / 2).replace('.', '')
-        #     else:
-
-        #         print("Error: center range require a start year and a end year.")
-
-        #         # logger output
-        #         self.ES_logger.error('Center range year error.')
-        #         return
-        # else:
-        #     print("Error: center range require a tuple. Please check the input.")
-
-        #     # logger output
-        #     self.ES_logger.error('Center range type error.')
-        #     return
-
-        # # 检查输入的栅格是否存在
-        # # 检查total_emission
-        # if not (arcpy.Exists(total_emission_raster)):
-        #     print('Error: input total emission raster does not exist')
-
-        #     # logger output
-        #     self.ES_logger.error('input total emission not found.')
-        #     return
-
-        # # 检查对应年份的主要排放部门栅格
-        # temp_main_sector = 'main_emi_{}'.format(year)
-
-        # if not (arcpy.Exists(temp_main_sector)):
-        #     print('Error: input total emission raster does not exist')
-
-        #     # logger output
-        #     self.ES_logger.error('input total emission not found.')
-        #     return
-
-        # # 检查对应年份的主要排放部门权重栅格
-        # temp_main_sector_weight = 'main_emi_weight_{}'.format(year)
-
-        # if not (arcpy.Exists(temp_main_sector_weight)):
-        #     print('Error: input total emission weight raster does not exist')
-
-        #     # logger output
-        #     self.ES_logger.error('input total emission not found.')
-        #     return
-
-        # # 将大于上界和小于下界范围的栅格设为nodata
-        # # Set local variables
-        # whereClause = "VALUE < {} OR VALUE > {}".format(temp_center_lower_bound,
-        #                                             temp_center_upper_bound)
-
-        # # Execute SetNull
-        # outSetNull = SetNull(total_emission_raster, total_emission_raster, whereClause)
-
-        # # Save the output
-        # temp_center_path = 'center_{}_{}'.format(temp_center, year)
-        # outSetNull.save(temp_center_path)
-
-        # # 防止BUG删除outSetNull
-        # del outSetNull
-
-        # # 生成中心的mask
-        # # Execute Con
-        # outCon = Con(temp_center_path, 1, '')
-
-        # # Save the outputs
-        # temp_center_mask_path = 'center_mask_{}_{}'.format(temp_center, year)
-        # outCon.save(temp_center_mask_path)
-
-        # # 防止BUG删除outCon
-        # del outCon
-
-        # # 生成中心主要排放部门栅格
-        # outMain = arcpy.Raster(temp_center_mask_path) * \
-        #     arcpy.Raster(temp_main_sector)
-
-        # # Save the output
-        # temp_center_main = 'center_main_sector_{}_{}'.format(temp_center, year)
-        # outMain.save(temp_center_main)
-
-        # # 防止BUG删除outCon
-        # del outMain
-
-        # # 生成中心主要排放部门比重栅格
-        # outMainWeight = arcpy.Raster(temp_center_mask_path) * arcpy.Raster(temp_main_sector_weight)
-
-        # # Save the output
-        # temp_center_main_weight = 'center_main_sector_weight_{}_{}'.format(temp_center, year)
-        # outMainWeight.save(temp_center_main_weight)
-
-        # del outMainWeight
-        pass
-
-    # 旧函数不建议使用！！！
-    # 这里要求可以center_range和year_range是一个元组
-    def deprecated_extract_center_area(self, center_range, year_range, isLog):
-        # 临时变量
-        # temp_start_year = self.start_year
-        # temp_end_year = self.end_year
-
-        # # 检查输入年份变量参数是否合规
-        # if (type(year_range[0]) != int) or (type(year_range[1]) != int):
-        #     print('Error! Processing starting year and ending year must be int value')
-        #     self.ES_logger.info('Year setting type error.')
-        #     self.ES_logger.error('Year setting error!')
-        #     return
-        # elif min(year_range) < self.__default_start_year or max(
-        #         year_range) > self.__default_end_year:
-        #     print('Error! Processing year range out of data support! The year must contain in 1970 to 2018')
-        #     self.ES_logger.info('Year settings are out of range.')
-        #     self.ES_logger.error('Year setting error!')
-        #     return
-        # else:
-        #     temp_start_year, temp_end_year = min(year_range), max(year_range)
-        #     self.ES_logger.info('Year has set.')
-
-        # # 列出总排放量栅格
-        # # 需要区分栅格中的总量数据是否已经进行了对数换算
-        # if bool(isLog) == True:
-        #     temp_wild_card = [
-        #         'total_emission_{}_log'.format( s ) for s in range(temp_start_year, temp_end_year + 1)
-        #     ]
-        # elif bool(isLog) == False:
-        #     temp_wild_card = [
-        #         'total_emission_{}'.format(s)for s in range(temp_start_year, temp_end_year + 1)
-        #     ]
-        # else:
-        #     print('Error: Please set the isLog flag.')
-
-        #     # logger output
-        #     self.ES_logger.error('isLog flag check failed.')
-        #     return
-
-        # # 列出需要的total emission 栅格
-        # temp_working_rasters = self.do_arcpy_list_raster_list(temp_wild_card)
-
-        # # 逐年处理
-        # for yr in tqdm(range(temp_start_year, temp_end_year + 1)):
-        #     temp_total_emission = [s for s in temp_working_rasters if str(yr) in s].pop()
-
-        #     self.do_extract_center_area(
-        #         center_range=center_range, total_emission_raster=temp_total_emission, year=yr)
-
-        pass
-
-    # 这个函数已经被废弃
-    def deprecated_do_raster_extract_center_area(self,
-                                          emission_center_peak,
-                                          extract_raster,
-                                          output,
-                                          saveMask=False):
-        # # 检查输入的emission_center_peak是否存在，不存在则直接返回
-        # if not emission_center_peak:
-        #     print('ERROR: emission center does not exist.')
-
-        #     # logger output
-        #     self.ES_logger.error('input emission center does not exist.')
-        #     return
-
-        # # 检查输入的栅格是否存在
-        # if not (arcpy.Exists(extract_raster)):
-        #     print('Error: input raster does not exist')
-
-        #     # logger output
-        #     self.ES_logger.error('input raster not found.')
-        #     return
-
-        # # 检查输出路径是否存在
-        # if not output or type(output) != str:
-        #     print('Error: output path does not exist')
-
-        #     # logger output
-        #     self.ES_logger.error('output path does not exist.')
-        #     return
-
-        # # 将大于上界和小于下界范围的栅格设为nodata
-        # # Set local variables
-        # whereClause = "VALUE < {} OR VALUE > {}".format(emission_center_peak['peak_min'],
-        #                                             emission_center_peak['peak_max'])
-
-        # # 利用setnull的结果作为提取中心的mask
-        # # Execute SetNull
-        # temp_SetNull = SetNull(extract_raster, extract_raster, whereClause)
-
-        # temp_mask = Con(temp_SetNull, 1, '')
-        # # 通过saveMask参数
-        # # 在这里控制保存一个提取结果的mask（掩膜）结果
-        # if saveMask:
-        #     temp_center_mask_path = 'center_mask_{}_{}'.format(emission_center_peak['peak_name'],
-        #                                                    emission_center_peak['year'])
-        #     temp_mask.save(temp_center_mask_path)
-
-        # temp_result = temp_mask * extract_raster
-        # temp_result.save(output)
-
-        pass
-
     ############################################################################
     # 统计制表相关功能
     ############################################################################
@@ -2943,6 +3021,30 @@ class EDGAR_spatial(object):
 
         # logger output
         self.ES_logger.debug('Convert {}\'s statistics table to csv file:{}'.format(year, temp_outPath))
+
+    def do_table_to_csv(self, table, outPath):
+        temp_table = table
+
+        # --first lets make a list of all of the fields in the table
+        fields = arcpy.ListFields(table)
+        field_names = [field.name for field in fields]
+
+        # 获得输出文件的绝对路径
+        temp_outPath = os.path.abspath(outPath)
+
+        with open(temp_outPath, 'wt') as f:
+            w = csv.writer(f)
+            # --write all field names to the output file
+            w.writerow(field_names)
+
+            # --now we make the search cursor that will iterate through the rows of the table
+            for row in arcpy.SearchCursor(temp_table):
+                field_vals = [row.getValue(field.name) for field in fields]
+                w.writerow(field_vals)
+            # del row
+
+        # logger output
+        self.ES_logger.debug('Convert statistics table to csv file:{}'.format(temp_outPath))
 
     def zonal_center_info_statistics(self,
                                      emission_center,
@@ -3287,62 +3389,6 @@ class EDGAR_spatial(object):
 
             # logger output
             self.ES_logger.debug('Zonal statistics convert to csv.')
-
-    def deprecated_zonal_year_statistics(self, year_range, inZone, center_range, outPath):
-        # # 获得保存路径
-        # temp_out_csv_path = os.path.abspath(outPath)
-
-        # # 检查输入的分区是否存在
-        # if not (arcpy.Exists(inZone)):
-        #     print('Error: inZone not found.')
-
-        #     # logger output
-        #     self.ES_logger.error('inZone does not exist.')
-
-        #     return
-
-        # # 生成中心点
-        # temp_center = str((min(center_range) + max(center_range)) / 2).replace('.', '')
-
-        # for yr in tqdm(range(min(year_range), max(year_range) + 1)):
-        #     # 生成中心的栅格名称
-        #     temp_main_inRaster = 'center_main_sector_{}_{}'.format(temp_center, yr)
-        #     # 检查输入的待统计值
-        #     if not (arcpy.Exists(temp_main_inRaster)):
-        #         print('Error: inRaster not found.')
-
-        #         # logger output
-        #         self.ES_logger.error('inRaster does not exist.')
-
-        #         return
-
-        #     temp_outTable = 'table_' + temp_main_inRaster
-
-        #     self.do_zonal_statistic_to_table(
-        #         year=yr,
-        #         inZoneData=inZone,
-        #         zoneField='ISO_A3',
-        #         inValueRaster=temp_main_inRaster,
-        #         outTable=temp_outTable)
-        #     # logger output
-        #     self.ES_logger.debug('Zonal statistics finished:{}'.format(temp_main_inRaster))
-
-        #     temp_outCsv = os.path.join(temp_out_csv_path, temp_main_inRaster + '.csv')
-        #     self.do_zonal_table_to_csv(table=temp_outTable, year=yr, outPath=temp_outCsv)
-
-        #     # logger output
-        #     self.ES_logger.debug('Zonal statistics convert to csv.')
-
-        #     # 生成中心权重的栅格名称
-        #     temp_main_weight_inRaster = 'center_main_sector_weight_{}_{}'.format(temp_center, yr)
-        #     # 检查输入的待统计值
-        #     if not (arcpy.Exists(temp_main_weight_inRaster)):
-        #         print('Error: inRaster not found.')
-
-        #         # logger output
-        #         self.ES_logger.error('inRaster does not exist.')
-        
-        pass
 
     ############################################################################
     ############################################################################
@@ -3714,6 +3760,243 @@ class EDGAR_spatial(object):
         # 将自定义的编码合并。同时将其转化为元组，保持元素的顺序。
         self.gen_encode = tuple((['uncatalogued'] + encode_list))
 
+    # 生成需要统计的部门分类字段和排序后字段的名称
+    @property
+    def decade_categories_generalization_method(self):
+        # return self.gen_method
+        pass
+
+    # 需要为setter函数传入一个字典，字典中需要包含两个键值对：
+    # 第一个键值对：key：‘gen_handle’；value: 一个字典其需要符合__default_gen_handle。
+    # 第二个键值对：key：‘FieldsinTable’；value：一个列表其是获得的数据表中的所有已有的字段。
+    # setter函数实质上实现了如下功能：
+    # 1、生成一个gen_method字典；
+    # 2、为该字典中添加需要若干组键值对（key-value），
+    #   每一个键值对中的键（key）为分类的名称，
+    #   值（value）为构成这个分类的每个部门（sector）在一个arcpy.cursor游标中的位置，这些位置通过列表的方式保存。
+    @decade_categories_generalization_method.setter
+    def decade_categories_generalization_method(self, args):
+        # # 创建一个新的gen_method字典
+        # self.gen_method = {}
+
+        # # 在gen_handle字典中逐个处理
+        # # gen_handle字典的内容：键是部门（sector）、值是分类（category），
+        # # 因此这里可以直接由items()方法获得所需信息
+        # for sector, category in args['gen_handle'].items():
+        #     # 如果分类还未创建则添加一个新项到字典中
+        #     if not category in self.gen_method:
+        #         self.gen_method[category] = [args['FieldsinTable'].index(sector)]
+        #     # 分类已存在则在值中追加一个新的部门（sector）位置
+        #     else:
+        #         self.gen_method[category].append(args['FieldsinTable'].index(sector))
+        pass
+
+    ############################################################################
+    # 年代际部门排放合并至分类排放相关函数/方法
+    ############################################################################
+    # # 打印分类和对应编码的表格
+    # def print_categories(self, generalization_encode):
+    #     print('Following table shows the categories and assigned codes for sectoral emission generalization.')
+
+    #     # 设置打印格式
+    #     temp_table_header_fmt = ['Categories', 'Code']
+
+    #     # 打印表格
+    #     print(tabulate(
+    #         list(zip(self.gen_encode, range(len(self.gen_encode)))),
+    #         headers=temp_table_header_fmt,
+    #         tablefmt="grid"))
+
+    # # 这里需要传入两个参数：第一个参数，已经统计得到的分类和对应的排放量比例字典；第二个参数，自定义的编码方式
+    # # 函数将返回一个整数，这个整数的不同位置上的数字代表了对应部门的代码，同时整数的位数也表明了栅格部门的排放有多少个分类。
+    # def generalization_category_encoding(self, category_percentages, encode):
+    #     # 检查两个输入变量是否为空，若为空则直接返回空字典
+    #     if not category_percentages or not encode:
+    #         print('ERROR: input category percentages or encode method is empty. Please check the input.')
+
+    #         # logger output
+    #         self.ES_logger.error('input category percentages or encode method is empty.')
+    #         exit(1)
+
+    #     # 排序字典结果，生成排序结果
+    #     # 这里需要引入排序字典以保证字典的顺序不会发生变化
+    #     temp_sorted = collections.OrderedDict(
+    #         sorted(category_percentages.items(), key=lambda item: item[1], reverse=True))
+
+    #     # 初始化编码
+    #     temp_encode = ''
+
+    #     # 从encode中找到位置然后顺序赋值
+    #     for category, percentages in temp_sorted.items():
+    #         # 如果分类为0，则不用赋值代码直接返回现有代码
+    #         # 注意这里可能会由于栅格的排放比例为极小的小数，从而产生误判，需要特殊处理
+    #         if percentages == 0:
+    #             # 特殊情况：如果最大排放（第一个元素）就是0，则直接返回0。
+    #             # 这里主要处理可能存在的0排放格网的漏网之鱼。
+    #             if temp_encode == '':
+    #                 return 0
+    #             # 从现有位开始剩余位置均返回0
+    #             else:
+    #                 temp_sorted_position = list(temp_sorted.keys()).index(category)
+    #                 # 之后位数赋值为0的本质就是乘上10，100，1000...这样的10的幂次的数
+    #                 fill_suffix = math.pow(10, len(temp_sorted) - temp_sorted_position)
+    #                 temp_encode = int(temp_encode) * fill_suffix
+    #                 return int(temp_encode)
+    #         else:
+    #             # 从encode中找到元素的对应位置，位置即为代码
+    #             temp_index = encode.index(category)
+    #             temp_encode += str(temp_index)
+
+    #     # 返回结果
+    #     return int(temp_encode)
+
+    # # 统计分类排放量比例总和的函数。
+    # # 需要传入一个arcpy.cursor游标。
+    # # 函数返回一个字典，键为分类的名称，值为排放比例。
+    def decade_categories_generalization_summarize(self, arcpyCursor, categories):
+        # 检查两个输入变量是否为空，若为空则直接返回空字典
+        if not categories:
+            print('ERROR: input categories is empty. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('input categories is empty.')
+            exit(1)
+
+        # 临时存储分类比例加和结果的字典，其中的键为分类名称，值为比例加和结果
+        results = {}
+
+        # 计算每个分类排放的比例
+        for category in categories:
+            results[category] = arcpyCursor[categories.index(category)]
+
+        return results
+
+    # 执行对数据表中的行数据内容进行分类整合的函数
+    # 注意：
+    # 这个函数要返回结果？
+    # 这个函数要返回一个字典，其键为对应arcpy的字段名，值为统计后的结果
+    def categories_generalize_processe(self, arcpyCursor, encode_list, sorted_field):
+        # 初始化临时变量
+        # 获得需要进行的分类名称
+        # 先从表格中获得结果字段然后删除排序结果字段就是需要的分类名称
+        # temp_category = copy.deepcopy(encode_list)
+        # 获得分类排序的编码规则
+        self.generalization_encode = encode_list
+        temp_encode = self.generalization_encode
+
+        # 将各个部门的排放比例按字典返回
+        cate_percents = self.decade_categories_generalization_summarize(arcpyCursor=arcpyCursor,categories=encode_list)
+
+        # 排序字典，生成排序结果
+        sorted_sectors = self.generalization_category_encoding(
+            category_percentages=cate_percents, encode=temp_encode)
+
+        # 返回结果字典
+        return sorted_sectors
+
+    # 实际执行单个栅格的部门类型归类
+    # 这里传入的genFieldList参数是指需要在数据表中添加的用于结果生成的字段组成的列表。所以，列表中应该由若干字典组成。
+    # 这些字典中的键值这里需要满足field_attributes_checker的条件，也就是要满足arcpy为数据表添加字段的要求。
+    # 如果数据表中已经存在了对应的统计结果生成的字段，则可以传入一个空列表参数以跳过添加字段过程。
+    def do_categories_generalize(self, inPoint, genFieldList, gen_sorted_field):
+        # 尝试为数据表添加统计结果字段
+        # 这里会检查genField参数，如果传入空字典则跳过添加字段步骤，如果为有内容的字典则进行字段添加，如果为其他类型的则报错
+        self.addField_to_inPoint(inPoint=inPoint, genFieldList=gen_sorted_field)
+        sorted_field = gen_sorted_field[0]['field_name']
+        sorted_field_categories_name = gen_sorted_field[1]['field_name']
+
+        # 首先列出点数据中的所有字段并提取出也在gen_handle存在的字段
+        # --first lets make a list of all of the fields in the table
+        # fields = arcpy.ListFields(inPoint)
+        # field_names = [field.name for field in fields]
+        # # 从已有的数据表中找到对应部门的位置，并存入统计方法中
+        # self.generalization_method = {'gen_handle': gen_handle, 'FieldsinTable': field_names}
+        # # 获得统计结果字段的名称
+        # self.generalization_results = gen_handle
+        field_names = copy.deepcopy(genFieldList)
+        field_names.extend([sorted_field, sorted_field_categories_name, 'grid_log_decade_mean_emission'])
+
+        # 注意：
+        # 根据arcpy文档给出的说明：
+        # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
+        # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
+        # 构造游标，开始逐行操作
+        with arcpy.da.UpdateCursor(inPoint, field_names) as cursor:
+            for row in tqdm(cursor):
+                # 这里的排序操作需要得到两个结果，一个是整数的完整结果，第二个是前三排放分类的名字
+                # 其中sorted_field储存整数的完整结果
+                # 其中sorted_field_categories_name存储前三个分类的名字
+                # 检查栅格排放值是否为0，为0则直接将所有值赋值为0
+                if row[field_names.index('grid_log_decade_mean_emission')] == 0 or row[field_names.index('grid_log_decade_mean_emission')] is None:
+                    row[field_names.index(sorted_field)] = 0
+                    row[field_names.index(sorted_field_categories_name)] = None
+                else:
+                    # 这里需要判断一个很特殊的情况，区域中各部门的排放都非常小，则同样不进行排序
+                    if max(row[:-3]) == 0:
+                        row[field_names.index(sorted_field)] = 0
+                        row[field_names.index(sorted_field_categories_name)] = None
+                    else: #如果存在有效排放则进行部门排序
+                        temp_generalization = self.categories_generalize_processe(row, encode_list = genFieldList, sorted_field=sorted_field)
+                        # 更新分类排放排序后的整数结果
+                        row[field_names.index(sorted_field)] = temp_generalization
+
+                        # 将前三部门名存入
+                        # 将前三位数分别存为列表中的单独一项
+                        temp_top_three_list = [int(s) for s in str(temp_generalization/100)]
+                        # 设置连接表的连接字符
+                        temp_top_three_separator = '-'
+                        # 储存临时的前三位部门名称
+                        temp_top_three_part = []
+                        # 按照编码找到对应部门
+                        for t3 in temp_top_three_list:
+                            if t3 == 0: # 如果为0，即代表没有部门排放，不填入数值
+                                pass
+                            else: # 如果存在排放则添加对应名字
+                                temp_top_three_part.append(genFieldList[t3 - 1]) # 注意这里需要-1，因为原始编码中0被赋予了数组0号位的空值
+                        
+                        # 连接字符串
+                        temp_top_three_string = temp_top_three_separator.join(temp_top_three_part)
+                        # 更新分类排放排序后的字符串结果
+                        row[field_names.index(sorted_field_categories_name)] = temp_top_three_string
+
+                # 更新行信息
+                cursor.updateRow(row)
+
+    # 对点数据中的栅格执行部门类型归类
+    def categories_generalize(self, inPoint, gen_fieldList, gen_sorted_field):
+        # 检查输入是否为空。为空则直接返回。
+        if gen_sorted_field == []:
+            print('WARNING: gen_sorted_field is empty. Process will not add new field to data table.')
+
+            # logger output
+            self.ES_logger.info('No new fields were added.')
+
+        if gen_fieldList == []:
+            print('WARNING: gen_fieldList is empty. Process will not add new field to data table.')
+
+            # logger output
+            self.ES_logger.info('No new fields were added.')
+
+        # 调用实际执行函数进行归类
+        self.do_categories_generalize(
+            inPoint=inPoint, genFieldList=gen_fieldList, gen_sorted_field=gen_sorted_field)
+
+    # 处理一定时间范围内的部门排放进行类型归类
+    def decade_categories_generalize(self, year_range, gen_fieldList, gen_sorted_field):
+        # 检查输入年份变量参数是否合规
+        if min(year_range) < self.__default_start_year or max(year_range) > self.__default_end_year:
+            print('Error! Processing year range out of data support! The year must contain in 1970 to 2019')
+            self.ES_logger.info('Year settings are out of range.')
+            self.ES_logger.error('Year setting error!')
+            exit(1)
+
+        for year in year_range:
+            temp_inPoint = 'decade_category_weights_with_urbanization_{}'.format(year)
+            self.print_start_year(year=year)
+            self.categories_generalize(
+                inPoint=temp_inPoint, gen_fieldList=gen_fieldList, gen_sorted_field=gen_sorted_field)
+            self.print_finish_year(year=year)
+
     ############################################################################
     # 部门排放合并至分类排放相关函数/方法
     ############################################################################
@@ -3835,6 +4118,30 @@ class EDGAR_spatial(object):
     # 这些字典中的键值这里需要满足field_attributes_checker的条件，也就是要满足arcpy为数据表添加字段的要求。
     # 如果数据表中已经存在了对应的统计结果生成的字段，则可以传入一个空列表参数以跳过添加字段过程。
     def do_sectors_generalize(self, inPoint, genFieldList, gen_handle):
+        """
+        在点要素类上执行行业部门概括处理。
+
+        该方法执行行业部门概括的实际实现，根据概括规则处理提供的点要素类中的每一行。
+        它向要素类添加必要的字段，处理每个网格单元的排放数据，
+        并用概括后的行业部门结果更新要素类。
+
+        参数：
+            inPoint (str): 包含待处理排放数据的点要素类的路径。
+            genFieldList (list): 定义要添加到要素类的字段的字典列表。
+                                每个字典应包含满足arcpy字段创建要求的字段属性规范。
+                                如果为空，则不会添加任何字段。
+            gen_handle (list): 用于存储概括结果的字段名称列表。
+                             必须包含'sorted_sectors'，它将存储编码的分类结果。
+
+        返回：
+            None
+
+        注意：
+            - 对于总排放量为零的网格单元，所有概括结果字段都设置为零
+            - 使用arcpy.da.UpdateCursor处理并更新要素类中的每一行
+            - generalization_method字典是根据表中的字段构建的
+            - 使用tqdm跟踪进度以提供用户反馈
+        """
         # 尝试为数据表添加统计结果字段
         # 这里会检查genField参数，如果传入空字典则跳过添加字段步骤，如果为有内容的字典则进行字段添加，如果为其他类型的则报错
         self.addField_to_inPoint(inPoint=inPoint, genFieldList=genFieldList)
@@ -3874,6 +4181,29 @@ class EDGAR_spatial(object):
 
     # 对点数据中的栅格执行部门类型归类
     def sectors_generalize(self, inPoint, gen_handle, gen_fieldList):
+        """
+        对点数据集中的网格数据执行行业部门类型分类。
+
+        该方法根据指定的分类规则对提供的点数据集中的排放部门进行分类，
+        并将结果添加到数据集的字段中。
+
+        参数：
+            inPoint (str): 包含网格排放数据的点要素类的名称。
+            gen_handle (list): 用于存储概括结果的字段名称列表。
+                              必须包含'sorted_sectors'用于存储编码的分类结果。
+            gen_fieldList (list): 描述要添加到数据表的字段的字典列表。
+                                 每个字典包含字段属性规范。
+                                 可以为空以跳过添加新字段。
+
+        返回：
+            None
+
+        注释：
+            - 在处理前检查输入的有效性
+            - 如果网格总排放量为零，所有分类值都设置为零
+            - 使用do_sectors_generalize方法执行实际分类
+            - 将错误和警告记录到ES_logger
+        """
         # 检查输入是否为空。为空则直接返回。
         if not inPoint or not gen_handle:
             print('ERROR: input inPoint or gen_handle is empty. Please check the inputs.')
@@ -3894,6 +4224,32 @@ class EDGAR_spatial(object):
 
     # 处理一定时间范围内的部门排放进行类型归类
     def year_sectors_generalize(self, year_range, gen_handle, gen_fieldList):
+        """
+        在指定范围内对多个年份的行业部门进行概括。
+
+        该方法对所提供范围内的每一年执行行业部门概括处理。
+        它验证输入的年份范围，确保其在支持的数据期间（1970-2019）内，
+        然后对每年的数据迭代应用行业部门概括处理。
+
+        参数：
+            year_range (tuple or list): 包含处理起始和结束年份的两元素集合（包含边界值）。
+                                       两个值都必须是整数。
+            gen_handle (list): 输出中将存储概括结果的字段名称列表。
+            gen_fieldList (list): 描述要添加到数据表的字段的字典列表。
+                                 每个字典包含字段属性规范。
+                                 可以为空以跳过添加新字段。
+
+        返回：
+            None
+
+        异常：
+            SystemExit: 如果年份范围无效（不是整数或超出支持的范围）。
+
+        注释：
+            - 对于每一年，处理名为'sectoral_weights_{year}'的要素类
+            - 将处理信息记录到ES_logger
+            - 在控制台显示进度信息
+        """
         # 检查输入年份变量参数是否合规
         if (type(year_range[0]) != int) or (type(year_range[1]) != int):
             print('Error! Processing starting year and ending year must be int value')
@@ -3901,7 +4257,7 @@ class EDGAR_spatial(object):
             self.ES_logger.error('Year setting error!')
             exit(1)
         elif min(year_range) < self.__default_start_year or max(year_range) > self.__default_end_year:
-            print('Error! Processing year range out of data support! The year must contain in 1970 to 2018')
+            print('Error! Processing year range out of data support! The year must contain in 1970 to 2019')
             self.ES_logger.info('Year settings are out of range.')
             self.ES_logger.error('Year setting error!')
             exit(1)
@@ -3917,6 +4273,22 @@ class EDGAR_spatial(object):
             self.print_finish_year(year=year)
 
     def sorted_categories_rasterize(self, year, fieldName):
+        """
+        将具有分类数据的点数据集基于指定字段转换为栅格文件。
+
+        该方法使用ArcGIS的PointToRaster转换工具中的'MOST_FREQUENT'（最频繁）方法，
+        为特定年份从点数据创建栅格。生成的栅格将表示每个位置最常出现的值，单元格大小为0.1。
+
+        参数：
+            year (int): 要创建分类栅格的年份
+            fieldName (str): 用于栅格单元格值的点数据字段名称
+
+        返回：
+            None
+
+        注意：
+            该方法从名为'sectoral_weights_{year}'的输入点数据生成名为'sorted_categories_{year}'的栅格。
+        """
         temp_point = 'sectoral_weights_{}'.format(year)
         save_raster_categories = 'sorted_categories_{}'.format(year)
 
@@ -4152,7 +4524,7 @@ class EDGAR_spatial(object):
             return temp_return_rasters
         else:
             return
-            
+
     ############################################################################
     ############################################################################
     # 合并同一年不同排放中心至一个栅格
@@ -4326,9 +4698,11 @@ class EDGAR_spatial(object):
 
     ############################################################################
     ############################################################################
-    # 为EOF分析进行的栅格数据准备
+    # 为EOF分析进行的栅格数据准备和分析工作的工具
     ############################################################################
     ############################################################################
+    # 按照汇报过程中给出的意见，在计算EOF时，应该保持空间范围一定，而不同时间上的碳排放量应该维持原有数据而不是使用0值或其他值替代。
+    # 所以，以下三个EOF_center_mosaic_extend、EOF_center_category_mosaic_extend和do_EOF_mosaic_extend添加背景的函数将被废弃。
     # 为特定的排放中心栅格叠加历史排放区域
     def EOF_center_mosaic_extend(self, center_list, center_raster_fmt='center_{}_{}', background_fmt='{}_geographical_extend_null_mask'):
         if not center_list:
@@ -4438,7 +4812,7 @@ class EDGAR_spatial(object):
             # 执行叠加背景
             self.do_EOF_mosaic_extend(raster_list=temp_working_rasters,
                                     background=temp_background)
-            
+
     # 执行为任意栅格叠加背景值的
     # 注意！
     # 执行这个操作将改变输入栅格。请不要在原始数据上执行！
@@ -4525,7 +4899,7 @@ class EDGAR_spatial(object):
         # 如果需要函数返回则在这里返回字典，如果不需要返回则函数直接跳过后结束。
         if return_result:
             return temp_return
-        
+
     # 实际执行从点数据中生成某一个中心里的不同分类的排放量栅格
     # 注意！！！
     # 这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`centerName_category_year`。
@@ -4672,7 +5046,7 @@ class EDGAR_spatial(object):
             return temp_return_rasters
         else:
             return
-            
+
     # 通过给定中心和分类的列表，生成一个中心里所有分类的空间分布范围
     def EOF_generate_center_categories_geographical_extend(self, center, total_emission_list):
         if not center or not total_emission_list :
@@ -4708,8 +5082,6 @@ class EDGAR_spatial(object):
             exit(1)
 
         # 存储待返回结果的字典
-        temp_return = {}
-
         temp_return = []
         
         # 逐个对中心进行分类EOF提取的操作
@@ -4719,10 +5091,10 @@ class EDGAR_spatial(object):
 
         if return_result:
             return temp_return
-        
+
     # 实际执行从点数据中生成某一个年份中不同分类的排放量栅格
     # 注意！！！
-    # 这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`centerName_category_year`。
+    # 这个函数会产生一系列的数量众多的栅格，它们的命名逻辑为`EOF_category_year`和`EOF_category_year_log`
     # 如果要使用这里的栅格结果请参考以上命名逻辑找到所需栅格
     # 
     # 注意第四个参数`return_results`，当此参数为True时函数会返回一个生成栅格的结果的列表；
@@ -4759,8 +5131,12 @@ class EDGAR_spatial(object):
         # 所以采取统一添加统一删除的策略
         try:
             # 逐一添加临时字段
-            temp_add_field = ['EOF_{}'.format(category) for category in category_field_list]
-            for field in temp_add_field:
+            # 这里需要添加两个字段，第一个字段是对数结果，第二个字段是正常结果
+            temp_category_field_list_with_log = ['EOF_{}_log'.format(category) for category in category_field_list]
+            temp_category_field_list = ['EOF_{}'.format(category) for category in category_field_list]
+            for field in temp_category_field_list:
+                arcpy.AddField_management(inPoint, field, 'DOUBLE', '#', '#', '#', '#','NULLABLE', '#', '#')
+            for field in temp_category_field_list_with_log:
                 arcpy.AddField_management(inPoint, field, 'DOUBLE', '#', '#', '#', '#','NULLABLE', '#', '#')
 
             # logger output
@@ -4785,15 +5161,16 @@ class EDGAR_spatial(object):
         ################################################################################
         ################################################################################
         # 构建cursor需要的字段
-        # 这里字段的结构设计为：[总量，部门比例_1，EOF_部门结果_1,...,部门比例_n，EOF_部门结果_n].
-        # 所以，每个EOF部门结果，EOF_部门结果_n是field_list[2*n] = field_list[0] + log10(field_list[2n-1])
+        #       这里字段的结构设计为：[总量，部门比例_1，EOF_部门结果_1_log, EOF_部门结果_1,...,部门比例_n，EOF_部门结果_n_log, EOF_部门结果_n].
+        #       所以，每个EOF部门结果，EOF_部门结果_n_log是field_list[3*n-1] = field_list[0] + log10(field_list[3n-2]);
+        #                              EOF_部门结果_n是field_list[3*n] = numpy.power(10, field_list[3n])
 
         # 注意：所以添加的EOF结果字段已经保存在了上面的temp_add_field中。
         # 啊哈啊哈哈哈啊哈，你一定看不懂这段list解包操作。
         # 其实，我也看不懂。
         # 但是，它可以用。并且从这个可运行的解包操作中可以认识到，python的list解包操作是从后到前解析的。
         # 我的粗浅理解只能到这里了。
-        temp_field_list = ['grid_log_total_emission'] + [cate_eof_pair for zip_cate_eof in zip(category_field_list, temp_add_field) for cate_eof_pair in zip_cate_eof]
+        temp_field_list = ['grid_log_total_emission'] + [item for items in zip(category_field_list, temp_category_field_list_with_log, temp_category_field_list) for item in items if item is not None]
 
         with arcpy.da.UpdateCursor(in_table=inPoint, field_names=temp_field_list) as cursor:
             for row in tqdm(cursor):
@@ -4805,57 +5182,59 @@ class EDGAR_spatial(object):
                 #       并且就现实中的情况来说，一个区域的某一部门排放是0那就意味着这个地区没有这个部门，
                 #       也就没有必要对这个部门进行计算了
                 # 注意3：
-                #       这里字段的结构设计为：[总量，部门比例_1，EOF_部门结果_1,...,部门比例_n，EOF_部门结果_n].
-                #       所以，每个EOF部门结果，EOF_部门结果_n是field_list[2*n] = field_list[0] + log10(field_list[2n-1])
+                #       这里字段的结构设计为：[总量，部门比例_1，EOF_部门结果_1_log, EOF_部门结果_1,...,部门比例_n，EOF_部门结果_n_log, EOF_部门结果_n].
+                #       所以，每个EOF部门结果，EOF_部门结果_n_log是field_list[3*n-1] = field_list[0] + log10(field_list[3n-2]);
+                #                              EOF_部门结果_n是field_list[3*n] = numpy.power(10, field_list[3n])
                 
                 # 该栅格没有某一部门排放的情况
-                if row[1] == 0:
-                    continue
+                if row[1] == 0 or row[1] is None:
+                    # 这里需要做二次检查，似乎arcgis存在bug会莫名其妙的掠过一些栅格，导致数据不完整
+                    if max(row) == 0:
+                        continue
+                    else:
+                        # 计算每个部门对应的EOF结果
+                        for i in range(1,len(category_field_list)+1):
+                            # 这里还要进行排放量比例是否为0的检查，因为涉及对数操作。
+                            # 如果比例为0则直接为排放量赋0值
+                            if row[3*i-2] == 0:
+                                row[3*i] = 0
+                                row[3*i-1] = 0
+                            # 如果比例不为0则进行计算
+                            else:
+                                temp_cate_property = numpy.log10(row[3*i-2])
+                                row[3*i-1] = row[0] + temp_cate_property
+                                row[3*i] = numpy.power(10, row[3*i-1])
                 # 该栅格存在某一部门排放
                 else:
                     # 计算每个部门对应的EOF结果
                     for i in range(1,len(category_field_list)+1):
                         # 这里还要进行排放量比例是否为0的检查，因为涉及对数操作。
                         # 如果比例为0则直接为排放量赋0值
-                        if row[2*i-1] == 0:
-                            row[2*i] = 0
+                        if row[3*i-2] == 0:
+                            row[3*i] = 0
+                            row[3*i-1] = 0
                         # 如果比例不为0则进行计算
                         else:
-                            temp_cate_property = numpy.log10(row[2*i-1])
-                            row[2*i] = row[0] + temp_cate_property
+                            temp_cate_property = numpy.log10(row[3*i-2])
+                            row[3*i-1] = row[0] + temp_cate_property
+                            row[3*i] = numpy.power(10, row[3*i-1])
 
                 # 更新行信息
                 cursor.updateRow(row)
 
-        # 逐部门保存结果
-        for cate in temp_add_field:
-            # 保存列数据为栅格
-            save_raster = '{}_{}'.format(cate, inPoint[-4:])
-
-            try:
-                print('EOF rasterize start:{}'.format(save_raster))
-                arcpy.PointToRaster_conversion(inPoint,cate, save_raster,'MOST_FREQUENT', '#', '0.1')
-
-                # 添加转换结果到待返回列表
-                temp_return_rasters.append(save_raster)
-
-                # logger output
-                self.ES_logger.debug('EOF rasterize finished:{}'.format(save_raster))
-                print('EOF rasterize finished:{}'.format(save_raster))
-            except:
-                print('Create raster field: {}'.format(save_raster))
-
-                # logger output
-                self.ES_logger.error('EOF rasterize failed:{}'.format(save_raster))
-
-                print(arcpy.GetMessages())
+        # 将部门排放结果转换为栅格数据
+        # 注意输出数据为对数值
+        temp_return_rasters = self.point_field_to_raster(inPoint, temp_category_field_list)
+        temp_return_rasters_log = self.point_field_to_raster(inPoint=inPoint, field_list=temp_category_field_list_with_log )
+        temp_return_rasters.extend(temp_return_rasters_log)
 
         # 从点数据中删除添加的临时列
-        print('Deleting temporary fields...')
-        arcpy.DeleteField_management(inPoint, temp_add_field)
-        # logger output
-        self.ES_logger.info('Deleted temporary fields.')
-        print('Deleted temporary fields.')
+        # print('Deleting temporary fields...')
+        # arcpy.DeleteField_management(inPoint, temp_category_field_list)
+        # arcpy.DeleteField_management(inPoint, temp_category_field_list_with_log)
+        # # logger output
+        # self.ES_logger.info('Deleted temporary fields.')
+        # print('Deleted temporary fields.')
         
         # 决定返回模式
         if return_results:
@@ -4863,11 +5242,97 @@ class EDGAR_spatial(object):
             return temp_return_rasters
         else:
             return
-            
+
+    def point_field_to_raster(self, inPoint, field_list):
+        # 储存可能需要返回的结果列表
+        temp_return_rasters = []
+        # 每个字段依次进行转换
+        for field in field_list:
+            # 保存列数据为栅格
+            save_raster = '{}_{}'.format(field, inPoint[-4:])
+            try:
+                print('Rasterize start:{}'.format(save_raster))
+                arcpy.PointToRaster_conversion(inPoint,field, save_raster,'MOST_FREQUENT', '#', '0.1')
+                # 添加转换结果到待返回列表
+                temp_return_rasters.append(save_raster)
+                #logger output
+                self.ES_logger.debug('Rasterize finished:{}'.format(save_raster))
+                print('Rasterize finished:{}'.format(save_raster))
+            except:
+                print('Create raster field: {}'.format(save_raster))
+                # logger output
+                self.ES_logger.error('Rasterize failed:{}'.format(save_raster))
+                print(arcpy.GetMessages())
+        
+        return temp_return_rasters
+
     # 用于从中心中提取每个部门从起始年份的排放量区域
     # 执行这个函数之前还是要先提取出每个类型的排放，而不是使用最原始的每个部门的排放。
-    def EOF_extract_center_categories_emission_raster(self, center, category_list,category_emission_fmt='{}_EOF_{}_{}', background_fmt='{}_EOF_geographical_extend_null_mask'):
-        pass
+    def EOF_extract_center_categories_emission_raster(self, center, category_list,year_range=[1970,2019], category_emission_fmt='{}_EOF_{}_{}', background_fmt='{}_EOF_geographical_extend_null_mask',return_raster_list=True):
+        if not center or not category_list:
+            print('ERROR: The emission center not exist. Please check the inputs.'  )
+
+            # logger output
+            self.ES_logger.error('input emission center does not exist.')
+            exit(1)
+
+        # 检查历史范围栅格是否存在
+        # 生成历史范围栅格的文件名
+        try:
+            emission_background = background_fmt.format(center.center_name)
+        except:
+            print('ERROR: can not format geographical raster. background_fmt: {}'.format(background_fmt))
+
+            # logger output
+            self.ES_logger.error('geographic raster name format failed. background_fmt: {}'.format(background_fmt))
+            exit(1)
+
+        # 检查历史范围栅格是否存在
+        # 这里的检查使用了arcgis的listrasters方法，速度可能有点慢
+        emission_background_list =  arcpy.ListRasters(emission_background)
+        if emission_background_list == []:
+            print('ERROR: The geographic extend dose not exist. Please check the inputs. geographic extend raster name: {}'.format(emission_background)  )
+
+            # logger output
+            self.ES_logger.error('input geographic extend does not exist. geographic extend raster name: {}'.format(emission_background))
+            exit(1)
+        
+        # 生产待提取范围数据的类型列表
+        emission_list = ['EOF_{}_{}'.format(cate, year) for cate in category_list for year in range(year_range[0], year_range[1]+1)]
+        emission_list = self.do_arcpy_list_raster_list(emission_list)
+
+        # 检查类型排放栅格是否存在
+        if emission_list == []:
+            print('ERROR: The categories emission dose not exist. Please check the inputs.')
+
+            # logger output
+            self.ES_logger.error('input categories emission does not exist.')
+            exit(1)
+
+        # Check out the ArcGIS Spatial Analyst extension license
+        arcpy.CheckOutExtension("Spatial")
+
+        return_list = []
+        # 使用clip逐栅格提取结果
+        # 提取正确结果需要经过两个步骤
+        #   1、利用background提取一年中的范围。实际使用setnull完成。
+        #   2、为了保证EOF的正确计算需要在mosaic背景补充可能缺失值
+        for raster in tqdm(emission_list):
+            # 设定临时存储提取结果的栅格名称
+            temp_setnull_file = '{}_{}'.format(center.center_name, raster)
+            # 用setnull实现提取背景范围内的数据
+            temp_setnull = SetNull(IsNull(emission_background_list[0]), raster)
+            temp_setnull.save(temp_setnull_file)
+
+            # 为提取结果添加EOF背景
+            self.do_EOF_mosaic_extend(raster_list=[temp_setnull_file], background=emission_background_list[0])
+
+            # 将结果添加到返回值列表中
+            return_list.append(temp_setnull_file)
+        
+        # 处理是否需要返回处理后的栅格结果
+        if return_raster_list:
+            return return_list
 
     # 实际执行从一个中心的一个部门类型中，逐年提取中心历史范围中的数据
     def do_EOF_extract_center_categories_emission_ratser(self):
@@ -5157,28 +5622,35 @@ class EDGAR_spatial(object):
                                 output_formate='TIFF')
 
     # 批量将同中心不同部门的eof统计到各个部门的名称中
-    def EOF_joint_modes_to_point(self, center, category_list, mode_type_list, num_eofs):
+    def EOF_joint_modes_to_point(self, center, category_list, mode_type_list, num_eofs, with_original_mean_std=True):
         '''
         这个函数用于将不同排放量级中心的EOF的各场结果合并到一个点类型文件中。
-        这个函数需要提供三个参数:
+        如果这个函数提供了with_original_mean_std参数，那么还会生成新的若干列，他们是每一个场结果再乘以对应栅格的标准差。
+        这个函数需要提供如下参数:
             center：中心名称。
             category_list：一个包含部分类型的列表。
             mode_typelist：一个包含不同类型EOF场的列表。例如原始的EOF场，correlative map，covariance map。
+            num_eofs：需要返回的EOF场的数量。
+            with_original_mean_std：是否要加入原始数据的平均值栅格和标准差栅格。如果需要，则需要提供对应文件，并命名名为：[center_name]_mean_[category]的格式。默认值：True。
         '''
         for i in category_list:
             self.do_EOF_joint_modes_to_point(center=center,
                                                 category=i,
                                                 mode_type_list=mode_type_list,
-                                                num_eofs=num_eofs)
+                                                num_eofs=num_eofs,
+                                                with_original_mean_std=with_original_mean_std)
 
     # 将同一中心的EOF结果统计到同一个部门名称的点数据中
-    def do_EOF_joint_modes_to_point(self, center, category, mode_type_list, num_eofs):
+    def do_EOF_joint_modes_to_point(self, center, category, mode_type_list, num_eofs, with_original_mean_std=True):
         '''
         这个函数用于将不同排放量级中心的EOF的各场结果合并到一个点类型文件中。
         这个函数需要提供三个参数:
             center：中心名称。
             category：确定的部门名称
             mode_typelist：一个包含不同类型EOF场的列表。例如原始的EOF场，correlative map，covariance map。
+            num_eofs：需要返回的EOF场的数量。
+            with_original_mean_std：是否要加入原始数据的平均值栅格和标准差栅格。默认值：True。
+                                    如果需要，则需要提供对应文件，并命名名为：[center_name]_mean_[category]的格式。
         '''
         #######################################################################
         #######################################################################
@@ -5222,6 +5694,35 @@ class EDGAR_spatial(object):
         temp_wildcard_pair = zip(mode_type_list*len(temp_eof_num_list), temp_eof_num_list*len(temp_eof_num_list))
         temp_wildcard = ['{}_{}_{}_{}'.format(center.center_name, category, i[0], i[1]) for i in temp_wildcard_pair]
         temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard)
+
+        # 处理with_original_mean_std参数的特殊情况
+        # 继续列出需要合并的栅格
+        # 包括平均值栅格、标准差栅格和标准差乘以各个场的栅格。
+        # 注意：生成标准差乘以各个场的栅格是在这个分支中通过调用函数实现。
+        if with_original_mean_std:
+            # 生成平均值栅格和标准差栅格名字
+            temp_mean_wildcard = '{}_mean_{}'.format(center.center_name, category)
+            temp_std_wildcard = '{}_std_{}'.format(center.center_name, category)
+            temp_mean_std_wildcard = [temp_mean_wildcard, temp_std_wildcard]
+
+            # 列出对应栅格
+            temp_mean_std_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_mean_std_wildcard)
+            
+            # 这里先不处理均值栅格。由于文件命名存在差异。
+            #将平均值、标准差加入待提取栅格
+            # temp_working_rasters.extend(temp_mean_std_rasters)
+            
+            # 生成场栅格名字
+            temp_mode_name = self.do_arcpy_list_raster_list(wildcard_list=
+                                ['{}_{}_mode_{}'.format(center.center_name, category, modes) for modes in range(0, num_eofs)])
+
+            # 这里的思路应该是：
+            #   1、通过栅格乘法，计算标准差*场的结果
+            #   2、再通过ETP函数提取点值。
+            temp_mode_multiply_std_raster = self.do_EOF_generate_mode_multiply_std_raster(mode_list=temp_mode_name,std_name=temp_std_wildcard, return_raster_list=True)
+
+            #将相乘结果加入待提取栅格
+            temp_working_rasters.extend(temp_mode_multiply_std_raster)
 
         # 从这里开始，通过ETP方法整合所有栅格数据到同一个点数据中
         # 1、利用待提取列表中的任意一个栅格，转为输出结果的点数据，同时作为提取的起点
@@ -5298,6 +5799,29 @@ class EDGAR_spatial(object):
             # 添加到删除名单
             delete_temporary.append(temp_point_output)
 
+        # 处理均值和标准差栅格
+        if with_original_mean_std:
+            # 提取均值栅格
+            output_eof_mean_points = 'ETP_mean'
+            self.do_ETP(ExtractPoint=temp_point_trigger,
+                        ValueRaster=temp_mean_wildcard,
+                        outPoint=output_eof_mean_points,
+                        NewFieldName=('RASTERVALU', 'mean'))
+
+            delete_temporary.append(output_eof_mean_points)
+
+            # 提取标准差栅格
+            output_eof_std_points = 'ETP_std'
+            self.do_ETP(ExtractPoint=output_eof_mean_points,
+                        ValueRaster=temp_std_wildcard,
+                        outPoint=output_eof_std_points,
+                        NewFieldName=('RASTERVALU', 'std'))
+
+            delete_temporary.append(output_eof_std_points)
+
+            # 交换trigger指针
+            temp_point_trigger = output_eof_std_points
+
         # 处理最后一个场数据栅格，并将结果保存到输出文件中
         self.do_ETP(
             ExtractPoint=temp_point_trigger,
@@ -5305,6 +5829,7 @@ class EDGAR_spatial(object):
             outPoint=output_eof_points,
             NewFieldName=('RASTERVALU', temp_last_job[len('{}_{}_'.format(center.center_name, category)):]))
 
+        delete_temporary.append(temp_last_job)
         print('{} {} EOF mode merge to point'.format(center.center_name, category) )
 
         # 删除临时生成的迭代变量
@@ -5312,6 +5837,358 @@ class EDGAR_spatial(object):
 
         # logger output
         self.ES_logger.debug('working_rasters cleaned!')
+
+    # 实际执行将每个场的结果乘以对应栅格的标准差并生成一个组新的栅格
+    def do_EOF_generate_mode_multiply_std_raster(self, mode_list, std_name, return_raster_list=True):
+        if not mode_list:
+            print('ERROR: mode type list does not specified or not list. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('category or mode type list does not specified or not list.')
+            exit(1)
+
+        # 初始化返回结果栅格列表
+        return_list = []
+
+        for mode in mode_list:
+            # 生成结果列名称
+            temp_result_raster = '{}_multiple_std'.format(mode)
+
+            # 计算乘法结果
+            temp_out_raster = Raster(mode) * Raster(std_name)
+            temp_out_raster.save(temp_result_raster)
+            # 将结果保存到返回列表
+            return_list.append(temp_result_raster)
+        
+        if return_raster_list:
+            return return_list
+
+    # 将计算的不同部门维度的EOF场合栅格结果并为合成场的函数
+    def EOF_composite_modes(self, center, category_list, modes_list, output_composite_mode_fmt = '{}_composite_mode_{}'):
+        # 检查输入参数是否合法
+        if not center:
+            print('ERROR: emission center does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('emission center does not exist. Please check exist.')
+            exit(1)
+        
+        if type(category_list) != list or not category_list:
+            print('ERROR: category list does not exist or not a list. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('category list does not exist or not a list. Please check the input.')
+            exit(1)
+
+        if type(modes_list) != list or not modes_list:
+            print('ERROR: mode list does not exist or not a list. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('mode list does not exist or not a list. Please check the input.')
+            exit(1)
+
+        for mode in tqdm(modes_list):
+            self.do_EOF_composite_modes(center=center, category_list=category_list, mode=mode, output_composite_mode_fmt=output_composite_mode_fmt)
+
+    # 实际执行将计算的不同部门维度的EOF场合栅格结果并为合成场的函数
+    def do_EOF_composite_modes(self, center, category_list, mode, output_composite_mode_fmt = '{}_composite_mode_{}'):
+        '''
+            注意：输入参数中的mode应该为一个整数。
+        '''
+        if not center or not category_list or type(mode) != int:
+            print('ERROR: emission center or category list or mode does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('emission center or category list or mode does not exist. Please check exist.')
+            exit(1)
+        
+        # 列出待合并的场结果的栅格文件
+        mode_rasters_filter = ['{}_{}_mode_{}'.format(center.center_name, category, mode) for category in category_list]
+        mode_rasters = self.do_arcpy_list_raster_list(wildcard_list=mode_rasters_filter)
+
+        # 生成结果文件名
+        # 检查输出文件名是否能够成功构建
+        try:
+            output_raster = output_composite_mode_fmt.format(center.center_name, mode)
+        except:
+            print('ERROR: can not format raster output name.')
+
+            # logger output
+            self.ES_logger.error('raster output name format failed.')
+            exit(1)
+
+        # 叠加列出栅格生成合成场结果
+        self.do_raster_add(raster_list=mode_rasters, result_raster=output_raster)
+
+    # 将不同维度的EOF场合成场点数据的函数
+    def EOF_joint_composite_modes_to_point(self, center, modes_list, with_original_mean_std=True):
+        if not center:
+            print('ERROR: emission center does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('emission center does not exist. Please check exist.')
+            exit(1)
+        
+        if type(modes_list) != list or not modes_list:
+            print('ERROR: mode list does not exist or not a list. Please check the input.')
+
+            # logger output
+            self.ES_logger.error('mode list does not exist or not a list. Please check the input.')
+            exit(1)
+
+        # 初始化部分参数
+        # 设定的保存的文件名的格式
+        output_eof_points = 'eof_{}_composite_mode_points'.format(center.center_name)
+        
+        # 设定需要删除的临时生成文件列表
+        delete_temporary = []
+
+        # 筛选需要计算的部门
+        # 是不是又看不懂这个复杂的解包操作了？其实，这里只是准备了对应的部门名称和eof结果的配对。
+        temp_wildcard = ['{}_composite_mode_{}'.format(center.center_name, mode) for mode in modes_list]
+        temp_working_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_wildcard)
+
+        # 处理with_original_mean_std参数的特殊情况
+        # 继续列出需要合并的栅格
+        # 包括平均值栅格、标准差栅格和标准差乘以各个场的栅格。
+        # 注意：生成标准差乘以各个场的栅格是在这个分支中通过调用函数实现。
+        if with_original_mean_std:
+            # 生成平均值栅格和标准差栅格名字
+            temp_mean_wildcard = 'total_emission_mean'
+            temp_std_wildcard = 'total_emission_std'
+            temp_mean_std_wildcard = [temp_mean_wildcard, temp_std_wildcard]
+
+            # 列出对应栅格
+            temp_mean_std_rasters = self.do_arcpy_list_raster_list(wildcard_list=temp_mean_std_wildcard)
+            # 暂时不处理平均值和标准差栅格
+            #将平均值、标准差加入待提取栅格
+            # temp_working_rasters.extend(temp_mean_std_rasters)
+            
+            # 生成场栅格名字
+            temp_mode_name = self.do_arcpy_list_raster_list(wildcard_list=
+                                ['{}_composite_mode_{}'.format(center.center_name, modes) for modes in modes_list])
+
+            # 这里的思路应该是：
+            #   1、通过栅格乘法，计算标准差*场的结果
+            #   2、再通过ETP函数提取点值。
+            temp_mode_multiply_std_raster = self.do_EOF_generate_mode_multiply_std_raster(mode_list=temp_mode_name,std_name=temp_std_wildcard, return_raster_list=True)
+
+            #将相乘结果加入待提取栅格
+            temp_working_rasters.extend(temp_mode_multiply_std_raster)
+
+        # 从这里开始，通过ETP方法整合所有栅格数据到同一个点数据中
+        # 1、利用待提取列表中的任意一个栅格，转为输出结果的点数据，同时作为提取的起点
+        # 2、基于输出结果的点数据，开始提取剩余栅格中的数据。
+        # logger output
+        self.ES_logger.debug('Create eof ouput point file')
+        # 栅格数据转点对象。
+        # 生成输出的点文件
+        # 这里用到了arcpy.AlterField_management()这个函数可能在10.2版本中没有
+        temp_convert_raster_name = temp_working_rasters.pop()
+        try:
+            # transform to point features
+            arcpy.RasterToPoint_conversion(temp_convert_raster_name, output_eof_points,
+                                           'VALUE')
+
+            # logger output
+            self.ES_logger.debug('EOF composite mode raster convert to point:{}'.format(output_eof_points) )
+
+            # rename value field
+            # 将字段的名字修改为mode的名称
+            arcpy.AlterField_management(output_eof_points, 'grid_code', new_field_name=temp_convert_raster_name[len('{}_'.format(center.center_name)):])
+            # 删除表链接结果结果中生成的统计字段'pointid'和'grid_code'
+            arcpy.DeleteField_management(output_eof_points, 'pointid')
+
+            # logger output
+            self.ES_logger.debug('EOF composite mode raster conver to point:{}'.format(temp_convert_raster_name) )
+
+            print('EOF composite mode raster conver to point:{}'.format(temp_convert_raster_name))
+        except:
+            print('Failed convert EOF composite mode raster to point : {}'.format(temp_convert_raster_name) )
+
+            # logger output
+            self.ES_logger.error('Failed convert EOF composite mode raster to point : {}'.format(temp_convert_raster_name) )
+
+            print(arcpy.GetMessages())
+
+        # 构造三个特殊变量来完成操作和循环的大和谐~、
+        # 因为sa.ExtractValuesToPoint函数需要一个输出表，同时又不能覆盖替换另一个表
+        # 所以需要用前两个表生成第一个循环用的表
+        # 在程序的结尾用最后（其实可以是任意一个表）来完成年份的输出
+        temp_point_trigger = 'ETP_trigger'
+        temp_point_iter_root = 'ETP_iter'
+        temp_point_output = 'ETP_output'
+
+        delete_temporary.append(temp_point_trigger)
+        delete_temporary.append(temp_point_output)
+
+        # 保存最后一个栅格为最后一次提取的结果以完成输出
+        temp_last_job = temp_working_rasters.pop()
+        # 需要先进行一次提取操作，输入到EPT_iter中
+        # 这里需要开启覆盖操作，或者执行一个del工作
+        temp_ETP_1_raster = temp_working_rasters.pop()
+        self.do_ETP(
+            ExtractPoint=output_eof_points,
+            ValueRaster=temp_ETP_1_raster,
+            outPoint=temp_point_trigger,
+            NewFieldName=('RASTERVALU', temp_ETP_1_raster[len('{}_'.format(center.center_name)):]))
+
+        # 逐个处理剩下的场数据
+        for raster in tqdm(temp_working_rasters):
+            # 从字典中获得部门和对应的待提取值栅格
+            temp_new_filed_name = raster[len('{}_'.format(center.center_name)):]
+            temp_point_output = temp_point_iter_root + temp_new_filed_name
+
+            self.do_ETP(
+                ExtractPoint=temp_point_trigger,
+                ValueRaster=raster,
+                outPoint=temp_point_output,
+                NewFieldName=('RASTERVALU', temp_new_filed_name))
+
+            # 交换temp_point_iter和temp_point_output指针
+            temp_point_trigger = temp_point_output
+
+            # 添加到删除名单
+            delete_temporary.append(temp_point_output)
+
+        # 处理均值和标准差栅格
+        if with_original_mean_std:
+            # 提取均值栅格
+            output_eof_mean_points = 'ETP_mean'
+            self.do_ETP(ExtractPoint=temp_point_trigger,
+                        ValueRaster=temp_mean_wildcard,
+                        outPoint=output_eof_mean_points,
+                        NewFieldName=('RASTERVALU', 'mean'))
+
+            delete_temporary.append(output_eof_mean_points)
+
+            # 提取标准差栅格
+            output_eof_std_points = 'ETP_std'
+            self.do_ETP(ExtractPoint=output_eof_mean_points,
+                        ValueRaster=temp_std_wildcard,
+                        outPoint=output_eof_std_points,
+                        NewFieldName=('RASTERVALU', 'std'))
+
+            delete_temporary.append(output_eof_std_points)
+
+            # 交换trigger指针
+            temp_point_trigger = output_eof_std_points
+
+        # 处理最后一个场数据栅格，并将结果保存到输出文件中
+        self.do_ETP(
+            ExtractPoint=temp_point_trigger,
+            ValueRaster=temp_last_job,
+            outPoint=output_eof_points,
+            NewFieldName=('RASTERVALU', temp_last_job[len('{}_'.format(center.center_name)):]))
+
+        delete_temporary.append(temp_last_job)
+
+        print('{} EOF composite modes merge to point'.format(center.center_name) )
+
+        # 删除临时生成的迭代变量
+        self.delete_temporary_feature_classes(delete_temporary)
+
+        # logger output
+        self.ES_logger.debug('working_rasters cleaned!')
+
+    # 实际执行将不同维度的EOF场合成场点数据的函数
+    def do_EOF_joint_composite_modes_to_point(self, center, category_list, mode):
+        pass
+
+    # 将标准差的图转变为对数形式表达
+    def EOF_std_map_log(self, center_list, category_list, mode_list, composite_mode=False):
+        '''
+        将标准差的图转变为对数形式表达
+        '''
+        if not center_list or not category_list or not mode_list:
+            print('ERROR: emission center list or categories list or mode list does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('emission center list or categories list or mode list does not exist. Please check exist.')
+            exit(1)
+
+        ########################################
+        ########################################
+        # 以下内容都是在构造需要进行转换的栅格名称
+        ########################################
+        ########################################
+        # EOF 栅格名模板
+        eof_raster_template = r'.*{}_{}_.*mode_{}_(multiple_std)$'
+
+        # 构造所有栅格名
+        eof_raster_wildcard = [eof_raster_template.format(center.center_name, category, mode) 
+                                for center in center_list
+                                    for category in category_list
+                                        for mode in mode_list]
+        
+        # 列出需要处理的栅格
+        eof_raster_list = self.do_arcpy_list_raster_list(wildcard_list=eof_raster_wildcard, wildcard_mode=False)
+
+        # 是否需要加入合成场栅格
+        if composite_mode:
+            eof_raster_template = r'.*{}_composite.*mode_{}_(multiple_std)$'
+            
+            eof_raster_wildcard = [eof_raster_template.format(center.center_name, mode)
+                                    for center in center_list
+                                        for mode in mode_list]
+            
+            eof_composite_rater_list = self.do_arcpy_list_raster_list(wildcard_list=eof_raster_wildcard, wildcard_mode=False)
+
+            if eof_composite_rater_list:
+                eof_raster_list.extend(eof_composite_rater_list)
+        
+        # 执行实际转换
+        for eof_raster in tqdm(eof_raster_list):
+            self.do_EOF_std_map_log(eof_raster)
+
+
+    # 实际执行将标准差转变为对数形式表达
+    def do_EOF_std_map_log(self, eof_raster_name):
+        '''
+        实际执行将标准差转变为对数形式表达
+        '''
+        # 将栅格文件名转换为arcgis Raster类型
+        eof_raster = Raster(eof_raster_name)
+
+        # 生成文件名
+        log_raster_save_name = '{}_log'.format(eof_raster_name)
+
+        ########################################################################
+        ########################################################################
+        # 以下的算法只使用了raster calculator（数学万岁！）
+        # 这个算法的思路如下
+        # 1、处理原始数据中(0,1)的部分，因为在log计算中这部分数值会进入负数区间，
+        #   引入不必要的困难。
+        #   这里直接把(0,1)的数据规定为1。这样做其实并不会引起实质上的影响。在
+        #   全球碳排放量的数量级变化中，这样的操作并不影响明显变化的碳排放变化。
+        #       Con((raster >= -1) & (raster < 0), -1, Con((raster >= 0) & (raster < 1), 1, raster))
+        #       评论：这个Con的用法从Arcgis的文档中真的很难找到明确的指引，
+        #               但是嵌套的Con确实是这个写法。
+        # 2、生成数据的正负区域差异图，记为PN，用来标记栅格中的正负值区域。如果不处理
+        #    那么结算结果中会丢失变化为负值的区域。
+        #       Con(Con((raster >= -1) & (raster < 0), -1, Con((raster >= 0) & (raster < 1), 1, raster)) < 0, -1, 1)
+        # 3、最终的结果就是，log(raster * PN ) * PN。因为第一次乘以PN可以把
+        #    所有负值转变为正数，从而可以计算对数值；而对数计算结果再次乘以PN
+        #    则可以恢复原来是负数变化区域的负号
+        ########################################################################
+        ########################################################################
+        # 1. Process data for log calculation:
+        #    - Values in range [-1,0) are converted to -1
+        #    - Values in range [0,1) are converted to 1
+        #    - All other values remain unchanged
+        # 2. Create a sign mask (PN) that preserves the original sign information:
+        #    - If processed value < 0, then PN = -1
+        #    - Otherwise, PN = 1
+        # 3. Calculate log10 of the absolute values by:
+        #    - Multiplying by the sign mask to make all values positive
+        #    - Taking log10 of the result
+        #    - Multiplying by the sign mask again to restore original signs
+        temp_log_raster = Log10(Con((eof_raster >= -1) & (eof_raster < 0), -1, Con((eof_raster >= 0) & (eof_raster < 1), 1, eof_raster)) * Con(Con((eof_raster >= -1) & (eof_raster < 0), -1, Con((eof_raster >= 0) & (eof_raster < 1), 1, eof_raster)) < 0, -1, 1)) * Con(Con((eof_raster >= -1) & (eof_raster < 0), -1, Con((eof_raster >= 0) & (eof_raster < 1), 1, eof_raster)) < 0, -1, 1)
+        self.ES_logger.info('convert to log: {}'.format(eof_raster_name))
+        # 保存结果
+        temp_log_raster.save(log_raster_save_name)
+        self.ES_logger.info('log raster saved: {}'.format(log_raster_save_name))
+        # print('convert to log: {}\n'.format(log_raster_save_name))
 
     ############################################################################
     ############################################################################
@@ -5321,7 +6198,7 @@ class EDGAR_spatial(object):
     ############################################################################
     # 实际执行kriging插值的函数
     # 封装了arcpy.sa.Kriging的相关功能
-    def do_kriging_interpolate(self, point, field, output_fmt='{}_{}'):
+    def do_kriging_interpolate(self, point, field, kriging_setting, output_fmt='{}_{}'):
         # 检查传入的输出文件名格式是否正确
         try:
             outVarRaster = output_fmt.format(point, field)
@@ -5333,21 +6210,29 @@ class EDGAR_spatial(object):
 
             exit(1)
 
+        if not kriging_setting:
+            print('Kringing setting does not exits.')
+
+            # logger output
+            self.ES_logger.error('Kringing setting does not exits.')
+
+            exit(1)
+
         # 设置kriging插值的必要参数
         # Set local variables
         cellSize = 0.1
         temp_outVarRaster = 'temp_kriging'
         # Set complex variable
-        lagSize = 0.1
-        majorRange = 0.5
-        partialSill = 0.1
-        nugget = 1
-        kModelOrdinary = KrigingModelOrdinary(semivariogramType="GAUSSIAN",
+        lagSize = kriging_setting['lagSize']
+        majorRange = kriging_setting['majorRange']
+        partialSill = kriging_setting['partialSill']
+        nugget = kriging_setting['nugget']
+        kModelOrdinary = KrigingModelOrdinary(semivariogramType=kriging_setting['semivariogramType'],
                                                 lagSize=lagSize,
                                                 majorRange=majorRange,
                                                 partialSill=partialSill,
                                                 nugget=nugget)
-        kRadius = RadiusFixed(0.5)
+        kRadius = RadiusFixed(kriging_setting['kRadius'])
 
         # logger
         self.ES_logger.info('Start kriging at {} {}'.format(point, field))
@@ -5359,7 +6244,7 @@ class EDGAR_spatial(object):
         outKriging.save(outVarRaster)
 
     # 对一个点数据中的若干字段进行逐字段的插值并生成插值后的结果。
-    def kriging_interpolate(self, point, field_list, output_fmt='{}_{}'):
+    def kriging_interpolate(self, point, field_list, kriging_setting, output_fmt='{}_{}'):
         # 检查输入的点数据和需要插值的字段是否存在
         if not point or not field_list:
             print('ERROR: input point or field_list does not exsit. Please check exist.')
@@ -5371,11 +6256,499 @@ class EDGAR_spatial(object):
         # 逐个对字段列表中的字段进行插值
         for field in tqdm(field_list):
             # 调用实际执行kriging的函数
-            self.do_kriging_interpolate(point=point, field=field,output_fmt=output_fmt)
+            self.do_kriging_interpolate(point=point, field=field,kriging_setting=kriging_setting, output_fmt=output_fmt)
 
             # logger
             self.ES_logger.info('Finished field kriging interpolation at {} {}'.format(point,field))
 
+    ############################################################################
+    ############################################################################
+    #  用于聚类的算法，基础功能合并几个列的内容
+    ############################################################################
+    ############################################################################
+    def joint_center_urbanization_categories(self, in_point, joint_field_list, cluster_field):
+        # 检查出入参数，如果为空则直接退出
+        if in_point == [] or joint_field_list == [] or cluster_field == []:
+            print('ERROR: input point or field list does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('input point or field list does not exist. Please check exist.')
+            exit(1)
+        
+        # 尝试为数据表添加最后连接字段的结果
+        # 这里会检查genField参数，如果传入空字典则跳过添加字段步骤，如果为有内容的字典则进行字段添加，如果为其他类型的则报错
+        self.addField_to_inPoint(inPoint=in_point, genFieldList=cluster_field)
+
+        # 列出需要在arcpy Cursor中操作的列名称
+        # 列包括，连接的数据列和最后的结果列
+        temp_arcpycursor_field_list = copy.deepcopy(joint_field_list)
+        temp_arcpycursor_field_list.append(cluster_field[0]['field_name'])
+
+        # 设置需要使用的连接字符
+        temp_joint_separator = '-'
+        # 注意：
+        # 根据arcpy文档给出的说明：
+        # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
+        # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
+        # 构造游标，开始逐行操作
+        with arcpy.da.UpdateCursor(in_point, temp_arcpycursor_field_list) as cursor:
+            for row in tqdm(cursor):
+                if row[3] == 0 or row[3] is None:
+                    row[4] = None
+                else:
+                    # 连接结果直接命名为center-urbanization-categories
+                    temp_joint_part = []
+
+                    # 检查是否是4、5、678中心，如果非中心直接跳出
+                    if row[0] is None:
+                        # 保存连接结果
+                        row[4] = 'under_4'
+                        # 更新行信息
+                        cursor.updateRow(row)
+                        continue
+                    else:
+                        temp_joint_part.append(row[0])
+                    
+                    # 检查城市化值是否存在
+                    if row[1] is None:
+                        temp_joint_part.append('None')
+                    else:
+                        temp_joint_part.append(str(row[1]))
+                    
+                    # 检查部门排放是否存在
+                    if row[2] is None:
+                        temp_joint_part.append('None')
+                    else:
+                        temp_joint_part.append(row[2])
+
+                    temp_joint_string = temp_joint_separator.join(temp_joint_part)
+
+                    # 保存连接结果
+                    row[4] = temp_joint_string
+
+                # 更新行信息
+                cursor.updateRow(row)
+
+    def joint_center_urbanization_categories_top_one(self, in_point, joint_field_list, cluster_field):
+        # 检查出入参数，如果为空则直接退出
+        if in_point == [] or joint_field_list == [] or cluster_field == []:
+            print('ERROR: input point or field list does not exist. Please check exist.')
+
+            # logger output
+            self.ES_logger.error('input point or field list does not exist. Please check exist.')
+            exit(1)
+        
+        # 尝试为数据表添加最后连接字段的结果
+        # 这里会检查genField参数，如果传入空字典则跳过添加字段步骤，如果为有内容的字典则进行字段添加，如果为其他类型的则报错
+        self.addField_to_inPoint(inPoint=in_point, genFieldList=cluster_field)
+
+        # 列出需要在arcpy Cursor中操作的列名称
+        # 列包括，连接的数据列和最后的结果列
+        temp_arcpycursor_field_list = copy.deepcopy(joint_field_list)
+        temp_arcpycursor_field_list.append(cluster_field[0]['field_name'])
+
+        # 设置需要使用的连接字符
+        temp_joint_separator = '-'
+        # 注意：
+        # 根据arcpy文档给出的说明：
+        # UpdateCursor 用于建立对从要素类或表返回的记录的读写访问权限。
+        # 返回一组迭代列表。 列表中值的顺序与 field_names 参数指定的字段顺序相符。
+        # 构造游标，开始逐行操作
+        with arcpy.da.UpdateCursor(in_point, temp_arcpycursor_field_list) as cursor:
+            for row in tqdm(cursor):
+                if row[3] == 0 or row[3] is None:
+                    row[4] = None
+                else:
+                    # 连接结果直接命名为center-urbanization-categories
+                    temp_joint_part = []
+
+                    # 检查是否是4、5、678中心，如果非中心直接跳出
+                    if row[0] is None:
+                        # 保存连接结果
+                        row[4] = 'under_4'
+                        # 更新行信息
+                        cursor.updateRow(row)
+                        continue
+                    
+                    # 检查城市化值是否存在
+                    if row[1] is None:
+                        temp_joint_part.append('None')
+                    else:
+                        temp_joint_part.append(str(row[1]))
+                    
+                    # 检查部门排放是否存在
+                    if row[2] is None:
+                        temp_joint_part.append('None')
+                    else:
+                        # 取得第一个部门
+                        temp_split = row[2].split('-',1)
+                        temp_joint_part.append(temp_split[0])
+
+                    temp_joint_string = temp_joint_separator.join(temp_joint_part)
+
+                    # 保存连接结果
+                    row[4] = temp_joint_string
+
+                # 更新行信息
+                cursor.updateRow(row)
+
+
+    ############################################################################
+    ############################################################################
+    # 已废弃函数
+    ############################################################################
+    ############################################################################
+    # !!! 注意：这个函数已经被废弃，请勿使用！
+    # 叠加时间序列上所有发生排放的区域得到全部排放的分布
+    # 这个方法会生成两个类型的栅格：
+    #   1、输出文件名加后缀`mask`，该栅格中`1`值表示排放范围，`0`值表示其他；
+    #   2、输出文件名加后缀`null_mask`，该栅格中`1`值表示排放范围，nodata值表示其他；
+    def deprecated_do_generate_center_geographical_extend(self,
+                                        raster_list,
+                                        background_raster,
+                                        output_name_fmt='extend_{}'):
+        # # 测试生成的文件名是否可用
+        # # 列出待计算栅格的列表
+        # temp_working_rasters = self.do_arcpy_list_raster_list(raster_list)
+
+        # # 用于保存临时数据的列表
+        # temp_mosaic_background = []
+
+        # # 第一步：为栅格mosaic零值背景
+        # for raster in tqdm(temp_working_rasters):
+        #     temp_new_mosaic = 'temp_new_mosaic_{}'.format(raster)
+            
+        #     self.mosaic_background_to_raster(inRaster=raster, background=background_raster,output_Raster=temp_new_mosaic)
+
+        #     temp_mosaic_background.append(temp_new_mosaic)
+
+        # # 第二步：叠加所有栅格
+        # temp_extend = self.do_raster_add(temp_mosaic_background)
+
+        # # 第三步：栅格非零值赋值为1
+        # # 这里需要注意栅格计算中输入的栅格参数是str还是arcpy栅格对象。
+        # # 如果遇到ERROR:999998错误，可以尝试检查输入的对象是否栅格化为arcpy栅格对象。
+        # temp_extend = Con(arcpy.Raster(temp_extend), 1, 0, "VALUE <> 0")
+
+        # # logger output
+        # self.ES_logger.info('extend set to 1 mask')
+
+        # # 第四步：零值设为空值
+        # temp_null_extend = SetNull(temp_extend, 0, "VALUE = 0")
+        # temp_null_extend = Con(temp_null_extend == 1, 0, temp_null_extend)
+        # self.ES_logger.info('extend set to background mask')
+
+        # # 保存生成的两个结果
+        # # 生成待统计的栅格名称
+        # try:
+        #     temp_save_extend = output_name_fmt.format('mask')
+        #     temp_save_null_extend = output_name_fmt.format('null_mask')
+        # except Exception as e:
+        #     print('background formatting failed.')
+
+        #     # logger output
+        #     self.ES_logger.error('save raster name formatting failed. raster name formate was {}.'.format(output_name_fmt))
+
+        #     exit(1)
+
+        # # 执行保存
+        # temp_extend.save(temp_save_extend)
+        # temp_null_extend.save(temp_save_null_extend)
+        # # logger output
+        # self.ES_logger.info('geographical extend generated')
+
+        # # 删除临时栅格
+        # self.delete_temporary_raster(temp_mosaic_background)
+        pass
+
+    # 旧函数不建议使用！！！
+    # 提取总排放量、最大排放部门和最大排放部门比例的函数
+    def deprecated_do_extract_center_area(self, center_range, total_emission_raster, year):
+        # 临时变量
+        # temp_center_upper_bound = 0
+        # temp_center_lower_bound = 0
+        # temp_center = 0
+
+        # # 变量检查
+        # if type(center_range) == tuple:
+        #     if len(center_range) == 2:
+
+        #         temp_center_upper_bound = max(center_range)
+        #         temp_center_lower_bound = min(center_range)
+        #         temp_center = str(
+        #             (temp_center_lower_bound + temp_center_upper_bound) / 2).replace('.', '')
+        #     else:
+
+        #         print("Error: center range require a start year and a end year.")
+
+        #         # logger output
+        #         self.ES_logger.error('Center range year error.')
+        #         return
+        # else:
+        #     print("Error: center range require a tuple. Please check the input.")
+
+        #     # logger output
+        #     self.ES_logger.error('Center range type error.')
+        #     return
+
+        # # 检查输入的栅格是否存在
+        # # 检查total_emission
+        # if not (arcpy.Exists(total_emission_raster)):
+        #     print('Error: input total emission raster does not exist')
+
+        #     # logger output
+        #     self.ES_logger.error('input total emission not found.')
+        #     return
+
+        # # 检查对应年份的主要排放部门栅格
+        # temp_main_sector = 'main_emi_{}'.format(year)
+
+        # if not (arcpy.Exists(temp_main_sector)):
+        #     print('Error: input total emission raster does not exist')
+
+        #     # logger output
+        #     self.ES_logger.error('input total emission not found.')
+        #     return
+
+        # # 检查对应年份的主要排放部门权重栅格
+        # temp_main_sector_weight = 'main_emi_weight_{}'.format(year)
+
+        # if not (arcpy.Exists(temp_main_sector_weight)):
+        #     print('Error: input total emission weight raster does not exist')
+
+        #     # logger output
+        #     self.ES_logger.error('input total emission not found.')
+        #     return
+
+        # # 将大于上界和小于下界范围的栅格设为nodata
+        # # Set local variables
+        # whereClause = "VALUE < {} OR VALUE > {}".format(temp_center_lower_bound,
+        #                                             temp_center_upper_bound)
+
+        # # Execute SetNull
+        # outSetNull = SetNull(total_emission_raster, total_emission_raster, whereClause)
+
+        # # Save the output
+        # temp_center_path = 'center_{}_{}'.format(temp_center, year)
+        # outSetNull.save(temp_center_path)
+
+        # # 防止BUG删除outSetNull
+        # del outSetNull
+
+        # # 生成中心的mask
+        # # Execute Con
+        # outCon = Con(temp_center_path, 1, '')
+
+        # # Save the outputs
+        # temp_center_mask_path = 'center_mask_{}_{}'.format(temp_center, year)
+        # outCon.save(temp_center_mask_path)
+
+        # # 防止BUG删除outCon
+        # del outCon
+
+        # # 生成中心主要排放部门栅格
+        # outMain = arcpy.Raster(temp_center_mask_path) * \
+        #     arcpy.Raster(temp_main_sector)
+
+        # # Save the output
+        # temp_center_main = 'center_main_sector_{}_{}'.format(temp_center, year)
+        # outMain.save(temp_center_main)
+
+        # # 防止BUG删除outCon
+        # del outMain
+
+        # # 生成中心主要排放部门比重栅格
+        # outMainWeight = arcpy.Raster(temp_center_mask_path) * arcpy.Raster(temp_main_sector_weight)
+
+        # # Save the output
+        # temp_center_main_weight = 'center_main_sector_weight_{}_{}'.format(temp_center, year)
+        # outMainWeight.save(temp_center_main_weight)
+
+        # del outMainWeight
+        pass
+
+    # 旧函数不建议使用！！！
+    # 这里要求可以center_range和year_range是一个元组
+    def deprecated_extract_center_area(self, center_range, year_range, isLog):
+        # 临时变量
+        # temp_start_year = self.start_year
+        # temp_end_year = self.end_year
+
+        # # 检查输入年份变量参数是否合规
+        # if (type(year_range[0]) != int) or (type(year_range[1]) != int):
+        #     print('Error! Processing starting year and ending year must be int value')
+        #     self.ES_logger.info('Year setting type error.')
+        #     self.ES_logger.error('Year setting error!')
+        #     return
+        # elif min(year_range) < self.__default_start_year or max(
+        #         year_range) > self.__default_end_year:
+        #     print('Error! Processing year range out of data support! The year must contain in 1970 to 2019')
+        #     self.ES_logger.info('Year settings are out of range.')
+        #     self.ES_logger.error('Year setting error!')
+        #     return
+        # else:
+        #     temp_start_year, temp_end_year = min(year_range), max(year_range)
+        #     self.ES_logger.info('Year has set.')
+
+        # # 列出总排放量栅格
+        # # 需要区分栅格中的总量数据是否已经进行了对数换算
+        # if bool(isLog) == True:
+        #     temp_wild_card = [
+        #         'total_emission_{}_log'.format( s ) for s in range(temp_start_year, temp_end_year + 1)
+        #     ]
+        # elif bool(isLog) == False:
+        #     temp_wild_card = [
+        #         'total_emission_{}'.format(s)for s in range(temp_start_year, temp_end_year + 1)
+        #     ]
+        # else:
+        #     print('Error: Please set the isLog flag.')
+
+        #     # logger output
+        #     self.ES_logger.error('isLog flag check failed.')
+        #     return
+
+        # # 列出需要的total emission 栅格
+        # temp_working_rasters = self.do_arcpy_list_raster_list(temp_wild_card)
+
+        # # 逐年处理
+        # for yr in tqdm(range(temp_start_year, temp_end_year + 1)):
+        #     temp_total_emission = [s for s in temp_working_rasters if str(yr) in s].pop()
+
+        #     self.do_extract_center_area(
+        #         center_range=center_range, total_emission_raster=temp_total_emission, year=yr)
+        pass
+
+    # 这个函数已经被废弃
+    def deprecated_do_raster_extract_center_area(self,
+                                          emission_center_peak,
+                                          extract_raster,
+                                          output,
+                                          saveMask=False):
+        # # 检查输入的emission_center_peak是否存在，不存在则直接返回
+        # if not emission_center_peak:
+        #     print('ERROR: emission center does not exist.')
+
+        #     # logger output
+        #     self.ES_logger.error('input emission center does not exist.')
+        #     return
+
+        # # 检查输入的栅格是否存在
+        # if not (arcpy.Exists(extract_raster)):
+        #     print('Error: input raster does not exist')
+
+        #     # logger output
+        #     self.ES_logger.error('input raster not found.')
+        #     return
+
+        # # 检查输出路径是否存在
+        # if not output or type(output) != str:
+        #     print('Error: output path does not exist')
+
+        #     # logger output
+        #     self.ES_logger.error('output path does not exist.')
+        #     return
+
+        # # 将大于上界和小于下界范围的栅格设为nodata
+        # # Set local variables
+        # whereClause = "VALUE < {} OR VALUE > {}".format(emission_center_peak['peak_min'],
+        #                                             emission_center_peak['peak_max'])
+
+        # # 利用setnull的结果作为提取中心的mask
+        # # Execute SetNull
+        # temp_SetNull = SetNull(extract_raster, extract_raster, whereClause)
+
+        # temp_mask = Con(temp_SetNull, 1, '')
+        # # 通过saveMask参数
+        # # 在这里控制保存一个提取结果的mask（掩膜）结果
+        # if saveMask:
+        #     temp_center_mask_path = 'center_mask_{}_{}'.format(emission_center_peak['peak_name'],
+        #                                                    emission_center_peak['year'])
+        #     temp_mask.save(temp_center_mask_path)
+
+        # temp_result = temp_mask * extract_raster
+        # temp_result.save(output)
+
+        pass
+
+    def deprecated_do_prepare_arcpy_list_raster_list(self, wildcard_list, wildcard_mode=True):
+        # # 列出所有数据库中的栅格进行匹配
+        # temp_all_rasters_in_path = arcpy.ListRasters()
+
+        # # 通过正则表达在列表中搜索的方式筛选要进行操作的栅格
+        # for wildcard in wildcard_list:
+        #     # 检查wildcard_mode并指定合适的正则表达式编译模式
+        #     if wildcard_mode:
+        #         # 替换wildcard中的通配符*为正则表达的通配符‘.’
+        #         # 然后构造正则表达匹配模式
+        #         temp_wildcard_re = re.compile(wildcard.replace('*','.*'))
+        #     else:
+        #         # 直接使用wildcard_list中的元素构造正则表达式匹配模式
+        #         temp_wildcard_re = re.compile(wildcard)
+
+        #     # filter函数会返回一个列表，所以这里要用extend()方法
+        #     self.all_prepare_working_rasters.extend(filter(temp_wildcard_re.match, temp_all_rasters_in_path))
+        #     # 直接的对逐个项使用ListRasters()方法可能会消耗大量的时间，导致程序假死
+        #     # 放弃使用以下方法！
+        #     # self.all_prepare_working_rasters.extend(arcpy.ListRasters(wild_card=i))
+        # # logger output
+        # self.ES_logger.debug('working rasters changed to:{}'.format(self.all_prepare_working_rasters)) 
+        pass
+
+    def deprecated_zonal_year_statistics(self, year_range, inZone, center_range, outPath):
+        # # 获得保存路径
+        # temp_out_csv_path = os.path.abspath(outPath)
+
+        # # 检查输入的分区是否存在
+        # if not (arcpy.Exists(inZone)):
+        #     print('Error: inZone not found.')
+
+        #     # logger output
+        #     self.ES_logger.error('inZone does not exist.')
+
+        #     return
+
+        # # 生成中心点
+        # temp_center = str((min(center_range) + max(center_range)) / 2).replace('.', '')
+
+        # for yr in tqdm(range(min(year_range), max(year_range) + 1)):
+        #     # 生成中心的栅格名称
+        #     temp_main_inRaster = 'center_main_sector_{}_{}'.format(temp_center, yr)
+        #     # 检查输入的待统计值
+        #     if not (arcpy.Exists(temp_main_inRaster)):
+        #         print('Error: inRaster not found.')
+
+        #         # logger output
+        #         self.ES_logger.error('inRaster does not exist.')
+
+        #         return
+
+        #     temp_outTable = 'table_' + temp_main_inRaster
+
+        #     self.do_zonal_statistic_to_table(
+        #         year=yr,
+        #         inZoneData=inZone,
+        #         zoneField='ISO_A3',
+        #         inValueRaster=temp_main_inRaster,
+        #         outTable=temp_outTable)
+        #     # logger output
+        #     self.ES_logger.debug('Zonal statistics finished:{}'.format(temp_main_inRaster))
+
+        #     temp_outCsv = os.path.join(temp_out_csv_path, temp_main_inRaster + '.csv')
+        #     self.do_zonal_table_to_csv(table=temp_outTable, year=yr, outPath=temp_outCsv)
+
+        #     # logger output
+        #     self.ES_logger.debug('Zonal statistics convert to csv.')
+
+        #     # 生成中心权重的栅格名称
+        #     temp_main_weight_inRaster = 'center_main_sector_weight_{}_{}'.format(temp_center, yr)
+        #     # 检查输入的待统计值
+        #     if not (arcpy.Exists(temp_main_weight_inRaster)):
+        #         print('Error: inRaster not found.')
+
+        #         # logger output
+        #         self.ES_logger.error('inRaster does not exist.')
+        
+        pass
 
     # # 将arcgis栅格数据转换成Numpy multivariates-EOF计算所用的格式
     # def EOF_raster_to_numpy_multivariates(self, raster_list, nodata_to_value, export_to_npz=True, export_path=None):
@@ -5440,7 +6813,7 @@ class EDGAR_spatial(object):
         #         # logger output 
         #         self.ES_logger.debug('Numpy array saved to NPZ: %s' % temp_save_name)
         pass
-    
+
     # 生成一个可供EOF_raster_to_numpy_multivariates()使用的字典
     # 使用`分类`和`名称`归类同一年份栅格
     # 通过`category_list`参数给出的顺序，确定最终生成的字典的。
@@ -5462,7 +6835,7 @@ class EDGAR_spatial(object):
         #     self.ES_logger.error('Year setting error!')
         #     return
         # elif min(year_range) < self.__default_start_year or max(year_range) > self.__default_end_year:
-        #     print 'Error! Processing year range out of data support! The year must contain in 1970 to 2018'
+        #     print 'Error! Processing year range out of data support! The year must contain in 1970 to 2019'
         #     self.ES_logger.info('Year settings are out of range.')
         #     self.ES_logger.error('Year setting error!')
         #     return
