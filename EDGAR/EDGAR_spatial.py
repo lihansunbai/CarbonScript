@@ -851,7 +851,7 @@ class EDGAR_spatial(object):
         相比于上一个null方法，这个方法可能会多处至少4*N的时间消耗。
         '''
         if not isinstance(background_value, numbers.Number):
-            print('ERROR: backgound value must be a number.')
+            print('ERROR: background value must be a number.')
 
             # logger output
             self.ES_logger.error('background value type error.')
@@ -1443,7 +1443,7 @@ class EDGAR_spatial(object):
             print('ERROR: in raster is empty. Please check the input')
 
             # loggger output
-            self.ES_logger.error('in raster is empyt.')
+            self.ES_logger.error('in raster is empty.')
             exit(1)
         
         print('Adding rasters...')
@@ -1863,7 +1863,7 @@ class EDGAR_spatial(object):
 
         # 构造需要操作的字段
         # 神奇的python赋值解包
-        temp_cursor_fileds = [i for i in temp_sector]
+        temp_cursor_fields = [i for i in temp_sector]
 
         # 注意：
         # 根据arcpy文档给出的说明：
@@ -1878,10 +1878,10 @@ class EDGAR_spatial(object):
         calculate_fields_counts = len(calculate_fields)
 
         # 添加需要计算的字段到游标提取字段的list中
-        temp_cursor_fileds.extend(calculate_fields)
+        temp_cursor_fields.extend(calculate_fields)
 
         # 构造游标，开始逐行操作
-        with arcpy.da.UpdateCursor(temp_working_sector, temp_cursor_fileds) as cursor:
+        with arcpy.da.UpdateCursor(temp_working_sector, temp_cursor_fields) as cursor:
             for row in tqdm(cursor):
                 # 统计栅格中的排放部门数量。
                 # 如果没有排放，即排放部门数量为0。
@@ -1896,7 +1896,7 @@ class EDGAR_spatial(object):
                 # 如果存在排放则找出最大的排放部门
                 else:
                     max_weight = max(row[0:-calculate_fields_counts])
-                    max_id = temp_cursor_fileds[row.index(max_weight)]
+                    max_id = temp_cursor_fields[row.index(max_weight)]
                     max_colormap = temp_sector_colormap[max_id]
 
                     row[-1] = emitted_sectors
@@ -5728,7 +5728,7 @@ class EDGAR_spatial(object):
         # 1、利用待提取列表中的任意一个栅格，转为输出结果的点数据，同时作为提取的起点
         # 2、基于输出结果的点数据，开始提取剩余栅格中的数据。
         # logger output
-        self.ES_logger.debug('Create eof ouput point file')
+        self.ES_logger.debug('Create eof output point file')
         # 栅格数据转点对象。
         # 生成输出的点文件
         # 这里用到了arcpy.AlterField_management()这个函数可能在10.2版本中没有
@@ -5748,9 +5748,9 @@ class EDGAR_spatial(object):
             arcpy.DeleteField_management(output_eof_points, 'pointid')
 
             # logger output
-            self.ES_logger.debug('EOF mode raster conver to point:{}'.format(temp_convert_raster_name) )
+            self.ES_logger.debug('EOF mode raster convert to point:{}'.format(temp_convert_raster_name) )
 
-            print('EOF mode raster conver to point:{}'.format(temp_convert_raster_name))
+            print('EOF mode raster convert to point:{}'.format(temp_convert_raster_name))
         except:
             print('Failed convert EOF mode raster to point : {}'.format(temp_convert_raster_name) )
 
@@ -5980,7 +5980,7 @@ class EDGAR_spatial(object):
         # 1、利用待提取列表中的任意一个栅格，转为输出结果的点数据，同时作为提取的起点
         # 2、基于输出结果的点数据，开始提取剩余栅格中的数据。
         # logger output
-        self.ES_logger.debug('Create eof ouput point file')
+        self.ES_logger.debug('Create eof output point file')
         # 栅格数据转点对象。
         # 生成输出的点文件
         # 这里用到了arcpy.AlterField_management()这个函数可能在10.2版本中没有
@@ -6000,9 +6000,9 @@ class EDGAR_spatial(object):
             arcpy.DeleteField_management(output_eof_points, 'pointid')
 
             # logger output
-            self.ES_logger.debug('EOF composite mode raster conver to point:{}'.format(temp_convert_raster_name) )
+            self.ES_logger.debug('EOF composite mode raster convert to point:{}'.format(temp_convert_raster_name) )
 
-            print('EOF composite mode raster conver to point:{}'.format(temp_convert_raster_name))
+            print('EOF composite mode raster convert to point:{}'.format(temp_convert_raster_name))
         except:
             print('Failed convert EOF composite mode raster to point : {}'.format(temp_convert_raster_name) )
 
@@ -6247,10 +6247,10 @@ class EDGAR_spatial(object):
     def kriging_interpolate(self, point, field_list, kriging_setting, output_fmt='{}_{}'):
         # 检查输入的点数据和需要插值的字段是否存在
         if not point or not field_list:
-            print('ERROR: input point or field_list does not exsit. Please check exist.')
+            print('ERROR: input point or field_list does not exist. Please check exist.')
 
             # logger output
-            self.ES_logger.error('input point or field_list does not exsit. Input point {}. Input field list {}'.format(point, field_list))
+            self.ES_logger.error('input point or field_list does not exist. Input point {}. Input field list {}'.format(point, field_list))
             exit(1)
 
         # 逐个对字段列表中的字段进行插值
