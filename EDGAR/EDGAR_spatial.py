@@ -4846,11 +4846,13 @@ class EDGAR_spatial(object):
                 temp_delete_raster_regex = '^' + raster + '$'
                 self.delete_temporary_raster([temp_delete_raster_regex])
                 arcpy.Raster(temp_linear_raster_path).save(raster)
-
-            # 2、为栅格添加0值背景
-            self.mosaic_background_to_raster(inRaster=raster, background=background)
-            # 删除临时栅格
-            self.delete_temporary_raster([temp_linear_raster_path])
+                # 2、为栅格添加0值背景
+                self.mosaic_background_to_raster(inRaster=raster, background=background)
+                # 删除临时栅格
+                self.delete_temporary_raster([temp_linear_raster_path])
+            else:
+                # 或者不需要对数恢复常规数值计算，直接为栅格添加0值背景
+                self.mosaic_background_to_raster(inRaster=raster, background=background)
 
     # 从点数据中生成各个中心中的不同分类的排放分量栅格
     # 这里的设计思路是只传入一个点数据。因为，如果一次传入一组点数据，很可能导致这个函数一旦进入就
