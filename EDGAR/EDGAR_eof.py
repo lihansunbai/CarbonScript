@@ -10,7 +10,7 @@ import sys
 # For office
 # sys.path.append('/mnt/e/workplace/CarbonProject/GIT/test/test_EOF/eofs/')
 # For laptop
-sys.path.append('/mnt/e/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
+sys.path.append('/mnt/d/CODE/CARBON/CarbonScript/test/test_EOF/eofs')
 from lib.eofs.multivariate.standard import MultivariateEof
 
 # 以下为正常使用eofs库的引用
