@@ -77,3 +77,4 @@ eof_with_std_convert_to_log
 Extract_urbanization.log
 combined_data.csv
 export_category_emission_raster
+raster_export
